@@ -1,0 +1,9 @@
+FROM node:22-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY server.mjs auth.mjs chat.mjs ./
+COPY public ./public
+ENV NODE_ENV=production
+EXPOSE 3000
+CMD ["node", "server.mjs"]

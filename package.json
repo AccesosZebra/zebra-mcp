@@ -1,0 +1,15 @@
+{
+  "name": "zebra-mcp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --env-file=.env check.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.125.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "pg": "8.23.0",
+    "zod": "4.6.2"
+  }
+}

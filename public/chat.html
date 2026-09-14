@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Reporte de Métricas · Zebra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Tokens: oscuro del Zebra DS, claro del dashboard de Analisis-pitahaya. */
+body[data-theme="dark"]{
+  --bg:#0a0a0a; --surface:#161616; --surface2:#1c1c1c;
+  --border:rgba(255,255,255,.1); --border2:rgba(255,255,255,.14);
+  --fg:#fff; --muted:#a3a3a3; --accent:#fff; --on-accent:#0a0a0a; --danger:#e24b4a;
+  /* #737373 (ink-400) no llega a AA en textos chicos sobre #0a0a0a (ZR-07); #8a8a8a sí (~5.7:1). */
+  --faint:#8a8a8a;
+  color-scheme:dark;
+}
+body[data-theme="light"]{
+  --bg:#FAFAF7; --surface:#FFFFFF; --surface2:#F4F3EE;
+  --border:#E5E4DE; --border2:#C8C7C0;
+  --fg:#0A0A0A; --muted:#6B6B66; --accent:#0A0A0A; --on-accent:#FFFFFF; --danger:#C2342F;
+  --faint:#6f6e69;
+  color-scheme:light;
+}
+:root{
+  --r-control:8px; --r-btn:10px; --r-card:12px;
+  --shadow-lg:0 0 0 1px rgba(255,255,255,.06),0 6px 16px -4px rgba(0,0,0,.55);
+  --ease:cubic-bezier(.16,1,.3,1);
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  --t-label:10px; --t-ui:12px; --t-body:14px; --tk-label:.14em;
+}
+body[data-theme="light"]{--shadow-lg:0 0 0 1px rgba(10,10,10,.04),0 6px 16px -4px rgba(10,10,10,.12)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;background:var(--bg);color:var(--fg);font:400 15px/1.5 'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background .2s var(--ease),color .2s var(--ease)}
+button,textarea{font:inherit;color:inherit}
+p{text-wrap:pretty} strong,b{font-weight:600}
+svg{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+svg[role="img"]{stroke:none}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:none;box-shadow:0 0 0 1px var(--accent);transition:box-shadow .18s var(--ease)}
+
+/* ── Barra lateral (portada de index.html de Analisis-pitahaya) ───────────── */
+.sidebar{
+  /* El dashboard usa #A8A7A0 para los rótulos de grupo: 2.1:1 sobre este fondo, no cumple AA (ZR-07). */
+  --sb-bg:#F4F3EE; --sb-fg:#0A0A0A; --sb-muted:#6B6B66; --sb-faint:#6B6B66; --sb-border:#E5E4DE;
+  --sb-hover:#EAE9E3; --sb-active-bg:#0A0A0A; --sb-active-fg:#FFFFFF;
+  position:sticky;top:0;height:100vh;flex-shrink:0;width:248px;z-index:120;
+  display:flex;flex-direction:column;
+  background:var(--sb-bg);color:var(--sb-fg);border-right:1px solid var(--sb-border);
+  transition:width .2s var(--ease);
+}
+/* La barra va al revés que el contenido, como en el dashboard. */
+body[data-theme="light"] .sidebar{
+  --sb-bg:#0A0A0A; --sb-fg:#F5F5F5; --sb-muted:#8A8A8A; --sb-faint:#8a8a8a; --sb-border:#262626;
+  --sb-hover:#1C1C1C; --sb-active-bg:#FFFFFF; --sb-active-fg:#0A0A0A;
+}
+.sb-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 18px 14px}
+.sb-brand{min-width:0}
+.sb-word{display:block;width:116px;height:auto;color:var(--sb-fg)}
+.logo-mark{display:none;width:36px;height:36px;border-radius:10px;background:var(--sb-active-bg);color:var(--sb-active-fg);align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0}
+.brand-sub{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;color:var(--sb-muted);letter-spacing:var(--tk-label);text-transform:uppercase;margin-top:6px}
+.sb-collapse{width:30px;height:30px;flex-shrink:0;border-radius:50%;border:1px dashed var(--sb-border);background:transparent;color:var(--sb-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,border-color .15s}
+.sb-collapse:hover{color:var(--sb-fg);border-color:var(--sb-muted)}
+.sb-collapse svg{width:15px;height:15px;transition:transform .2s var(--ease)}
+.app-nav{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:6px 12px 16px}
+.sb-group{font-size:var(--t-label);font-weight:500;letter-spacing:var(--tk-label);text-transform:uppercase;color:var(--sb-faint);padding:16px 10px 8px}
+.app-tab{background:none;border:none;color:var(--sb-muted);font-size:var(--t-body);font-weight:500;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:12px;white-space:nowrap;transition:background .15s,color .15s}
+.app-tab svg{width:17px;height:17px;flex-shrink:0}
+.app-tab:hover:not(:disabled){background:var(--sb-hover);color:var(--sb-fg)}
+.app-tab:focus-visible{outline:none;box-shadow:0 0 0 1px var(--sb-fg)}
+.app-tab.active{background:var(--sb-active-bg);color:var(--sb-active-fg)}
+.app-tab:disabled{opacity:.45;cursor:not-allowed}
+.sb-foot{padding:12px;border-top:1px solid var(--sb-border);display:flex;flex-direction:column;gap:8px}
+.theme-btn{background:transparent;border:1px solid var(--sb-border);color:var(--sb-fg);padding:9px 10px;border-radius:12px;cursor:pointer;font-size:var(--t-ui);font-weight:500;width:100%;display:flex;align-items:center;gap:10px;transition:background .15s}
+.theme-btn:hover{background:var(--sb-hover)}
+.theme-btn svg{width:15px;height:15px;color:var(--sb-muted);flex-shrink:0}
+.theme-pill{margin-left:auto;font-size:var(--t-label);font-weight:500;letter-spacing:.1em;background:var(--sb-active-bg);color:var(--sb-active-fg);border-radius:999px;padding:3px 8px}
+.sb-session{display:flex;align-items:center;gap:8px;padding:6px 4px}
+.sb-session form{margin:0}
+.avatar{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;background:var(--sb-active-bg);color:var(--sb-active-fg);text-transform:uppercase}
+.sb-session .email{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t-ui);color:var(--sb-muted)}
+.sb-session button{background:transparent;border:1px solid var(--sb-border);color:var(--sb-muted);border-radius:999px;padding:4px 9px;font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:color .15s,border-color .15s}
+.sb-session button:hover{color:var(--sb-fg);border-color:var(--sb-muted)}
+body.nav-collapsed .sidebar{width:68px}
+body.nav-collapsed .sb-head{flex-direction:column;align-items:center;gap:12px;padding:18px 0}
+body.nav-collapsed .logo-mark{display:flex}
+body.nav-collapsed .sb-word,
+body.nav-collapsed .brand-sub,
+body.nav-collapsed .app-tab span,
+body.nav-collapsed .sb-lbl,
+body.nav-collapsed .theme-pill,
+body.nav-collapsed .sb-session .email{display:none}
+body.nav-collapsed .sb-collapse svg{transform:rotate(180deg)}
+body.nav-collapsed .app-nav{padding:6px 10px 16px;align-items:center}
+body.nav-collapsed .app-tab{width:44px;padding:11px;justify-content:center}
+body.nav-collapsed .sb-group{height:0;padding:0;margin:10px 8px;font-size:0;border-top:1px solid var(--sb-border)}
+body.nav-collapsed .theme-btn{justify-content:center;padding:9px 0}
+body.nav-collapsed .sb-foot{padding:12px 8px}
+body.nav-collapsed .sb-session{flex-direction:column;gap:6px;padding:6px 0}
+
+/* ── Chat ─────────────────────────────────────────────────────────────────── */
+.app{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;padding:20px 24px 16px;max-width:1100px;margin:0 auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.topbar-id{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pill-logo{display:inline-block;background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:100px;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.section-label{margin:0 0 2px;font-family:var(--font-mono);font-size:11px;font-weight:500;line-height:1;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.topbar-title{font-size:14px;margin:0}
+.header-actions{display:flex;align-items:center;gap:6px}
+.header-actions form{margin:0}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:var(--r-btn);border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:var(--fg);transition:border-color .18s var(--ease),transform .18s var(--ease),box-shadow .18s var(--ease)}
+.btn:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.btn:active{transform:none}
+.btn svg{width:15px;height:15px}
+
+.chat-messages{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
+.chat-turn{position:relative;display:flex;flex-direction:column;gap:3px;max-width:92%}
+.chat-turn.turn-bot{align-self:flex-start;align-items:flex-start}
+.chat-turn.turn-lead{align-self:flex-end;align-items:flex-end}
+.chat-turn-role{display:inline-flex;align-items:center;gap:4px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;padding:0 2px}
+.chat-msg{padding:10px 16px;border-radius:var(--r-card);border:1px solid var(--border);max-width:100%}
+.turn-bot .chat-msg{background:var(--surface2);color:var(--fg);border-bottom-left-radius:5px}
+.turn-lead .chat-msg{background:var(--fg);color:var(--bg);border-color:var(--fg);border-bottom-right-radius:5px}
+.chat-content{font-size:15px;line-height:1.6;color:var(--fg);white-space:pre-wrap;word-break:break-word}
+.turn-lead .chat-content{color:var(--bg)}
+.chat-content a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.chat-content code{font-family:var(--font-mono);font-size:.88em;background:color-mix(in srgb,var(--fg) 8%,transparent);padding:1px 5px;border-radius:5px}
+.chat-typing{display:inline-flex;align-items:center;gap:7px;font-style:italic;opacity:.65}
+.typing-dots{display:inline-flex;gap:3px}
+.typing-dots span{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.35;animation:typingPulse 1.2s infinite ease-in-out}
+.typing-dots span:nth-child(2){animation-delay:.15s}.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes typingPulse{0%,80%,100%{opacity:.35}40%{opacity:1}}
+
+.table-wrap{overflow-x:auto;margin:6px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);white-space:normal}
+.table-wrap table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+.table-wrap th,.table-wrap td{padding:7px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+.table-wrap tr:last-child td{border-bottom:none}
+.table-wrap th{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.table-wrap .num{text-align:right}
+/* La etiqueta de la fila puede partirse; las cifras no. Así la tabla cabe en un teléfono. */
+.table-wrap th:first-child,.table-wrap td:first-child{white-space:normal;min-width:7em}
+
+.chat-tools{margin-top:6px;font-size:11px;color:var(--faint);max-width:100%}
+.chat-tools summary{cursor:pointer;letter-spacing:.04em}
+.chat-tool-step{display:flex;flex-direction:column;gap:3px;margin-top:6px;padding-left:8px;border-left:2px solid var(--border2)}
+.chat-tool-step.is-error{border-left-color:var(--danger)}
+.chat-tool-name{color:var(--muted)}
+.chat-tool-meta{margin-left:6px;color:var(--faint)}
+.chat-tool-step code{display:block;overflow-x:auto;white-space:pre-wrap;word-break:break-word;font:11px/1.5 var(--font-mono);color:var(--faint)}
+
+.empty{margin:auto 0;padding:24px 0;text-align:center}
+.empty h1{margin:0 0 6px;font-size:22px;font-weight:600;text-wrap:balance}
+.empty p{margin:0 auto 20px;max-width:460px;color:var(--muted);font-size:14px}
+.sugs{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.sug{padding:8px 14px;border-radius:100px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;color:var(--fg);transition:border-color .18s var(--ease)}
+.sug:hover{border-color:var(--accent)}
+.form-error{color:var(--danger);font-size:13px;margin:4px 0 8px}
+
+.chat-composer-zone{display:flex;justify-content:center;padding-top:6px}
+.idle-composer{position:relative;width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:18px;padding:12px 14px 10px;transition:border-color .18s var(--ease)}
+.idle-composer:focus-within{border-color:var(--accent)}
+.idle-composer-input{width:100%;background:transparent;border:none;outline:none;resize:none;color:var(--fg);font-size:15px;line-height:1.55;min-height:22px;max-height:160px;padding:2px 2px 8px}
+.idle-composer-input::placeholder{color:var(--faint)}
+.idle-composer-footrow{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.idle-composer-hint{font-size:10.5px;color:var(--faint);margin-right:auto}
+.idle-send-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--on-accent);border:none;cursor:pointer;flex:none}
+.idle-send-btn:disabled{background:var(--surface2);color:var(--faint);cursor:not-allowed}
+.idle-send-btn svg{width:14px;height:14px}
+.disclaimer{text-align:center;font-size:11px;color:var(--faint);margin:8px 0 0}
+
+@media (max-width:900px){
+  .app{padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 8px)}
+  .topbar-id > div{display:none}
+  .btn .btn-label{display:none}
+  .btn{padding:8px}
+  .idle-composer-input{font-size:16px;padding:6px 2px}
+  .chat-composer-zone .idle-composer{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px}
+  .idle-composer-hint,.disclaimer{display:none}
+  .idle-composer-footrow{flex:none}
+  .chat-turn{max-width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .typing-dots span{animation:none;opacity:.6}
+  .btn,.btn:hover,.sidebar,.sb-collapse svg{transition:none;transform:none}
+}
+</style>
+</head>
+<body data-theme="dark">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-report" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M9 17v-4"/><path d="M12 17v-1"/><path d="M15 17v-3"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5l-5 3v-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12Z"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M10.3 4.3a2 2 0 0 1 3.4 0l.4.7a2 2 0 0 0 2.3 1l.8-.3a2 2 0 0 1 2.4 2.4l-.2.8a2 2 0 0 0 1 2.3l.7.4a2 2 0 0 1 0 3.4l-.7.4a2 2 0 0 0-1 2.3l.2.8a2 2 0 0 1-2.4 2.4l-.8-.2a2 2 0 0 0-2.3 1l-.4.7a2 2 0 0 1-3.4 0l-.4-.7a2 2 0 0 0-2.3-1l-.8.2a2 2 0 0 1-2.4-2.4l.2-.8a2 2 0 0 0-1-2.3l-.7-.4a2 2 0 0 1 0-3.4l.7-.4a2 2 0 0 0 1-2.3l-.2-.8a2 2 0 0 1 2.4-2.4l.8.3a2 2 0 0 0 2.3-1l.4-.7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-admin" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3Z"/><rect x="9.5" y="11" width="5" height="4" rx="1"/><path d="M10.5 11V9.8a1.5 1.5 0 0 1 3 0V11"/></symbol>
+  <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+</svg>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <span class="logo-mark" aria-hidden="true">Z</span>
+      <svg class="sb-word" viewBox="0 0 244 39" role="img" aria-label="Zebra"><path fill-rule="evenodd" clip-rule="evenodd" d="M131.868 25.8267C131.001 22.2349 128.485 20.097 124.971 18.8142C125.449 18.5149 125.839 18.2583 126.186 18.0445C130.394 15.3079 131.478 10.305 128.702 6.11461C126.533 2.86489 123.323 1.28279 119.462 1.15451C114.517 1.02623 109.616 1.11175 104.671 1.11175C104.454 1.11175 104.193 1.15451 103.933 1.15451V38.0987C104.193 38.0987 104.367 38.1415 104.584 38.1415C109.919 38.1415 115.255 38.1842 120.59 38.0987C121.978 38.0987 123.41 37.7994 124.711 37.3718C130.003 35.7042 133.04 30.7013 131.868 25.8267ZM127.791 28.1358C127.661 31.4282 124.841 34.2076 121.198 34.2931C116.946 34.4214 112.695 34.3359 108.314 34.3359V4.9601C112.218 4.9601 116.079 4.83182 119.94 5.00286C123.28 5.1739 125.839 7.86775 125.882 10.9037C125.926 13.4692 124.494 15.7783 122.195 16.7617C121.935 16.89 121.675 16.9755 121.545 17.0183C121.501 17.0183 121.501 17.0183 121.458 17.061C120.59 17.3604 119.94 18.2156 119.94 19.199C119.94 20.3535 120.807 21.2942 121.935 21.4225C125.622 21.8501 127.921 24.715 127.791 28.1358Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M54.1788 38.0987V1.19727H79.0343V4.91734H58.56V17.3176H70.1852V21.166H58.6034V34.3359H79.7717V38.0987" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M24.4217 4.91734H1.21458V1.19727H32.0996C23.9445 12.272 15.8763 23.2184 7.67787 34.3786H31.4923V38.0987H0C8.15502 27.024 16.2233 16.0776 24.4217 4.91734Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M224.697 0L205.307 38.1842H209.948C209.948 38.1842 212.898 32.54 214.026 30.1455H235.281C236.452 32.54 239.359 38.1842 239.359 38.1842H244L224.697 0ZM216.021 26.2116L224.697 8.68018L233.416 26.2543H216.021V26.2116Z" fill="currentColor"/><path d="M185.961 35.02C185.7 35.02 185.483 35.0628 185.266 35.0628C184.009 35.1056 182.967 34.678 182.143 33.7373C181.84 33.3952 181.579 33.0531 181.232 32.54C179.28 29.6751 177.372 26.853 175.246 23.6888C180.538 22.577 184.529 17.959 184.529 12.443C184.529 6.07185 179.237 0.940709 172.73 0.940709H156.637V38.3553H160.585V24.0308H170.952L171.299 24.544C171.993 25.5702 172.687 26.5964 173.338 27.6226C175.029 30.1882 176.808 32.8821 178.586 35.4904C179.931 37.4146 182.057 38.5263 184.442 38.5263C185.093 38.5263 185.7 38.4408 186.351 38.2698L186.524 38.227V35.02M172.73 20.3963H160.585V4.57527H172.73C177.198 4.57527 180.842 8.12431 180.842 12.4858C180.842 16.8472 177.198 20.3963 172.73 20.3963Z" fill="currentColor"/></svg>
+      <div class="brand-sub">Reporte de Métricas</div>
+    </div>
+    <button class="sb-collapse" id="nav-collapse-btn" title="Contraer menú" aria-label="Contraer menú"><svg><use href="#i-chevron"/></svg></button>
+  </div>
+
+  <nav class="app-nav">
+    <div class="sb-group">Día a día</div>
+    <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-report"/></svg><span>Reporte</span></button>
+    <button class="app-tab active" title="Data Chat" aria-current="page"><svg><use href="#i-chat"/></svg><span>Data Chat</span></button>
+    <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-wa"/></svg><span>Integración WA</span></button>
+    <div class="sb-group">Sistema</div>
+    <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
+    <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
+  </nav>
+
+  <div class="sb-foot">
+    <button class="theme-btn" id="theme-btn" title="Cambiar tema">
+      <svg><use href="#i-contrast"/></svg>
+      <span class="sb-lbl">Modo tema</span>
+      <span class="theme-pill" id="theme-label">DARK</span>
+    </button>
+    <div class="sb-session">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <span class="email" id="email" title=""></span>
+      <form method="post" action="/auth/logout"><button type="submit">Salir</button></form>
+    </div>
+  </div>
+</aside>
+
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-id">
+      <span class="pill-logo">Data Chat</span>
+      <div>
+        <p class="section-label">Reporte de Métricas</p>
+        <p class="topbar-title">Pregúntale a la base de datos de Zebra</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn" id="reset" hidden>
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        <span class="btn-label">Nueva conversación</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="chat-messages" id="messages" aria-live="polite">
+    <div class="empty" id="empty">
+      <h1>¿Qué quieres saber?</h1>
+      <p>Pregunta por leads, gasto, citas o cierres de cualquier cliente. Cada cifra sale de una consulta a la base.</p>
+      <div class="sugs">
+        <button type="button" class="sug">¿Cómo le fue a Sofía en agosto frente a julio?</button>
+        <button type="button" class="sug">¿Qué campañas de Sofía trajeron más leads este mes?</button>
+        <button type="button" class="sug">¿Qué clientes tienen datos desactualizados?</button>
+      </div>
+    </div>
+  </main>
+
+  <p class="form-error" id="error" hidden></p>
+
+  <div class="chat-composer-zone">
+    <div class="idle-composer">
+      <textarea class="idle-composer-input" id="input" rows="1" placeholder="Escribe tu pregunta…" aria-label="Pregunta"></textarea>
+      <div class="idle-composer-footrow">
+        <span class="idle-composer-hint" id="hint">Enter para enviar · Shift+Enter para salto de línea</span>
+        <button type="button" class="idle-send-btn" id="send" aria-label="Enviar" disabled>
+          <svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <p class="disclaimer">Revisa las cifras importantes antes de compartirlas.</p>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const list = $('messages'), input = $('input'), sendBtn = $('send'), errorEl = $('error'), hint = $('hint'), emptyEl = $('empty'), resetBtn = $('reset');
+const history = []; // solo texto: [{ role, content }]
+let busy = false;
+
+// ── Barra lateral: plegado y tema, como en el dashboard ─────────────────────
+// Solo se guarda lo que eliges tú: plegar por ancho de pantalla no debe cambiar
+// la preferencia, o abrir el chat en el teléfono lo dejaría plegado en la computadora.
+function setNav(on, persist = false) {
+  document.body.classList.toggle('nav-collapsed', on);
+  const btn = $('nav-collapse-btn');
+  btn.title = btn.ariaLabel = on ? 'Expandir menú' : 'Contraer menú';
+  if (persist) { try { localStorage.setItem('zmcp-nav-collapsed', on ? '1' : '0'); } catch {} }
+}
+function setTheme(theme) {
+  document.body.dataset.theme = theme;
+  $('theme-label').textContent = theme.toUpperCase();
+  try { localStorage.setItem('zmcp-theme', theme); } catch {}
+}
+$('nav-collapse-btn').addEventListener('click', () => setNav(!document.body.classList.contains('nav-collapsed'), true));
+$('theme-btn').addEventListener('click', () => setTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark'));
+(() => {
+  let nav = null, theme = null;
+  try { nav = localStorage.getItem('zmcp-nav-collapsed'); theme = localStorage.getItem('zmcp-theme'); } catch {}
+  // Por debajo de 900px la barra siempre arranca en modo iconos: abierta se come el chat.
+  // La preferencia guardada solo manda en pantallas anchas.
+  setNav(window.innerWidth < 900 ? true : nav === '1');
+  setTheme(theme === 'light' ? 'light' : 'dark');
+})();
+fetch('/api/me').then((r) => r.json()).then(({ email }) => {
+  if (!email) return;
+  $('email').textContent = email;
+  $('email').title = email;
+  $('avatar').textContent = email[0];
+}).catch(() => {});
+
+// ── Formato del texto (port de lib/rich-text.ts de Prompt Studio) ───────────
+const MARKUP = /(?<u>https?:\/\/[^\s<>"']+)|\*\*(?<b2>[^*\n]+)\*\*|\*(?<b1>[^*\n]+)\*|~~(?<s2>[^~\n]+)~~|_(?<i>[^_\n]+)_|`(?<m>[^`\n]+)`/g;
+function appendRich(parent, text) {
+  let last = 0;
+  for (const match of text.matchAll(MARKUP)) {
+    if (match.index > last) parent.append(text.slice(last, match.index));
+    const g = match.groups;
+    let el;
+    if (g.u !== undefined) {
+      const url = g.u.replace(/[.,;:!?)\]}]+$/, '');
+      el = document.createElement('a'); el.href = url; el.target = '_blank'; el.rel = 'noopener noreferrer'; el.textContent = url;
+      parent.append(el); last = match.index + url.length; continue;
+    }
+    if (g.b2 !== undefined || g.b1 !== undefined) { el = document.createElement('strong'); el.textContent = g.b2 ?? g.b1; }
+    else if (g.s2 !== undefined) { el = document.createElement('s'); el.textContent = g.s2; }
+    else if (g.i !== undefined) { el = document.createElement('em'); el.textContent = g.i; }
+    else { el = document.createElement('code'); el.textContent = g.m; }
+    parent.append(el);
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parent.append(text.slice(last));
+}
+
+// Tablas en markdown: bloques "| a | b |" con separador "|---|".
+const isRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+const isSep = (l) => /^\s*\|?(\s*:?-{3,}:?\s*\|)+\s*:?-{0,}:?\s*\|?\s*$/.test(l);
+// "\|" es un pipe dentro de la celda (los nombres de campaña los llevan), no un separador.
+const cells = (l) => l.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'));
+const isNum = (c) => /^[-−+]?\$?\s?[\d.,]+\s?%?(\s?[A-Z]{3})?$/.test(c);
+function renderContent(el, raw) {
+  el.textContent = '';
+  const lines = raw.replace(/^#{1,6}\s+(.+)$/gm, '**$1**').split('\n');
+  let buf = [];
+  const flush = () => { if (buf.length) { appendRich(el, buf.join('\n')); buf = []; } };
+  for (let i = 0; i < lines.length; i++) {
+    if (isRow(lines[i]) && i + 1 < lines.length && isSep(lines[i + 1])) {
+      if (buf.length && buf.at(-1) === '') buf.pop();
+      flush();
+      const head = cells(lines[i]);
+      const rows = [];
+      i += 2;
+      while (i < lines.length && isRow(lines[i])) rows.push(cells(lines[i++]));
+      if (i < lines.length && lines[i] === '') i++;
+      i--;
+      const wrap = document.createElement('div'); wrap.className = 'table-wrap';
+      const table = document.createElement('table');
+      const tr = table.createTHead().insertRow();
+      head.forEach((h, k) => { const th = document.createElement('th'); appendRich(th, h); if (rows.every((r) => isNum(r[k] ?? ''))) th.className = 'num'; tr.append(th); });
+      const body = table.createTBody();
+      rows.forEach((r) => { const row = body.insertRow(); head.forEach((_, k) => { const td = row.insertCell(); const v = r[k] ?? ''; if (isNum(v)) td.className = 'num'; appendRich(td, v); }); });
+      wrap.append(table); el.append(wrap);
+    } else buf.push(lines[i]);
+  }
+  flush();
+}
+
+function turn(role) {
+  const t = document.createElement('div');
+  t.className = `chat-turn ${role === 'user' ? 'turn-lead' : 'turn-bot'}`;
+  const label = document.createElement('span'); label.className = 'chat-turn-role'; label.textContent = role === 'user' ? 'Tú' : 'Data Chat';
+  const msg = document.createElement('div'); msg.className = 'chat-msg';
+  const content = document.createElement('div'); content.className = 'chat-content';
+  msg.append(content); t.append(label, msg); list.append(t);
+  return { t, content };
+}
+
+function typing(el, text) {
+  el.innerHTML = '';
+  const span = document.createElement('span'); span.className = 'chat-typing'; span.textContent = text;
+  const dots = document.createElement('span'); dots.className = 'typing-dots'; dots.setAttribute('aria-hidden', 'true');
+  dots.append(document.createElement('span'), document.createElement('span'), document.createElement('span'));
+  span.append(dots); el.append(span);
+}
+
+function toolsBox(t) {
+  const d = document.createElement('details'); d.className = 'chat-tools';
+  d.append(document.createElement('summary')); t.append(d);
+  return d;
+}
+function addStep(box, e) {
+  const step = document.createElement('div'); step.className = 'chat-tool-step'; step.dataset.id = e.id;
+  const name = document.createElement('span'); name.className = 'chat-tool-name'; name.textContent = e.name;
+  const meta = document.createElement('span'); meta.className = 'chat-tool-meta'; meta.textContent = 'consultando';
+  name.append(meta);
+  const code = document.createElement('code'); code.textContent = e.input?.sql ?? e.input?.table_name ?? '';
+  step.append(name, code); box.append(step);
+  const n = box.querySelectorAll('.chat-tool-step').length;
+  box.firstChild.textContent = n === 1 ? '1 consulta a la base' : `${n} consultas a la base`;
+}
+function finishStep(box, e) {
+  const step = box.querySelector(`[data-id="${CSS.escape(e.id)}"]`);
+  if (!step) return;
+  step.querySelector('.chat-tool-meta').textContent = e.error ? 'error' : 'ok';
+  if (e.error) {
+    step.classList.add('is-error');
+    const code = document.createElement('code'); code.textContent = e.preview; step.append(code);
+  }
+}
+
+const scrollEnd = () => { list.scrollTop = list.scrollHeight; };
+function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; }
+function refresh() { sendBtn.disabled = busy || !input.value.trim(); hint.textContent = busy ? 'Consultando…' : 'Enter para enviar · Shift+Enter para salto de línea'; }
+function showError(msg) { errorEl.textContent = msg; errorEl.hidden = !msg; }
+
+async function send(text) {
+  text = (text ?? input.value).trim();
+  if (!text || busy) return;
+  busy = true; showError(''); input.value = ''; autosize(); refresh();
+  emptyEl.hidden = true; resetBtn.hidden = false;
+
+  const user = turn('user'); user.content.textContent = text;
+  history.push({ role: 'user', content: text });
+  const bot = turn('assistant'); typing(bot.content, 'Pensando');
+  scrollEnd();
+
+  let acc = '', box = null, failure = null;
+  try {
+    const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history }) });
+    if (res.status === 401) { location.href = '/login'; return; }
+    if (!res.ok || !res.body) { const d = await res.json().catch(() => ({})); throw new Error(d.error ?? 'No se pudo enviar la pregunta.'); }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const e = JSON.parse(line);
+        if (e.type === 'text') { acc += e.text; renderContent(bot.content, acc); scrollEnd(); }
+        else if (e.type === 'reset') { acc = ''; typing(bot.content, 'Consultando la base'); }
+        else if (e.type === 'tool') { box ??= toolsBox(bot.t); addStep(box, e); if (!acc) typing(bot.content, 'Consultando la base'); }
+        else if (e.type === 'tool_result' && box) finishStep(box, e);
+        else if (e.type === 'error') failure = e.message;
+      }
+    }
+    if (!acc.trim() && !failure) failure = 'No llegó respuesta. Intenta de nuevo.';
+  } catch (err) {
+    failure = err.message || 'Error de conexión.';
+  } finally {
+    if (acc.trim()) {
+      history.push({ role: 'assistant', content: acc });
+    } else {
+      // Sin respuesta: se deshace el turno y la pregunta vuelve al compositor.
+      history.pop(); user.t.remove(); bot.t.remove();
+      input.value = text; autosize();
+      if (!history.length) { emptyEl.hidden = false; resetBtn.hidden = true; }
+    }
+    if (failure) showError(failure);
+    busy = false; refresh(); input.focus();
+  }
+}
+
+input.addEventListener('input', () => { autosize(); refresh(); });
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
+sendBtn.addEventListener('click', () => send());
+document.querySelectorAll('.sug').forEach((b) => b.addEventListener('click', () => send(b.textContent)));
+resetBtn.addEventListener('click', () => {
+  if (busy) return;
+  history.length = 0;
+  list.querySelectorAll('.chat-turn').forEach((t) => t.remove());
+  emptyEl.hidden = false; resetBtn.hidden = true; showError(''); input.focus();
+});
+input.focus();
+</script>
+</body>
+</html>
