@@ -11,7 +11,9 @@ const MAX_MENSAJES = 12;       // y nunca se arrastran más de 12
 
 const numero = (jid = '') => jid.split('@')[0].split(':')[0];
 export const esGrupo = (jid = '') => jid.endsWith('@g.us');
-export const mismoNumero = (a, b) => Boolean(a && b) && numero(a) === numero(b);
+
+/** ¿Este jid es el bot? WhatsApp lo nombra de dos formas y las menciones usan la nueva. */
+export const esElBot = (jid, mias) => Boolean(jid) && mias.has(numero(jid));
 
 /** WHATSAPP_GROUPS = "1203630@g.us=Sofía, 1203631@g.us=Grupo Gira" */
 export function gruposPermitidos(crudo = process.env.WHATSAPP_GROUPS ?? '') {
@@ -30,26 +32,21 @@ export const textoDe = (data) => data?.message?.conversation ?? data?.message?.e
 // La mención llega como "@5219997923682" dentro del texto; al bot no le aporta nada.
 export const limpiar = (texto = '') => texto.replace(/@\d{6,}/g, ' ').replace(/\s+/g, ' ').trim();
 
-/** La respuesta es lo que Claude escribe DESPUÉS de la última consulta: lo anterior son notas. */
-export function respuestaFinal(content) {
-  const ultima = content.map((b) => b.type).lastIndexOf('mcp_tool_result');
-  return content.slice(ultima + 1).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-}
-
 /** Decide si este mensaje merece respuesta, y de qué cliente habla. */
-export function debeResponder({ data, botJid, permitidos }) {
+export function debeResponder({ data, mias, permitidos }) {
   const jid = data?.key?.remoteJid ?? '';
   if (data?.key?.fromMe) return { responder: false, motivo: 'lo mandó el propio bot' };
   if (!esGrupo(jid)) return { responder: false, motivo: 'no es un grupo' };
   if (!permitidos.has(jid)) return { responder: false, motivo: 'grupo fuera de la lista' };
 
-  // Sin el número propio no hay forma de saber si la mención era para el bot: decir "no lo
+  // Sin saber cómo se llama a sí mismo no hay forma de juzgar la mención: decir "no lo
   // mencionaron" sería mentir y manda a buscar el problema al sitio equivocado.
-  if (!botJid) return { responder: false, motivo: 'no sé mi propio número' };
+  if (!mias?.size) return { responder: false, motivo: 'no sé quién soy' };
 
-  const ctx = data?.contextInfo ?? {};
-  const mencionado = (ctx.mentionedJid ?? []).some((j) => mismoNumero(j, botJid));
-  const leResponden = mismoNumero(ctx.participant ?? '', botJid);
+  // En los mensajes con formato el contexto viaja dentro del propio mensaje, no al lado.
+  const ctx = data?.contextInfo ?? data?.message?.extendedTextMessage?.contextInfo ?? {};
+  const mencionado = (ctx.mentionedJid ?? []).some((j) => esElBot(j, mias));
+  const leResponden = esElBot(ctx.participant ?? '', mias);
   if (!mencionado && !leResponden) return { responder: false, motivo: 'no lo mencionaron' };
 
   const pregunta = limpiar(textoDe(data) ?? '');
@@ -57,22 +54,36 @@ export function debeResponder({ data, botJid, permitidos }) {
   return { responder: true, jid, cliente: permitidos.get(jid) ?? null, pregunta };
 }
 
-// El número propio del bot: se pregunta una vez y se recuerda. Sin él no se puede saber si lo
-// mencionaron, así que si no se resuelve hay que gritarlo, no callar.
-// Ojo: `connectionState` NO lo trae (solo instanceName y state); el que lo tiene es `fetchInstances`.
-let jidPropio = null;
-export async function botJid(senderDelSobre) {
-  if (jidPropio) return jidPropio;
-  if (senderDelSobre) return (jidPropio = senderDelSobre);
+// Cómo se llama el bot a sí mismo. Son DOS nombres: su número (5219…@s.whatsapp.net) y su @lid
+// (2593…@lid), que es el que aparece en las menciones desde que WhatsApp cambió el
+// direccionamiento. Comparar solo contra el número hacía que ninguna mención coincidiera.
+// Evolution no expone el lid de la instancia: el que lo trae es la lista de participantes de un
+// grupo, con el teléfono de cada uno al lado. Se resuelve una vez y se recuerda.
+let mias = null;
+export async function identidades(grupoJid, senderDelSobre) {
+  if (mias?.size) return mias;
+  const propias = new Set();
+  const apuntar = (jid) => { if (jid) propias.add(numero(jid)); };
   const base = process.env.EVOLUTION_URL.replace(/\/+$/, '');
-  const res = await fetch(`${base}/instance/fetchInstances?instanceName=${encodeURIComponent(process.env.EVOLUTION_INSTANCE)}`, {
-    headers: { apikey: process.env.EVOLUTION_API_KEY },
-  });
-  const d = await res.json().catch(() => null);
-  const inst = Array.isArray(d) ? d[0] : (d?.instance ?? d);
-  jidPropio = inst?.ownerJid ?? inst?.owner ?? null;
-  if (!jidPropio) console.error('wa: no pude averiguar mi propio numero, ninguna mencion va a coincidir');
-  return jidPropio;
+  const cabeceras = { apikey: process.env.EVOLUTION_API_KEY };
+  const pedir = async (ruta) => (await fetch(`${base}${ruta}`, { headers: cabeceras })).json();
+
+  apuntar(senderDelSobre); // el sobre del webhook a veces ya lo trae, en una forma u otra
+  try {
+    const d = await pedir(`/instance/fetchInstances?instanceName=${encodeURIComponent(process.env.EVOLUTION_INSTANCE)}`);
+    const inst = Array.isArray(d) ? d[0] : (d?.instance ?? d);
+    apuntar(inst?.ownerJid ?? inst?.owner);
+
+    const g = await pedir(`/group/participants/${process.env.EVOLUTION_INSTANCE}?groupJid=${encodeURIComponent(grupoJid)}`);
+    for (const p of g?.participants ?? []) if (propias.has(numero(p.phoneNumber ?? ''))) apuntar(p.id);
+  } catch (e) {
+    console.error('wa: no pude averiguar quien soy:', e.message);
+  }
+
+  if (!propias.size) console.error('wa: sin identidad propia, ninguna mencion va a coincidir');
+  // Con las dos formas ya no hay nada que reintentar; con una sola, se vuelve a intentar luego.
+  if (propias.size >= 2) mias = propias;
+  return propias;
 }
 
 // ponytail: historial en memoria del proceso, por grupo. Se pierde al desplegar, que para preguntas
@@ -131,7 +142,14 @@ export function mountWhatsapp(app) {
     const { event, data, sender } = req.body ?? {};
     if (event !== 'messages.upsert') return;
 
-    const veredicto = debeResponder({ data, botJid: await botJid(sender), permitidos: gruposPermitidos() });
+    // Preguntar quién soy solo para los grupos de la lista: los demás no gastan ni una llamada.
+    const permitidos = gruposPermitidos();
+    const enLista = permitidos.has(data?.key?.remoteJid ?? '');
+    const veredicto = debeResponder({
+      data,
+      mias: enLista ? await identidades(data.key.remoteJid, sender) : new Set(),
+      permitidos,
+    });
     if (!veredicto.responder) {
       return console.log(JSON.stringify({ wa: data?.key?.remoteJid ?? '?', ignorado: veredicto.motivo }));
     }
