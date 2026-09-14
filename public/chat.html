@@ -575,7 +575,11 @@ async function estadoWa() {
 async function pintarQr() {
   try {
     const d = await waFetch('/api/wa/qr');
-    if (d.base64) $('wa-qr-img').src = d.base64.startsWith('data:') ? d.base64 : `data:image/png;base64,${d.base64}`;
+    // El bloque solo se muestra cuando ya hay imagen: sin src el navegador pinta una imagen rota.
+    if (d.base64) {
+      $('wa-qr-img').src = d.base64.startsWith('data:') ? d.base64 : `data:image/png;base64,${d.base64}`;
+      $('wa-qr').hidden = false;
+    }
     if (d.estado === 'conectado') { pararQr(); estadoWa(); }
   } catch (e) { pararQr(); waError(e.message); }
 }
@@ -585,7 +589,7 @@ $('wa-vincular').addEventListener('click', async () => {
   try {
     const st = await waFetch('/api/wa/status');
     if (st.estado === 'sin-instancia') await waFetch('/api/wa/instance', { method: 'POST' });
-    $('wa-qr').hidden = false;
+    $('wa-estado').textContent = 'Pidiendo el código…';
     await pintarQr();
     clearInterval(timerQr);
     timerQr = setInterval(pintarQr, 5000); // el QR caduca solo, así que se vuelve a pedir
