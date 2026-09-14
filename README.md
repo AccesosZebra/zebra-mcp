@@ -35,8 +35,34 @@ Desplegado en EasyPanel (VPS 177.7.43.4), proyecto y app `zebra-mcp`:
 | `AUTH_SESSION_SECRET` | Firma de la cookie de sesión (`openssl rand -hex 32`) |
 | `AUTH_BASE_URL` | URL pública. De aquí sale la URI de retorno y la URL del MCP |
 | `AUTH_ALLOWED_DOMAIN` | Dominio permitido. `zebradigital.marketing` por defecto |
+| `EVOLUTION_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` | Pasarela de WhatsApp (Evolution API) |
+| `WHATSAPP_WEBHOOK_SECRET` | Secreto que Evolution manda en la cabecera `x-zebra-secret` |
+| `WHATSAPP_ALLOWED` | Números permitidos, separados por coma. Vacío = cualquiera que escriba |
 
-Si falta alguna de las cinco últimas, el chat no se monta y el MCP sigue funcionando solo.
+Si falta alguna de las cinco primeras del bloque de login, el chat no se monta y el MCP sigue
+funcionando solo. Igual con WhatsApp: sin sus cuatro variables, el resto no se entera.
+
+## WhatsApp
+
+`whatsapp.mjs` responde el webhook de Evolution API:
+
+1. Evolution avisa a `POST /api/whatsapp` en cada `messages.upsert`, con el secreto en la cabecera.
+2. Se descartan los mensajes propios, los de grupo, los que no son texto y los números fuera de
+   `WHATSAPP_ALLOWED`.
+3. Se responde 200 de inmediato (Evolution corta a los 30 s) y el turno se procesa aparte.
+4. La respuesta vuelve por `POST /message/sendText/<instancia>` con la cabecera `apikey`.
+
+El historial vive en memoria, por número, con media hora de vida y un máximo de 12 mensajes.
+El prompt cambia para este canal: sin tablas ni encabezados, que en WhatsApp no se ven.
+
+Para configurar el webhook de la instancia:
+
+```bash
+curl -X POST "$EVOLUTION_URL/webhook/set/$EVOLUTION_INSTANCE" \
+  -H "apikey: $EVOLUTION_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"webhook":{"enabled":true,"url":"https://<host>/api/whatsapp",
+       "events":["MESSAGES_UPSERT"],"headers":{"x-zebra-secret":"<secreto>"}}}'
+```
 La URI `<AUTH_BASE_URL>/auth/callback` tiene que estar registrada en el cliente OAuth de Google.
 
 ## Desarrollo

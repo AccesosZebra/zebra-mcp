@@ -7,7 +7,15 @@ const MODEL = 'claude-sonnet-5';
 const MAX_MESSAGES = 60;
 const MAX_BYTES = 90_000; // por debajo del límite de 100kb de express.json
 
-const system = () => `Eres el analista de datos de Zebra, una agencia de marketing. Respondes preguntas del equipo sobre las métricas de sus clientes (leads, gasto en pauta, citas, apartados, cierres, llamadas) consultando la base de métricas con las herramientas de zebra-db.
+// WhatsApp no pinta tablas markdown ni encabezados: ahí la respuesta va en prosa corta.
+const WHATSAPP = `
+
+Este turno llega por WhatsApp, así que el formato cambia: sin tablas, sin encabezados y sin
+viñetas largas. Responde en dos o tres frases, con las cifras dentro del texto y *negritas* al
+estilo de WhatsApp (un asterisco). Si hay varias filas que comparar, di solo las dos o tres que
+importan y ofrece el detalle si lo piden.`;
+
+const system = (canal = 'web') => `Eres el analista de datos de Zebra, una agencia de marketing. Respondes preguntas del equipo sobre las métricas de sus clientes (leads, gasto en pauta, citas, apartados, cierres, llamadas) consultando la base de métricas con las herramientas de zebra-db.
 
 Cómo trabajar:
 - Toda cifra sale de una consulta. Nunca estimes ni inventes un número; si la base no tiene el dato, dilo.
@@ -23,7 +31,7 @@ Cómo responder:
 - Para comparar varias filas o métricas usa una tabla en markdown.
 - Sin preámbulos sobre lo que vas a hacer y sin guiones largos.
 
-Hoy es ${new Date().toISOString().slice(0, 10)}.`;
+Hoy es ${new Date().toISOString().slice(0, 10)}.${canal === 'whatsapp' ? WHATSAPP : ''}`;
 
 // El navegador solo guarda el texto de cada turno: el historial pesa poco y nadie
 // puede colar resultados de herramientas inventados. Claude vuelve a consultar si lo necesita.
@@ -55,8 +63,31 @@ function errorMessage(e) {
   return 'No se pudo obtener la respuesta.';
 }
 
+let cliente;
+const anthropic = () => (cliente ??= new Anthropic()); // ANTHROPIC_API_KEY
+
+/** Un turno contra Claude con el MCP de la base conectado. Lo usan el chat web y el de WhatsApp. */
+export function turnStream(messages, canal = 'web') {
+  return anthropic().beta.messages.stream({
+    model: MODEL,
+    max_tokens: 16_000,
+    // Sin `fallbacks`: el reintento en otro modelo tras un rechazo está pensado para Opus 5 y no
+    // está confirmado en Sonnet 5. Si vuelve Opus 5, devolver betas 'server-side-fallback-2026-07-01'
+    // y `fallbacks: 'default'`.
+    betas: ['mcp-client-2025-11-20'],
+    system: system(canal),
+    mcp_servers: [{
+      type: 'url',
+      name: 'zebra-db',
+      url: `${process.env.AUTH_BASE_URL.replace(/\/+$/, '')}/mcp`,
+      authorization_token: process.env.MCP_AUTH_TOKEN,
+    }],
+    tools: [{ type: 'mcp_toolset', mcp_server_name: 'zebra-db' }],
+    messages,
+  });
+}
+
 export function mountChat(app, requireSession) {
-  const client = new Anthropic(); // ANTHROPIC_API_KEY
 
   // La barra lateral muestra quién está dentro.
   app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email }));
@@ -75,23 +106,7 @@ export function mountChat(app, requireSession) {
     const ping = setInterval(() => send({ type: 'ping' }), 15_000);
     const t0 = Date.now();
 
-    const stream = client.beta.messages.stream({
-      model: MODEL,
-      max_tokens: 16_000,
-      // Sin `fallbacks`: el reintento en otro modelo tras un rechazo está pensado para Opus 5 y no
-      // está confirmado en Sonnet 5. Si vuelve Opus 5, devolver betas 'server-side-fallback-2026-07-01'
-      // y `fallbacks: 'default'`.
-      betas: ['mcp-client-2025-11-20'],
-      system: system(),
-      mcp_servers: [{
-        type: 'url',
-        name: 'zebra-db',
-        url: `${process.env.AUTH_BASE_URL.replace(/\/+$/, '')}/mcp`,
-        authorization_token: process.env.MCP_AUTH_TOKEN,
-      }],
-      tools: [{ type: 'mcp_toolset', mcp_server_name: 'zebra-db' }],
-      messages,
-    });
+    const stream = turnStream(messages);
     res.on('close', () => { if (!res.writableFinished) stream.abort(); });
 
     // Opus 5 narra lo que va a hacer antes de consultar aunque el prompt lo prohíba. Ese texto se

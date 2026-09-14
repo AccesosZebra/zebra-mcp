@@ -121,6 +121,16 @@ if (faltan.length) {
   const page = (name) => fileURLToPath(new URL(`./public/${name}`, import.meta.url));
   mountAuth(app);
   mountChat(app, requireSession);
+  // El bot de WhatsApp es opcional: sin su configuración, el chat web sigue igual.
+  const WA_ENV = ['EVOLUTION_URL', 'EVOLUTION_API_KEY', 'EVOLUTION_INSTANCE', 'WHATSAPP_WEBHOOK_SECRET'];
+  const faltanWa = WA_ENV.filter((k) => !process.env[k]);
+  if (faltanWa.length) {
+    console.warn(`WhatsApp desactivado, faltan: ${faltanWa.join(', ')}`);
+  } else {
+    const { mountWhatsapp } = await import('./whatsapp.mjs');
+    mountWhatsapp(app);
+  }
+
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));
   app.get('/login', (_req, res) => res.sendFile(page('login.html')));
   app.get('/', requireSession, (_req, res) => res.sendFile(page('chat.html')));
