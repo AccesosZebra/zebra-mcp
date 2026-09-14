@@ -1,48 +1,14 @@
-// Backend del chat: una ruta que manda la conversación a Claude con el MCP de la
-// base conectado (el conector de Anthropic hace el bucle de herramientas) y
-// devuelve la respuesta en NDJSON, como el Editor de Prompt Studio.
-import Anthropic from '@anthropic-ai/sdk';
+// Backend del chat web: recibe la conversación, se la pasa al proveedor activo (que consulta la
+// base a través del MCP) y devuelve la respuesta en NDJSON, como el Editor de Prompt Studio.
+import { activo, pedirOpenAI, streamAnthropic } from './proveedores.mjs';
 
-const MODEL = 'claude-sonnet-5';
-const MAX_MESSAGES = 60;
+const MAX_MENSAJES = 60;
 const MAX_BYTES = 90_000; // por debajo del límite de 100kb de express.json
 
-// WhatsApp no pinta tablas markdown ni encabezados: ahí la respuesta va en prosa corta.
-const WHATSAPP = `
-
-Este turno llega por WhatsApp, así que el formato cambia: sin tablas, sin encabezados y sin
-viñetas largas. Responde en dos o tres frases, con las cifras dentro del texto y *negritas* al
-estilo de WhatsApp (un asterisco). Si hay varias filas que comparar, di solo las dos o tres que
-importan y ofrece el detalle si lo piden.`;
-
-// Cada grupo de WhatsApp es de un cliente, así que ahí no hay que repetirlo en cada pregunta.
-const ambitoDe = (cliente) => `
-
-Este grupo es del cliente **${cliente}**: toda pregunta se entiende de ese cliente, sin preguntarlo.
-Si te piden datos de otro cliente, dilo y no los traigas.`;
-
-const system = (canal = 'web', cliente = null) => `Eres el analista de datos de Zebra, una agencia de marketing. Respondes preguntas del equipo sobre las métricas de sus clientes (leads, gasto en pauta, citas, apartados, cierres, llamadas) consultando la base de métricas con las herramientas de zebra-db.
-
-Cómo trabajar:
-- Toda cifra sale de una consulta. Nunca estimes ni inventes un número; si la base no tiene el dato, dilo.
-- Si no sabes qué tabla o columna usar, revisa list_tables y get_schema antes de consultar.
-- Agrega en SQL (sum, count, group by) en vez de traer filas crudas.
-- Si la pregunta es ambigua (cliente, periodo), asume lo más razonable y dilo en una línea. Pregunta solo si no hay forma razonable de asumir.
-
-Cómo responder:
-- No escribas nada antes ni entre consultas: la interfaz ya muestra qué consultaste. Tu primer texto es la respuesta.
-- Todo lo que escribas va en español, sin excepción.
-- Directo: primero la respuesta en una o dos frases, después el detalle.
-- Di siempre qué cliente y qué periodo usaste, y la moneda de los montos.
-- Para comparar varias filas o métricas usa una tabla en markdown.
-- Sin preámbulos sobre lo que vas a hacer y sin guiones largos.
-
-Hoy es ${new Date().toISOString().slice(0, 10)}.${canal === 'whatsapp' ? WHATSAPP : ''}${cliente ? ambitoDe(cliente) : ''}`;
-
-// El navegador solo guarda el texto de cada turno: el historial pesa poco y nadie
-// puede colar resultados de herramientas inventados. Claude vuelve a consultar si lo necesita.
+// El navegador solo guarda el texto de cada turno: el historial pesa poco y nadie puede colar
+// resultados de herramientas inventados. El modelo vuelve a consultar si lo necesita.
 function validMessages(m) {
-  return Array.isArray(m) && m.length > 0 && m.length <= MAX_MESSAGES
+  return Array.isArray(m) && m.length > 0 && m.length <= MAX_MENSAJES
     && m.every((x) => (x?.role === 'user' || x?.role === 'assistant') && typeof x.content === 'string' && x.content.trim())
     && m.at(-1).role === 'user'
     && Buffer.byteLength(JSON.stringify(m)) <= MAX_BYTES;
@@ -63,38 +29,50 @@ const preview = (content) => (typeof content === 'string' ? content : (content ?
   .slice(0, 400);
 
 function errorMessage(e) {
-  if (e instanceof Anthropic.RateLimitError) return 'Se alcanzó el límite de uso de la API. Intenta en un momento.';
-  if (e instanceof Anthropic.AuthenticationError) return 'La API key de Anthropic no es válida.';
-  if (e instanceof Anthropic.APIError) return `No se pudo obtener la respuesta (${e.status ?? 'sin estado'}).`;
-  return 'No se pudo obtener la respuesta.';
+  const m = e?.message ?? '';
+  if (/credit balance/i.test(m)) return 'La cuenta del proveedor se quedó sin saldo.';
+  if (e?.status === 429) return 'Se alcanzó el límite de uso de la API. Intenta en un momento.';
+  if (e?.status === 401) return 'La API key del proveedor no es válida.';
+  if (e?.status) return `No se pudo obtener la respuesta (${e.status}).`;
+  return m || 'No se pudo obtener la respuesta.';
 }
 
-let cliente;
-const anthropic = () => (cliente ??= new Anthropic()); // ANTHROPIC_API_KEY
+/** Un turno del chat web, con el proveedor que esté activo. */
+function turno({ messages, canal = 'web', cliente = null, send, onFinal }) {
+  const { proveedor, modelo } = activo();
+  if (proveedor === 'openai') {
+    return pedirOpenAI(messages, canal, cliente, modelo).then(({ texto, herramientas, usage }) => {
+      // OpenAI resuelve el bucle entero antes de responder: las consultas se muestran de golpe.
+      herramientas.forEach((h, i) => {
+        send({ type: 'tool', id: String(i), name: h.name, input: h.input });
+        send({ type: 'tool_result', id: String(i), error: h.error, preview: h.preview });
+      });
+      if (texto) send({ type: 'text', text: texto });
+      onFinal({ modelo, stop: 'end_turn', in: usage?.input_tokens ?? 0, out: usage?.output_tokens ?? 0 });
+    });
+  }
 
-/** Un turno contra Claude con el MCP de la base conectado. Lo usan el chat web y el de WhatsApp. */
-export function turnStream(messages, canal = 'web', cliente = null) {
-  return anthropic().beta.messages.stream({
-    model: MODEL,
-    max_tokens: 16_000,
-    // Sin `fallbacks`: el reintento en otro modelo tras un rechazo está pensado para Opus 5 y no
-    // está confirmado en Sonnet 5. Si vuelve Opus 5, devolver betas 'server-side-fallback-2026-07-01'
-    // y `fallbacks: 'default'`.
-    betas: ['mcp-client-2025-11-20'],
-    system: system(canal, cliente),
-    mcp_servers: [{
-      type: 'url',
-      name: 'zebra-db',
-      url: `${process.env.AUTH_BASE_URL.replace(/\/+$/, '')}/mcp`,
-      authorization_token: process.env.MCP_AUTH_TOKEN,
-    }],
-    tools: [{ type: 'mcp_toolset', mcp_server_name: 'zebra-db' }],
-    messages,
+  const stream = streamAnthropic(messages, canal, cliente, modelo);
+  let sawText = false;
+  stream.on('streamEvent', (e) => {
+    if (e.type !== 'content_block_start') return;
+    // Claude narra lo que va a hacer antes de consultar: el navegador borra ese texto al ver `reset`.
+    if (e.content_block.type === 'mcp_tool_use' && sawText) { sawText = false; send({ type: 'reset' }); }
+    if (e.content_block.type === 'text' && sawText) send({ type: 'text', text: '\n\n' });
+  });
+  stream.on('text', (text) => { sawText = true; send({ type: 'text', text }); });
+  stream.on('contentBlock', (block) => {
+    if (block.type === 'mcp_tool_use') send({ type: 'tool', id: block.id, name: block.name, input: block.input });
+    if (block.type === 'mcp_tool_result') send({ type: 'tool_result', id: block.tool_use_id, error: block.is_error, preview: preview(block.content) });
+  });
+  return stream.finalMessage().then((msg) => {
+    if (msg.stop_reason === 'refusal') send({ type: 'text', text: '\n\nNo puedo responder esa pregunta.' });
+    if (msg.stop_reason === 'max_tokens') send({ type: 'text', text: '\n\n(La respuesta se cortó por largo. Pide menos detalle.)' });
+    onFinal({ modelo: msg.model, stop: msg.stop_reason, in: msg.usage.input_tokens, out: msg.usage.output_tokens });
   });
 }
 
 export function mountChat(app, requireSession) {
-
   // La barra lateral muestra quién está dentro.
   app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email }));
 
@@ -112,31 +90,13 @@ export function mountChat(app, requireSession) {
     const ping = setInterval(() => send({ type: 'ping' }), 15_000);
     const t0 = Date.now();
 
-    const stream = turnStream(messages);
-    res.on('close', () => { if (!res.writableFinished) stream.abort(); });
-
-    // Opus 5 narra lo que va a hacer antes de consultar aunque el prompt lo prohíba. Ese texto se
-    // ve mientras llega y el navegador lo borra si detrás viene una consulta: la respuesta es lo
-    // escrito después de la última consulta.
-    // ponytail: si Claude escribe parte de la respuesta y vuelve a consultar, esa parte se pierde;
-    // en la práctica la síntesis final la repite. Si molesta, mantener el texto y solo separarlo.
-    let sawText = false;
-    stream.on('streamEvent', (e) => {
-      if (e.type !== 'content_block_start') return;
-      if (e.content_block.type === 'mcp_tool_use' && sawText) { sawText = false; send({ type: 'reset' }); }
-      if (e.content_block.type === 'text' && sawText) send({ type: 'text', text: '\n\n' });
-    });
-    stream.on('text', (text) => { sawText = true; send({ type: 'text', text }); });
-    stream.on('contentBlock', (block) => {
-      if (block.type === 'mcp_tool_use') send({ type: 'tool', id: block.id, name: block.name, input: block.input });
-      if (block.type === 'mcp_tool_result') send({ type: 'tool_result', id: block.tool_use_id, error: block.is_error, preview: preview(block.content) });
-    });
-
     try {
-      const msg = await stream.finalMessage();
-      if (msg.stop_reason === 'refusal') send({ type: 'text', text: '\n\nNo puedo responder esa pregunta.' });
-      if (msg.stop_reason === 'max_tokens') send({ type: 'text', text: '\n\n(La respuesta se cortó por largo. Pide menos detalle.)' });
-      console.log(JSON.stringify({ chat: req.user.email, ms: Date.now() - t0, stop: msg.stop_reason, model: msg.model, in: msg.usage.input_tokens, out: msg.usage.output_tokens }));
+      await turno({
+        messages,
+        send,
+        onFinal: ({ modelo, stop, in: entrada, out }) =>
+          console.log(JSON.stringify({ chat: req.user.email, ms: Date.now() - t0, stop, model: modelo, in: entrada, out })),
+      });
       send({ type: 'done' });
     } catch (e) {
       console.error('chat:', e?.status ?? '', e?.message);
@@ -146,4 +106,18 @@ export function mountChat(app, requireSession) {
       res.end();
     }
   });
+}
+
+/** El texto final de un turno, sin streaming. Lo usa el bot de WhatsApp. */
+export async function textoDeTurno(messages, canal, cliente) {
+  const { proveedor, modelo } = activo();
+  if (proveedor === 'openai') {
+    const { texto, usage } = await pedirOpenAI(messages, canal, cliente, modelo);
+    return { texto, modelo, stop: 'end_turn', usage };
+  }
+  const msg = await streamAnthropic(messages, canal, cliente, modelo).finalMessage();
+  // La respuesta es lo que Claude escribe DESPUÉS de la última consulta: lo anterior son notas.
+  const ultima = msg.content.map((b) => b.type).lastIndexOf('mcp_tool_result');
+  const texto = msg.content.slice(ultima + 1).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  return { texto, modelo: msg.model, stop: msg.stop_reason, usage: msg.usage };
 }

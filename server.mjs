@@ -133,7 +133,15 @@ if (faltan.length) {
     mountWaAdmin(app, requireSession); // la pantalla "Integración WA" del panel
   }
 
+  const { mountAjustes } = await import('./ajustes.mjs');
+  mountAjustes(app, requireSession); // la pantalla "Ajustes" del panel
+
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));
+  // Marcas de los proveedores. Nombres cerrados: nada que venga del navegador toca el disco.
+  app.get('/logos/:nombre.jpg', (req, res) => {
+    if (!['anthropic', 'openai', 'gemini'].includes(req.params.nombre)) return res.status(404).end();
+    res.sendFile(page(`logos/${req.params.nombre}.jpg`));
+  });
   app.get('/login', (_req, res) => res.sendFile(page('login.html')));
   app.get('/', requireSession, (_req, res) => res.sendFile(page('chat.html')));
 }

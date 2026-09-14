@@ -31,6 +31,9 @@ Desplegado en EasyPanel (VPS 177.7.43.4), proyecto y app `zebra-mcp`:
 | `MCP_AUTH_TOKEN` | Token que exige `/mcp` en la cabecera `Authorization` |
 | `PORT` | Puerto, 3000 por defecto |
 | `ANTHROPIC_API_KEY` | Clave de la API de Anthropic |
+| `OPENAI_API_KEY` | Clave de OpenAI, si se usa ese proveedor |
+| `AI_PROVIDER` | `anthropic` (por defecto) u `openai`. La pantalla Ajustes ayuda a prepararlo |
+| `AI_MODEL` | Modelo del proveedor elegido. Vacío = el de por defecto del proveedor |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Cliente OAuth de Google |
 | `AUTH_SESSION_SECRET` | Firma de la cookie de sesión (`openssl rand -hex 32`) |
 | `AUTH_BASE_URL` | URL pública. De aquí sale la URI de retorno y la URL del MCP |

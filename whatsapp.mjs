@@ -4,7 +4,7 @@
 // preguntas se entienden de ese cliente sin repetirlo.
 import { timingSafeEqual } from 'node:crypto';
 
-import { turnStream } from './chat.mjs';
+import { textoDeTurno } from './chat.mjs';
 
 const TTL_MS = 30 * 60 * 1000; // media hora en silencio cierra la conversación
 const MAX_MENSAJES = 12;       // y nunca se arrastran más de 12
@@ -102,11 +102,11 @@ async function responder({ jid, cliente, pregunta }) {
   c.messages = c.messages.slice(-MAX_MENSAJES);
   const t0 = Date.now();
   try {
-    const msg = await turnStream(c.messages, 'whatsapp', cliente).finalMessage();
-    const texto = respuestaFinal(msg.content) || 'No pude responder eso. Pregúntamelo de otra forma.';
-    if (msg.stop_reason === 'refusal') c.messages.pop();
+    const r = await textoDeTurno(c.messages, 'whatsapp', cliente);
+    const texto = r.texto || 'No pude responder eso. Pregúntamelo de otra forma.';
+    if (r.stop === 'refusal') c.messages.pop();
     else c.messages.push({ role: 'assistant', content: texto });
-    console.log(JSON.stringify({ wa: jid, cliente, ms: Date.now() - t0, stop: msg.stop_reason, in: msg.usage.input_tokens, out: msg.usage.output_tokens }));
+    console.log(JSON.stringify({ wa: jid, cliente, ms: Date.now() - t0, stop: r.stop, model: r.modelo, in: r.usage?.input_tokens ?? 0, out: r.usage?.output_tokens ?? 0 }));
     await enviar(jid, texto);
   } catch (e) {
     console.error('wa:', e?.status ?? '', e?.message);

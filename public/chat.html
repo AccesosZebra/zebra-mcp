@@ -171,12 +171,26 @@ body.nav-collapsed .sb-session{flex-direction:column;gap:6px;padding:6px 0}
 .idle-send-btn svg{width:14px;height:14px}
 .disclaimer{text-align:center;font-size:11px;color:var(--faint);margin:8px 0 0}
 
-/* Pantalla "Integración WA" */
-#wa{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
+/* Pantallas "Integración WA" y "Ajustes" */
+#wa,#ajustes{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
 body[data-view="wa"] .chat-messages,
 body[data-view="wa"] .chat-composer-zone,
 body[data-view="wa"] .disclaimer,
-body[data-view="wa"] #error{display:none}
+body[data-view="wa"] #error,
+body[data-view="ajustes"] .chat-messages,
+body[data-view="ajustes"] .chat-composer-zone,
+body[data-view="ajustes"] .disclaimer,
+body[data-view="ajustes"] #error{display:none}
+.aj-proveedores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-width:900px}
+.aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
+.aj-card.no-disponible{opacity:.55}
+.aj-head{display:flex;align-items:center;gap:10px}
+.aj-head img{width:38px;height:38px;border-radius:9px;flex:none;object-fit:cover}
+.aj-nombre{font-size:15px;font-weight:600}
+.aj-badge{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
+.aj-card select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font-size:13px;color:var(--fg)}
+.aj-card select:disabled{opacity:.5;cursor:not-allowed}
 .wa-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:18px 20px;max-width:580px}
 .wa-estado{margin:6px 0 2px;font-size:18px;font-weight:600}
 .wa-detalle{margin:2px 0;color:var(--muted);font-size:13px}
@@ -237,7 +251,7 @@ body[data-view="wa"] #error{display:none}
     <button class="app-tab active" data-view="chat" title="Data Chat"><svg><use href="#i-chat"/></svg><span>Data Chat</span></button>
     <button class="app-tab" data-view="wa" title="Integración WA"><svg><use href="#i-wa"/></svg><span>Integración WA</span></button>
     <div class="sb-group">Sistema</div>
-    <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
+    <button class="app-tab" data-view="ajustes" title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
     <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
   </nav>
 
@@ -298,6 +312,16 @@ body[data-view="wa"] #error{display:none}
     </div>
   </div>
   <p class="disclaimer">Revisa las cifras importantes antes de compartirlas.</p>
+
+  <section id="ajustes" hidden>
+    <div class="wa-card">
+      <p class="section-label">Quién contesta</p>
+      <p class="wa-estado" id="aj-activo">Consultando…</p>
+      <p class="wa-detalle">La elección vive en las variables de EasyPanel, así que cambiarla exige desplegar. Elige aquí, copia las dos líneas y pégalas en Environment.</p>
+      <p class="form-error" id="aj-error" hidden></p>
+    </div>
+    <div class="aj-proveedores" id="aj-proveedores"></div>
+  </section>
 
   <section id="wa" hidden>
     <div class="wa-card">
@@ -536,6 +560,7 @@ resetBtn.addEventListener('click', () => {
 const VISTAS = {
   chat: { pill: 'Data Chat', titulo: 'Pregúntale a la base de datos de Zebra' },
   wa: { pill: 'Integración WA', titulo: 'El teléfono que responde por WhatsApp' },
+  ajustes: { pill: 'Ajustes', titulo: 'Qué modelo de IA responde las preguntas' },
 };
 const pill = document.querySelector('.pill-logo');
 const tituloTop = document.querySelector('.topbar-title');
@@ -545,10 +570,13 @@ function verVista(v) {
   document.body.dataset.view = v;
   document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
   $('wa').hidden = v !== 'wa';
+  $('ajustes').hidden = v !== 'ajustes';
   resetBtn.hidden = v !== 'chat' || history.length === 0;
   pill.textContent = VISTAS[v].pill;
   tituloTop.textContent = VISTAS[v].titulo;
-  if (v === 'wa') estadoWa(); else pararQr();
+  if (v !== 'wa') pararQr();
+  if (v === 'wa') estadoWa();
+  if (v === 'ajustes') cargarAjustes();
 }
 document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.addEventListener('click', () => verVista(b.dataset.view)));
 
@@ -691,6 +719,70 @@ $('wa-desvincular').addEventListener('click', async (e) => {
   try { await waFetch('/api/wa/session', { method: 'DELETE' }); pararQr(); estadoWa(); }
   catch (err) { waError(err.message); }
 });
+
+// ── Ajustes: proveedor y modelo ────────────────────────────────────────────
+async function cargarAjustes() {
+  $('aj-error').hidden = true;
+  try {
+    const d = await waFetch('/api/settings');
+    $('aj-activo').textContent = `${d.activo.proveedor} · ${d.activo.modelo ?? 'sin modelo definido'}`;
+    const cont = $('aj-proveedores');
+    cont.textContent = '';
+    for (const p of d.proveedores) {
+      const info = d.modelos?.[p.id] ?? {};
+      const card = document.createElement('div');
+      card.className = `aj-card${p.id === d.activo.proveedor ? ' is-activo' : ''}${p.disponible ? '' : ' no-disponible'}`;
+
+      const head = document.createElement('div');
+      head.className = 'aj-head';
+      const img = document.createElement('img');
+      img.src = p.logo; img.alt = p.nombre; img.width = 38; img.height = 38;
+      const nombre = document.createElement('span');
+      nombre.className = 'aj-nombre'; nombre.textContent = p.nombre;
+      head.append(img, nombre);
+      if (p.id === d.activo.proveedor) {
+        const badge = document.createElement('span');
+        badge.className = 'aj-badge'; badge.textContent = 'En uso';
+        head.append(badge);
+      }
+
+      const nota = document.createElement('p');
+      nota.className = 'wa-detalle'; nota.textContent = p.nota;
+
+      const sel = document.createElement('select');
+      sel.disabled = !p.disponible || !info.modelos?.length;
+      if (info.error) {
+        sel.append(new Option(info.error, ''));
+      } else {
+        sel.append(new Option('Elige un modelo…', ''));
+        for (const m of info.modelos ?? []) {
+          const op = new Option(m, m);
+          if (p.id === d.activo.proveedor && m === d.activo.modelo) op.selected = true;
+          sel.append(op);
+        }
+      }
+
+      const copiar = document.createElement('button');
+      copiar.type = 'button'; copiar.className = 'btn'; copiar.textContent = 'Copiar variables';
+      copiar.disabled = sel.disabled;
+      copiar.addEventListener('click', async () => {
+        if (!sel.value) { $('aj-error').textContent = 'Elige un modelo primero.'; $('aj-error').hidden = false; return; }
+        const lineas = `AI_PROVIDER=${p.id}\nAI_MODEL=${sel.value}`;
+        try { await navigator.clipboard.writeText(lineas); copiar.textContent = 'Copiado: pégalo en EasyPanel'; }
+        catch { $('aj-error').textContent = lineas; $('aj-error').hidden = false; }
+        setTimeout(() => { copiar.textContent = 'Copiar variables'; }, 4000);
+      });
+
+      card.append(head, nota, sel, copiar);
+      if (!p.clave) {
+        const falta = document.createElement('p');
+        falta.className = 'wa-detalle'; falta.textContent = `Falta la variable ${p.env} en EasyPanel.`;
+        card.append(falta);
+      }
+      cont.append(card);
+    }
+  } catch (e) { $('aj-error').textContent = e.message; $('aj-error').hidden = false; }
+}
 
 verVista('chat');
 input.focus();

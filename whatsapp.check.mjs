@@ -1,7 +1,7 @@
 // Uso: node whatsapp.check.mjs
 import assert from 'node:assert/strict';
 
-const { debeResponder, gruposPermitidos, textoDe, limpiar, respuestaFinal, esGrupo, mismoNumero } =
+const { debeResponder, gruposPermitidos, textoDe, limpiar, esGrupo, mismoNumero } =
   await import('./whatsapp.mjs');
 
 const BOT = '5219990000000@s.whatsapp.net';
@@ -56,12 +56,7 @@ const sinNumero = debeResponder({ data: mensaje(), botJid: null, permitidos });
 assert.equal(sinNumero.responder, false);
 assert.equal(sinNumero.motivo, 'no sé mi propio número');
 
-// La respuesta es lo escrito después de la última consulta.
-assert.equal(respuestaFinal([
-  { type: 'text', text: 'Voy a revisar.' },
-  { type: 'mcp_tool_use' }, { type: 'mcp_tool_result' },
-  { type: 'text', text: '498 leads' }, { type: 'text', text: ' en agosto.' },
-]), '498 leads en agosto.');
-assert.equal(respuestaFinal([{ type: 'text', text: 'Hola' }]), 'Hola');
+// Quedarse con lo escrito después de la última consulta ya no vive aquí: se movió a chat.mjs,
+// que es quien habla con el proveedor. Ver chat.check.mjs.
 
 console.log('whatsapp OK');
