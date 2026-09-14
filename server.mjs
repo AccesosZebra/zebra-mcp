@@ -121,6 +121,7 @@ if (faltan.length) {
   const page = (name) => fileURLToPath(new URL(`./public/${name}`, import.meta.url));
   mountAuth(app);
   mountChat(app, requireSession);
+  app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));
   app.get('/login', (_req, res) => res.sendFile(page('login.html')));
   app.get('/', requireSession, (_req, res) => res.sendFile(page('chat.html')));
 }
