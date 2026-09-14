@@ -37,7 +37,7 @@ Desplegado en EasyPanel (VPS 177.7.43.4), proyecto y app `zebra-mcp`:
 | `AUTH_ALLOWED_DOMAIN` | Dominio permitido. `zebradigital.marketing` por defecto |
 | `EVOLUTION_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` | Pasarela de WhatsApp (Evolution API) |
 | `WHATSAPP_WEBHOOK_SECRET` | Secreto que Evolution manda en la cabecera `x-zebra-secret` |
-| `WHATSAPP_ALLOWED` | Números permitidos, separados por coma. Vacío = cualquiera que escriba |
+| `WHATSAPP_GROUPS` | Grupos donde contesta y su cliente: `jid=Cliente`, separados por coma |
 
 Si falta alguna de las cinco primeras del bloque de login, el chat no se monta y el MCP sigue
 funcionando solo. Igual con WhatsApp: sin sus cuatro variables, el resto no se entera.
@@ -47,12 +47,14 @@ funcionando solo. Igual con WhatsApp: sin sus cuatro variables, el resto no se e
 `whatsapp.mjs` responde el webhook de Evolution API:
 
 1. Evolution avisa a `POST /api/whatsapp` en cada `messages.upsert`, con el secreto en la cabecera.
-2. Se descartan los mensajes propios, los de grupo, los que no son texto y los números fuera de
-   `WHATSAPP_ALLOWED`.
-3. Se responde 200 de inmediato (Evolution corta a los 30 s) y el turno se procesa aparte.
-4. La respuesta vuelve por `POST /message/sendText/<instancia>` con la cabecera `apikey`.
+2. Solo se contesta en los grupos de `WHATSAPP_GROUPS`, y solo si mencionan al bot (`@`) o responden
+   a un mensaje suyo. Se descartan los mensajes propios, los privados y los que no son texto.
+3. Cada grupo es de un cliente: dentro de ese grupo las preguntas se entienden de ese cliente sin
+   repetirlo, y el prompt le prohíbe traer datos de otro.
+4. Se responde 200 de inmediato (Evolution corta a los 30 s) y el turno se procesa aparte.
+5. La respuesta vuelve por `POST /message/sendText/<instancia>` con la cabecera `apikey`.
 
-El historial vive en memoria, por número, con media hora de vida y un máximo de 12 mensajes.
+El historial vive en memoria, por grupo, con media hora de vida y un máximo de 12 mensajes.
 El prompt cambia para este canal: sin tablas ni encabezados, que en WhatsApp no se ven.
 
 ### La pantalla "Integración WA"

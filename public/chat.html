@@ -182,6 +182,14 @@ body[data-view="wa"] #error{display:none}
 .wa-detalle{margin:2px 0;color:var(--muted);font-size:13px}
 .wa-detalle code{font-family:var(--font-mono);font-size:.9em}
 .wa-acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.wa-lista{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.wa-lista li{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px}
+.wa-lista .nombre{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-lista .cliente{color:var(--muted);font-size:12px;white-space:nowrap}
+.wa-lista .jid{font-family:var(--font-mono);font-size:11px;color:var(--faint)}
+.wa-lista button{background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer}
+.wa-lista button:hover{color:var(--fg);border-color:var(--accent)}
+.wa-vacio{color:var(--muted);font-size:13px;margin:10px 0 0}
 .wa-qr{margin-top:16px}
 .wa-qr img{display:block;width:264px;height:264px;background:#fff;padding:10px;border-radius:10px}
 
@@ -309,9 +317,14 @@ body[data-view="wa"] #error{display:none}
     </div>
 
     <div class="wa-card">
-      <p class="section-label">Quién puede escribirle</p>
-      <p class="wa-detalle" id="wa-permitidos"></p>
-      <p class="wa-detalle">La lista se edita en EasyPanel, en la variable <code>WHATSAPP_ALLOWED</code>. Vacía significa que responde a cualquiera que escriba.</p>
+      <p class="section-label">Dónde contesta</p>
+      <p class="wa-detalle">Solo en estos grupos, y solo cuando lo mencionan con @ o responden a un mensaje suyo. Cada grupo es de un cliente, así que ahí no hace falta nombrarlo en cada pregunta.</p>
+      <ul class="wa-lista" id="wa-grupos"></ul>
+      <div class="wa-acciones">
+        <button type="button" class="btn" id="wa-ver-grupos">Ver los grupos del teléfono</button>
+      </div>
+      <ul class="wa-lista" id="wa-descubiertos" hidden></ul>
+      <p class="wa-detalle">La lista se edita en EasyPanel, en <code>WHATSAPP_GROUPS</code>, con el formato <code>jid=Cliente</code> separado por comas. Copia el identificador del grupo con el botón de cada fila.</p>
     </div>
   </section>
 </div>
@@ -564,13 +577,70 @@ async function estadoWa() {
     const d = await waFetch('/api/wa/status');
     $('wa-estado').textContent = ESTADOS[d.estado] ?? d.estado;
     $('wa-detalle').textContent = d.numero ? `Número ${d.numero} · instancia ${d.instancia}` : `Instancia ${d.instancia}`;
-    $('wa-permitidos').textContent = d.permitidos?.length ? d.permitidos.join(', ') : 'Cualquiera que escriba';
+    pintarGrupos(d.grupos ?? []);
     $('wa-vincular').hidden = d.estado === 'conectado';
     $('wa-desvincular').hidden = d.estado !== 'conectado';
     $('wa-webhook').hidden = d.estado === 'sin-instancia';
     if (d.estado === 'conectado') pararQr();
   } catch (e) { waError(e.message); }
 }
+
+// Los grupos configurados en WHATSAPP_GROUPS, con el cliente al que pertenece cada uno.
+function pintarGrupos(grupos) {
+  const ul = $('wa-grupos');
+  ul.textContent = '';
+  if (!grupos.length) {
+    const li = document.createElement('li');
+    li.textContent = 'Todavía no hay grupos configurados: el bot no contestará en ninguno.';
+    ul.append(li);
+    return;
+  }
+  for (const g of grupos) {
+    const li = document.createElement('li');
+    const jid = document.createElement('span'); jid.className = 'jid'; jid.textContent = g.jid;
+    const cliente = document.createElement('span'); cliente.className = 'cliente';
+    cliente.textContent = g.cliente ? `cliente: ${g.cliente}` : 'sin cliente asignado';
+    li.append(jid, cliente);
+    ul.append(li);
+  }
+}
+
+// Los grupos donde está el teléfono, para copiar el identificador sin buscarlo a mano.
+async function verGrupos() {
+  waError('');
+  const ul = $('wa-descubiertos');
+  try {
+    const d = await waFetch('/api/wa/groups');
+    ul.textContent = '';
+    ul.hidden = false;
+    if (!d.grupos?.length) {
+      const li = document.createElement('li');
+      li.textContent = 'El teléfono no está en ningún grupo todavía.';
+      ul.append(li);
+      return;
+    }
+    for (const g of d.grupos) {
+      const li = document.createElement('li');
+      const nombre = document.createElement('span');
+      nombre.className = 'nombre';
+      nombre.textContent = `${g.nombre ?? 'Sin nombre'}${g.activo ? ' · ya configurado' : ''}`;
+      const miembros = document.createElement('span');
+      miembros.className = 'cliente';
+      miembros.textContent = `${g.miembros ?? '?'} miembros`;
+      const copiar = document.createElement('button');
+      copiar.type = 'button';
+      copiar.textContent = 'Copiar id';
+      copiar.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(g.jid); copiar.textContent = 'Copiado'; }
+        catch { copiar.textContent = g.jid; } // sin permiso de portapapeles, se muestra para copiar a mano
+        setTimeout(() => { copiar.textContent = 'Copiar id'; }, 2500);
+      });
+      li.append(nombre, miembros, copiar);
+      ul.append(li);
+    }
+  } catch (e) { ul.hidden = true; waError(e.message); }
+}
+$('wa-ver-grupos').addEventListener('click', verGrupos);
 
 async function pintarQr() {
   try {

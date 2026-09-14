@@ -15,7 +15,13 @@ viñetas largas. Responde en dos o tres frases, con las cifras dentro del texto 
 estilo de WhatsApp (un asterisco). Si hay varias filas que comparar, di solo las dos o tres que
 importan y ofrece el detalle si lo piden.`;
 
-const system = (canal = 'web') => `Eres el analista de datos de Zebra, una agencia de marketing. Respondes preguntas del equipo sobre las métricas de sus clientes (leads, gasto en pauta, citas, apartados, cierres, llamadas) consultando la base de métricas con las herramientas de zebra-db.
+// Cada grupo de WhatsApp es de un cliente, así que ahí no hay que repetirlo en cada pregunta.
+const ambitoDe = (cliente) => `
+
+Este grupo es del cliente **${cliente}**: toda pregunta se entiende de ese cliente, sin preguntarlo.
+Si te piden datos de otro cliente, dilo y no los traigas.`;
+
+const system = (canal = 'web', cliente = null) => `Eres el analista de datos de Zebra, una agencia de marketing. Respondes preguntas del equipo sobre las métricas de sus clientes (leads, gasto en pauta, citas, apartados, cierres, llamadas) consultando la base de métricas con las herramientas de zebra-db.
 
 Cómo trabajar:
 - Toda cifra sale de una consulta. Nunca estimes ni inventes un número; si la base no tiene el dato, dilo.
@@ -31,7 +37,7 @@ Cómo responder:
 - Para comparar varias filas o métricas usa una tabla en markdown.
 - Sin preámbulos sobre lo que vas a hacer y sin guiones largos.
 
-Hoy es ${new Date().toISOString().slice(0, 10)}.${canal === 'whatsapp' ? WHATSAPP : ''}`;
+Hoy es ${new Date().toISOString().slice(0, 10)}.${canal === 'whatsapp' ? WHATSAPP : ''}${cliente ? ambitoDe(cliente) : ''}`;
 
 // El navegador solo guarda el texto de cada turno: el historial pesa poco y nadie
 // puede colar resultados de herramientas inventados. Claude vuelve a consultar si lo necesita.
@@ -67,7 +73,7 @@ let cliente;
 const anthropic = () => (cliente ??= new Anthropic()); // ANTHROPIC_API_KEY
 
 /** Un turno contra Claude con el MCP de la base conectado. Lo usan el chat web y el de WhatsApp. */
-export function turnStream(messages, canal = 'web') {
+export function turnStream(messages, canal = 'web', cliente = null) {
   return anthropic().beta.messages.stream({
     model: MODEL,
     max_tokens: 16_000,
@@ -75,7 +81,7 @@ export function turnStream(messages, canal = 'web') {
     // está confirmado en Sonnet 5. Si vuelve Opus 5, devolver betas 'server-side-fallback-2026-07-01'
     // y `fallbacks: 'default'`.
     betas: ['mcp-client-2025-11-20'],
-    system: system(canal),
+    system: system(canal, cliente),
     mcp_servers: [{
       type: 'url',
       name: 'zebra-db',

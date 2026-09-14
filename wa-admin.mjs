@@ -1,9 +1,12 @@
 // La pantalla "Integración WA" del panel: estado de la conexión, QR para vincular el teléfono del
 // bot y reaplicar el webhook. Todo habla con Evolution API desde el servidor, así que la apikey
 // nunca llega al navegador. A propósito no se expone borrar la instancia: solo desvincular.
+import { gruposPermitidos } from './whatsapp.mjs';
+
 const base = () => process.env.EVOLUTION_URL.replace(/\/+$/, '');
 const instancia = () => process.env.EVOLUTION_INSTANCE;
-const permitidos = () => (process.env.WHATSAPP_ALLOWED ?? '').split(',').map((n) => n.trim()).filter(Boolean);
+// Los grupos donde contesta, con su cliente: "1203630@g.us=Sofía, 1203631@g.us=Grupo Gira".
+const configurados = () => [...gruposPermitidos()].map(([jid, cliente]) => ({ jid, cliente }));
 
 async function evo(path, { method = 'GET', body } = {}) {
   const res = await fetch(`${base()}${path}`, {
@@ -41,9 +44,9 @@ export function mountWaAdmin(app, requireSession) {
   app.get('/api/wa/status', requireSession, async (_req, res) => {
     const r = await evo(`/instance/connectionState/${instancia()}`);
     // Evolution responde 404 cuando la instancia todavía no existe: eso no es un error del panel.
-    if (r.status === 404) return res.json({ estado: 'sin-instancia', instancia: instancia(), permitidos: permitidos() });
+    if (r.status === 404) return res.json({ estado: 'sin-instancia', instancia: instancia(), grupos: configurados() });
     if (!r.ok) return res.status(502).json({ error: `Evolution respondió ${r.status}` });
-    res.json({ estado: estadoDe(r.datos), instancia: instancia(), numero: numeroDe(r.datos), permitidos: permitidos() });
+    res.json({ estado: estadoDe(r.datos), instancia: instancia(), numero: numeroDe(r.datos), grupos: configurados() });
   });
 
   app.post('/api/wa/instance', requireSession, async (req, res) => {
@@ -53,7 +56,7 @@ export function mountWaAdmin(app, requireSession) {
         instanceName: instancia(),
         qrcode: true,
         integration: 'WHATSAPP-BAILEYS',
-        groupsIgnore: true, // el bot no escucha grupos
+        groupsIgnore: false, // el bot vive en grupos: uno por cliente
         alwaysOnline: false,
         readMessages: false,
         webhook: webhookConfig(),
@@ -71,6 +74,15 @@ export function mountWaAdmin(app, requireSession) {
     const { base64 = null, code = null, pairingCode = null, count = null } = r.datos ?? {};
     if (!base64 && r.datos?.instance) return res.json({ estado: estadoDe(r.datos), numero: numeroDe(r.datos) });
     res.json({ estado: 'esperando', base64, code, pairingCode, count });
+  });
+
+  // Los grupos del teléfono, para copiar el identificador sin buscarlo a mano.
+  app.get('/api/wa/groups', requireSession, async (_req, res) => {
+    const r = await evo(`/group/fetchAllGroups/${instancia()}?getParticipants=false`);
+    if (!r.ok) return res.status(502).json({ error: `Evolution respondió ${r.status}` });
+    const lista = (Array.isArray(r.datos) ? r.datos : []).map((g) => ({ jid: g.id, nombre: g.subject, miembros: g.size }));
+    const configurado = new Set(gruposPermitidos().keys());
+    res.json({ grupos: lista.map((g) => ({ ...g, activo: configurado.has(g.jid) })) });
   });
 
   app.post('/api/wa/webhook', requireSession, async (req, res) => {
