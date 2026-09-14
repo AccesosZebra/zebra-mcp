@@ -128,7 +128,9 @@ if (faltan.length) {
     console.warn(`WhatsApp desactivado, faltan: ${faltanWa.join(', ')}`);
   } else {
     const { mountWhatsapp } = await import('./whatsapp.mjs');
+    const { mountWaAdmin } = await import('./wa-admin.mjs');
     mountWhatsapp(app);
+    mountWaAdmin(app, requireSession); // la pantalla "Integración WA" del panel
   }
 
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));

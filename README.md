@@ -55,7 +55,22 @@ funcionando solo. Igual con WhatsApp: sin sus cuatro variables, el resto no se e
 El historial vive en memoria, por número, con media hora de vida y un máximo de 12 mensajes.
 El prompt cambia para este canal: sin tablas ni encabezados, que en WhatsApp no se ven.
 
-Para configurar el webhook de la instancia:
+### La pantalla "Integración WA"
+
+`wa-admin.mjs` monta lo que usa esa sección del panel, todo detrás del login de Google y con la
+apikey siempre del lado del servidor:
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /api/wa/status` | Estado de la conexión, número vinculado y lista de permitidos |
+| `POST /api/wa/instance` | Crea la instancia con su webhook ya configurado |
+| `GET /api/wa/qr` | Devuelve el QR en base64 para vincular el teléfono |
+| `POST /api/wa/webhook` | Vuelve a aplicar el webhook si se perdió |
+| `DELETE /api/wa/session` | Desvincula el teléfono, sin borrar la instancia |
+
+Borrar la instancia no se expone a propósito.
+
+Para configurar el webhook a mano, sin el panel:
 
 ```bash
 curl -X POST "$EVOLUTION_URL/webhook/set/$EVOLUTION_INSTANCE" \

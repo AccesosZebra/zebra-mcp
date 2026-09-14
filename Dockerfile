@@ -2,7 +2,7 @@ FROM node:22-slim
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
-COPY server.mjs auth.mjs chat.mjs whatsapp.mjs ./
+COPY server.mjs auth.mjs chat.mjs whatsapp.mjs wa-admin.mjs ./
 COPY public ./public
 ENV NODE_ENV=production
 EXPOSE 3000
