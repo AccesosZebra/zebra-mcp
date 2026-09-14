@@ -733,7 +733,9 @@ async function cargarAjustes() {
   try {
     const d = await waFetch('/api/settings');
     $('aj-activo').textContent = `${d.activo.proveedor} · ${d.activo.modelo ?? 'sin modelo definido'}`;
-    $('aj-donde').textContent = `El cambio aplica al instante, también en WhatsApp. Se guarda en ${d.archivo}.`;
+    $('aj-donde').textContent = d.hayBase
+      ? 'El cambio aplica al instante, también en WhatsApp. Queda guardado en la base del dashboard.'
+      : 'Falta APP_DATABASE_URL en EasyPanel: mientras tanto mandan las variables de entorno y aquí no se puede guardar.';
     const cont = $('aj-proveedores');
     cont.textContent = '';
     for (const p of d.proveedores) {

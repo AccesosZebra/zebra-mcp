@@ -134,6 +134,8 @@ if (faltan.length) {
   }
 
   const { mountAjustes } = await import('./ajustes.mjs');
+  const { cargar } = await import('./proveedores.mjs');
+  console.log(`Contesta: ${JSON.stringify(await cargar())}`); // lo guardado manda desde el primer turno
   mountAjustes(app, requireSession); // la pantalla "Ajustes" del panel
 
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));

@@ -1,7 +1,8 @@
 // Quién contesta las preguntas. El MCP es el mismo para todos (es protocolo abierto); lo que
 // cambia es qué proveedor ejecuta el bucle de consultas contra él.
-import { readFileSync, writeFileSync } from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
+
+import { guardarAjuste, leerAjuste } from './db.mjs';
 
 export const PROVEEDORES = {
   anthropic: {
@@ -30,12 +31,19 @@ export const PROVEEDORES = {
   },
 };
 
-// La elección vive en un archivo dentro de un volumen de EasyPanel, así que la pantalla Ajustes
-// la cambia al instante. Sin volumen (o antes del primer guardado) mandan las variables de entorno.
-export const ARCHIVO = process.env.AJUSTES_FILE || '/data/ajustes.json';
-let elegido = (() => { try { return JSON.parse(readFileSync(ARCHIVO, 'utf8')); } catch { return null; } })();
+// La elección vive en la base del dashboard, así que la pantalla Ajustes la cambia al instante.
+// Se lee una vez al arrancar y se recuerda: cada turno pregunta quién contesta, y no vale ir a la
+// base cada vez. Antes del primer guardado (o sin base) mandan las variables de entorno.
+let elegido = null;
 
-/** Quién contesta ahora mismo: manda el archivo; si no hay o no sirve, el entorno. */
+/** Trae de la base lo guardado. Se llama al arrancar; si la base falla, se sigue con el entorno. */
+export async function cargar() {
+  try { elegido = await leerAjuste('ia'); }
+  catch (e) { console.error('ajustes: no pude leer la base, sigo con el entorno:', e.message); }
+  return activo();
+}
+
+/** Quién contesta ahora mismo: manda lo guardado; si no hay o no sirve, el entorno. */
 export function activo() {
   const fuente = PROVEEDORES[elegido?.proveedor]
     ? elegido
@@ -46,18 +54,19 @@ export function activo() {
   return { proveedor, modelo };
 }
 
-/** Cambia el proveedor activo sin desplegar. Lanza si la elección no sirve o no hay dónde guardar. */
-export function guardar({ proveedor, modelo }) {
+/** Una elección utilizable, o una excepción con el motivo en cristiano. */
+export function validar({ proveedor, modelo }) {
   const p = PROVEEDORES[proveedor];
   if (!p?.disponible) throw new Error('Ese proveedor no está disponible.');
   if (!process.env[p.env]) throw new Error(`Falta la variable ${p.env} en EasyPanel.`);
   if (typeof modelo !== 'string' || !modelo.trim() || modelo.length > 120) throw new Error('Elige un modelo.');
-  const nuevo = { proveedor, modelo: modelo.trim() };
-  try {
-    writeFileSync(ARCHIVO, JSON.stringify(nuevo));
-  } catch (e) {
-    throw new Error(`No se pudo guardar en ${ARCHIVO}: falta montar un volumen en esa ruta desde EasyPanel (${e.code ?? e.message}).`);
-  }
+  return { proveedor, modelo: modelo.trim() };
+}
+
+/** Cambia quién contesta, sin desplegar. La memoria solo cambia si la base aceptó el cambio. */
+export async function guardar(eleccion, por = null) {
+  const nuevo = validar(eleccion);
+  await guardarAjuste('ia', nuevo, por);
   elegido = nuevo;
   return activo();
 }
