@@ -576,7 +576,10 @@ async function estadoWa() {
   try {
     const d = await waFetch('/api/wa/status');
     $('wa-estado').textContent = ESTADOS[d.estado] ?? d.estado;
-    $('wa-detalle').textContent = d.numero ? `Número ${d.numero} · instancia ${d.instancia}` : `Instancia ${d.instancia}`;
+    // El número es a quién hay que etiquetar en el grupo: sin él, la mención nunca coincide.
+    $('wa-detalle').textContent = d.numero
+      ? `Etiqueta a este número en el grupo: ${d.numero} · instancia ${d.instancia}`
+      : `Instancia ${d.instancia} · no se pudo leer el número del bot`;
     pintarGrupos(d.grupos ?? []);
     $('wa-vincular').hidden = d.estado === 'conectado';
     $('wa-desvincular').hidden = d.estado !== 'conectado';

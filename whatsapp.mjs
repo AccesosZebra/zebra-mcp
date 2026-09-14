@@ -43,6 +43,10 @@ export function debeResponder({ data, botJid, permitidos }) {
   if (!esGrupo(jid)) return { responder: false, motivo: 'no es un grupo' };
   if (!permitidos.has(jid)) return { responder: false, motivo: 'grupo fuera de la lista' };
 
+  // Sin el número propio no hay forma de saber si la mención era para el bot: decir "no lo
+  // mencionaron" sería mentir y manda a buscar el problema al sitio equivocado.
+  if (!botJid) return { responder: false, motivo: 'no sé mi propio número' };
+
   const ctx = data?.contextInfo ?? {};
   const mencionado = (ctx.mentionedJid ?? []).some((j) => mismoNumero(j, botJid));
   const leResponden = mismoNumero(ctx.participant ?? '', botJid);
@@ -53,18 +57,22 @@ export function debeResponder({ data, botJid, permitidos }) {
   return { responder: true, jid, cliente: permitidos.get(jid) ?? null, pregunta };
 }
 
-// El número propio del bot: se pregunta una vez y se recuerda. El sobre del webhook suele traerlo,
-// pero no se depende de eso.
+// El número propio del bot: se pregunta una vez y se recuerda. Sin él no se puede saber si lo
+// mencionaron, así que si no se resuelve hay que gritarlo, no callar.
+// Ojo: `connectionState` NO lo trae (solo instanceName y state); el que lo tiene es `fetchInstances`.
 let jidPropio = null;
-async function botJid(senderDelSobre) {
+export async function botJid(senderDelSobre) {
   if (jidPropio) return jidPropio;
   if (senderDelSobre) return (jidPropio = senderDelSobre);
   const base = process.env.EVOLUTION_URL.replace(/\/+$/, '');
-  const res = await fetch(`${base}/instance/connectionState/${process.env.EVOLUTION_INSTANCE}`, {
+  const res = await fetch(`${base}/instance/fetchInstances?instanceName=${encodeURIComponent(process.env.EVOLUTION_INSTANCE)}`, {
     headers: { apikey: process.env.EVOLUTION_API_KEY },
   });
-  const d = await res.json().catch(() => ({}));
-  return (jidPropio = d?.instance?.owner ?? d?.instance?.ownerJid ?? null);
+  const d = await res.json().catch(() => null);
+  const inst = Array.isArray(d) ? d[0] : (d?.instance ?? d);
+  jidPropio = inst?.ownerJid ?? inst?.owner ?? null;
+  if (!jidPropio) console.error('wa: no pude averiguar mi propio numero, ninguna mencion va a coincidir');
+  return jidPropio;
 }
 
 // ponytail: historial en memoria del proceso, por grupo. Se pierde al desplegar, que para preguntas

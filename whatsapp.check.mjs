@@ -51,6 +51,11 @@ assert.equal(no(mensaje({ key: { remoteJid: GRUPO, fromMe: true } })).responder,
 assert.equal(no(mensaje({ message: { imageMessage: {} } })).responder, false, 'sin texto');
 assert.equal(no(mensaje({ message: { conversation: '@5219990000000' } })).responder, false, 'solo la mención, sin pregunta');
 
+// Sin número propio no se puede juzgar la mención: hay que decirlo, no fingir que nadie lo mencionó.
+const sinNumero = debeResponder({ data: mensaje(), botJid: null, permitidos });
+assert.equal(sinNumero.responder, false);
+assert.equal(sinNumero.motivo, 'no sé mi propio número');
+
 // La respuesta es lo escrito después de la última consulta.
 assert.equal(respuestaFinal([
   { type: 'text', text: 'Voy a revisar.' },

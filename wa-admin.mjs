@@ -36,7 +36,13 @@ export function estadoDe(datos) {
   return { open: 'conectado', connecting: 'esperando', close: 'desconectado' }[crudo] ?? 'desconocido';
 }
 
-const numeroDe = (datos) => (datos?.instance?.owner ?? datos?.instance?.ownerJid ?? '').split('@')[0] || null;
+// `connectionState` solo devuelve instanceName y state: el número propio vive en `fetchInstances`.
+async function numeroDelBot() {
+  const r = await evo(`/instance/fetchInstances?instanceName=${encodeURIComponent(instancia())}`);
+  if (!r.ok) return null;
+  const inst = Array.isArray(r.datos) ? r.datos[0] : (r.datos?.instance ?? r.datos);
+  return (inst?.ownerJid ?? inst?.owner ?? '').split('@')[0] || null;
+}
 
 export function mountWaAdmin(app, requireSession) {
   const log = (req, accion, extra = {}) => console.log(JSON.stringify({ wa_admin: req.user.email, accion, ...extra }));
@@ -46,7 +52,7 @@ export function mountWaAdmin(app, requireSession) {
     // Evolution responde 404 cuando la instancia todavía no existe: eso no es un error del panel.
     if (r.status === 404) return res.json({ estado: 'sin-instancia', instancia: instancia(), grupos: configurados() });
     if (!r.ok) return res.status(502).json({ error: `Evolution respondió ${r.status}` });
-    res.json({ estado: estadoDe(r.datos), instancia: instancia(), numero: numeroDe(r.datos), grupos: configurados() });
+    res.json({ estado: estadoDe(r.datos), instancia: instancia(), numero: await numeroDelBot(), grupos: configurados() });
   });
 
   app.post('/api/wa/instance', requireSession, async (req, res) => {
