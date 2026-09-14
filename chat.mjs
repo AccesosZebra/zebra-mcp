@@ -3,7 +3,7 @@
 // devuelve la respuesta en NDJSON, como el Editor de Prompt Studio.
 import Anthropic from '@anthropic-ai/sdk';
 
-const MODEL = 'claude-opus-5';
+const MODEL = 'claude-sonnet-5';
 const MAX_MESSAGES = 60;
 const MAX_BYTES = 90_000; // por debajo del límite de 100kb de express.json
 
@@ -78,8 +78,10 @@ export function mountChat(app, requireSession) {
     const stream = client.beta.messages.stream({
       model: MODEL,
       max_tokens: 16_000,
-      betas: ['mcp-client-2025-11-20', 'server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      // Sin `fallbacks`: el reintento en otro modelo tras un rechazo está pensado para Opus 5 y no
+      // está confirmado en Sonnet 5. Si vuelve Opus 5, devolver betas 'server-side-fallback-2026-07-01'
+      // y `fallbacks: 'default'`.
+      betas: ['mcp-client-2025-11-20'],
       system: system(),
       mcp_servers: [{
         type: 'url',
