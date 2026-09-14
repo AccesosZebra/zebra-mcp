@@ -16,6 +16,8 @@ Desplegado en EasyPanel (VPS 177.7.43.4), proyecto y app `zebra-mcp`:
 |---|---|
 | `server.mjs` | Arranque, ruta `/mcp` con token, `/health`, y monta chat y login si hay configuración |
 | `chat.mjs` | `/api/chat` (Claude + conector MCP, NDJSON) y `/api/me` |
+| `proveedores.mjs` | Quién contesta: registro de proveedores, el prompt común y la elección activa |
+| `ajustes.mjs` | `/api/settings`: leer y cambiar proveedor y modelo desde la pantalla Ajustes |
 | `auth.mjs` | Login con Google y cookie de sesión firmada (HMAC), restringido a un dominio |
 | `public/chat.html` | La interfaz: barra lateral, conversación, tablas y consultas |
 | `public/login.html` | Pantalla de acceso |
@@ -32,8 +34,9 @@ Desplegado en EasyPanel (VPS 177.7.43.4), proyecto y app `zebra-mcp`:
 | `PORT` | Puerto, 3000 por defecto |
 | `ANTHROPIC_API_KEY` | Clave de la API de Anthropic |
 | `OPENAI_API_KEY` | Clave de OpenAI, si se usa ese proveedor |
-| `AI_PROVIDER` | `anthropic` (por defecto) u `openai`. La pantalla Ajustes ayuda a prepararlo |
+| `AI_PROVIDER` | `anthropic` (por defecto) u `openai`. Solo vale hasta el primer guardado en Ajustes |
 | `AI_MODEL` | Modelo del proveedor elegido. Vacío = el de por defecto del proveedor |
+| `AJUSTES_FILE` | Dónde se guarda lo elegido en Ajustes. `/data/ajustes.json` por defecto |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Cliente OAuth de Google |
 | `AUTH_SESSION_SECRET` | Firma de la cookie de sesión (`openssl rand -hex 32`) |
 | `AUTH_BASE_URL` | URL pública. De aquí sale la URI de retorno y la URL del MCP |
@@ -44,6 +47,16 @@ Desplegado en EasyPanel (VPS 177.7.43.4), proyecto y app `zebra-mcp`:
 
 Si falta alguna de las cinco primeras del bloque de login, el chat no se monta y el MCP sigue
 funcionando solo. Igual con WhatsApp: sin sus cuatro variables, el resto no se entera.
+
+## La pantalla "Ajustes"
+
+Elige qué proveedor y qué modelo responden, en el chat web y en WhatsApp. El cambio surte efecto
+en el turno siguiente, sin desplegar: se guarda en `AJUSTES_FILE`, que **tiene que estar dentro de
+un volumen** de EasyPanel (app `zebra-mcp` → Mounts → Volume, ruta `/data`). Sin volumen el archivo
+se borraría en cada despliegue, así que guardar avisa en vez de fingir que guardó.
+
+Mientras no se haya guardado nada, mandan `AI_PROVIDER` y `AI_MODEL`. Después manda el archivo.
+Las claves de cada proveedor siguen siendo variables de entorno y nunca salen del servidor.
 
 ## WhatsApp
 

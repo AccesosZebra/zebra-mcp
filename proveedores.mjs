@@ -1,5 +1,6 @@
 // Quién contesta las preguntas. El MCP es el mismo para todos (es protocolo abierto); lo que
 // cambia es qué proveedor ejecuta el bucle de consultas contra él.
+import { readFileSync, writeFileSync } from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 
 export const PROVEEDORES = {
@@ -29,10 +30,36 @@ export const PROVEEDORES = {
   },
 };
 
-/** Lo elegido en EasyPanel. Cambiarlo exige desplegar: la pantalla solo ayuda a preparar el cambio. */
+// La elección vive en un archivo dentro de un volumen de EasyPanel, así que la pantalla Ajustes
+// la cambia al instante. Sin volumen (o antes del primer guardado) mandan las variables de entorno.
+export const ARCHIVO = process.env.AJUSTES_FILE || '/data/ajustes.json';
+let elegido = (() => { try { return JSON.parse(readFileSync(ARCHIVO, 'utf8')); } catch { return null; } })();
+
+/** Quién contesta ahora mismo: manda el archivo; si no hay o no sirve, el entorno. */
 export function activo() {
-  const proveedor = PROVEEDORES[process.env.AI_PROVIDER] ? process.env.AI_PROVIDER : 'anthropic';
-  return { proveedor, modelo: process.env.AI_MODEL || PROVEEDORES[proveedor].pordefecto };
+  const fuente = PROVEEDORES[elegido?.proveedor]
+    ? elegido
+    : { proveedor: process.env.AI_PROVIDER, modelo: process.env.AI_MODEL };
+  const proveedor = PROVEEDORES[fuente.proveedor] ? fuente.proveedor : 'anthropic';
+  // Un modelo del proveedor anterior no se hereda al caer en otro: cada uno tiene sus nombres.
+  const modelo = (proveedor === fuente.proveedor && fuente.modelo) || PROVEEDORES[proveedor].pordefecto;
+  return { proveedor, modelo };
+}
+
+/** Cambia el proveedor activo sin desplegar. Lanza si la elección no sirve o no hay dónde guardar. */
+export function guardar({ proveedor, modelo }) {
+  const p = PROVEEDORES[proveedor];
+  if (!p?.disponible) throw new Error('Ese proveedor no está disponible.');
+  if (!process.env[p.env]) throw new Error(`Falta la variable ${p.env} en EasyPanel.`);
+  if (typeof modelo !== 'string' || !modelo.trim() || modelo.length > 120) throw new Error('Elige un modelo.');
+  const nuevo = { proveedor, modelo: modelo.trim() };
+  try {
+    writeFileSync(ARCHIVO, JSON.stringify(nuevo));
+  } catch (e) {
+    throw new Error(`No se pudo guardar en ${ARCHIVO}: falta montar un volumen en esa ruta desde EasyPanel (${e.code ?? e.message}).`);
+  }
+  elegido = nuevo;
+  return activo();
 }
 
 // ── El prompt, igual para todos ─────────────────────────────────────────────

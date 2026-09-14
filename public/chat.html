@@ -322,7 +322,7 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
     <div class="wa-card">
       <p class="section-label">Quién contesta</p>
       <p class="wa-estado" id="aj-activo">Consultando…</p>
-      <p class="wa-detalle">La elección vive en las variables de EasyPanel, así que cambiarla exige desplegar. Elige aquí, copia las dos líneas y pégalas en Environment.</p>
+      <p class="wa-detalle" id="aj-donde">El cambio aplica al instante, también en WhatsApp.</p>
       <p class="form-error" id="aj-error" hidden></p>
     </div>
     <div class="aj-proveedores" id="aj-proveedores"></div>
@@ -726,11 +726,14 @@ $('wa-desvincular').addEventListener('click', async (e) => {
 });
 
 // ── Ajustes: proveedor y modelo ────────────────────────────────────────────
+const ajError = (m) => { $('aj-error').textContent = m; $('aj-error').hidden = !m; };
+
 async function cargarAjustes() {
-  $('aj-error').hidden = true;
+  ajError('');
   try {
     const d = await waFetch('/api/settings');
     $('aj-activo').textContent = `${d.activo.proveedor} · ${d.activo.modelo ?? 'sin modelo definido'}`;
+    $('aj-donde').textContent = `El cambio aplica al instante, también en WhatsApp. Se guarda en ${d.archivo}.`;
     const cont = $('aj-proveedores');
     cont.textContent = '';
     for (const p of d.proveedores) {
@@ -768,18 +771,27 @@ async function cargarAjustes() {
         }
       }
 
-      const copiar = document.createElement('button');
-      copiar.type = 'button'; copiar.className = 'btn'; copiar.textContent = 'Copiar variables';
-      copiar.disabled = sel.disabled;
-      copiar.addEventListener('click', async () => {
-        if (!sel.value) { $('aj-error').textContent = 'Elige un modelo primero.'; $('aj-error').hidden = false; return; }
-        const lineas = `AI_PROVIDER=${p.id}\nAI_MODEL=${sel.value}`;
-        try { await navigator.clipboard.writeText(lineas); copiar.textContent = 'Copiado: pégalo en EasyPanel'; }
-        catch { $('aj-error').textContent = lineas; $('aj-error').hidden = false; }
-        setTimeout(() => { copiar.textContent = 'Copiar variables'; }, 4000);
+      const usar = document.createElement('button');
+      usar.type = 'button'; usar.className = 'btn'; usar.textContent = 'Usar este modelo';
+      usar.disabled = sel.disabled;
+      usar.addEventListener('click', async () => {
+        if (!sel.value) return ajError('Elige un modelo primero.');
+        ajError('');
+        usar.disabled = true; usar.textContent = 'Guardando…';
+        try {
+          await waFetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ proveedor: p.id, modelo: sel.value }),
+          });
+          cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
+        } catch (e) {
+          ajError(e.message);
+          usar.disabled = false; usar.textContent = 'Usar este modelo';
+        }
       });
 
-      card.append(head, nota, sel, copiar);
+      card.append(head, nota, sel, usar);
       if (!p.clave) {
         const falta = document.createElement('p');
         falta.className = 'wa-detalle'; falta.textContent = `Falta la variable ${p.env} en EasyPanel.`;
@@ -787,7 +799,7 @@ async function cargarAjustes() {
       }
       cont.append(card);
     }
-  } catch (e) { $('aj-error').textContent = e.message; $('aj-error').hidden = false; }
+  } catch (e) { ajError(e.message); }
 }
 
 verVista('chat');

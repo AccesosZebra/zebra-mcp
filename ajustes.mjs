@@ -1,13 +1,13 @@
-// La pantalla "Ajustes": qué proveedor y modelo están activos, y cuáles hay disponibles.
-// La elección vive en variables de entorno (decisión de Carlos), así que esta pantalla no la
-// cambia por sí sola: prepara las dos líneas para pegar en EasyPanel y desplegar.
-import { PROVEEDORES, activo, modelosDisponibles } from './proveedores.mjs';
+// La pantalla "Ajustes": qué proveedor y modelo están activos, cuáles hay disponibles, y el cambio.
+// Guardar surte efecto de inmediato, también en WhatsApp: el turno siguiente ya usa lo elegido.
+import { ARCHIVO, PROVEEDORES, activo, guardar, modelosDisponibles } from './proveedores.mjs';
 
 export function mountAjustes(app, requireSession) {
   app.get('/api/settings', requireSession, async (_req, res) => {
     const { proveedor, modelo } = activo();
     res.json({
       activo: { proveedor, modelo },
+      archivo: ARCHIVO,
       proveedores: Object.entries(PROVEEDORES).map(([id, p]) => ({
         id,
         nombre: p.nombre,
@@ -19,5 +19,16 @@ export function mountAjustes(app, requireSession) {
       })),
       modelos: await modelosDisponibles(),
     });
+  });
+
+  app.post('/api/settings', requireSession, (req, res) => {
+    const { proveedor, modelo } = req.body ?? {};
+    try {
+      const elegido = guardar({ proveedor, modelo });
+      console.log(JSON.stringify({ ajustes: req.user.email, ...elegido }));
+      res.json({ activo: elegido });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
 }
