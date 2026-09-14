@@ -137,10 +137,11 @@ if (faltan.length) {
   mountAjustes(app, requireSession); // la pantalla "Ajustes" del panel
 
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));
-  // Marcas de los proveedores. Nombres cerrados: nada que venga del navegador toca el disco.
-  app.get('/logos/:nombre.jpg', (req, res) => {
-    if (!['anthropic', 'openai', 'gemini'].includes(req.params.nombre)) return res.status(404).end();
-    res.sendFile(page(`logos/${req.params.nombre}.jpg`));
+  // Logos de los proveedores. Lista cerrada de archivos: nada que venga del navegador toca el disco.
+  const LOGOS = new Set(['anthropic.png', 'openai.png', 'openai-claro.png', 'gemini.jpg']);
+  app.get('/logos/:archivo', (req, res) => {
+    if (!LOGOS.has(req.params.archivo)) return res.status(404).end();
+    res.sendFile(page(`logos/${req.params.archivo}`));
   });
   app.get('/login', (_req, res) => res.sendFile(page('login.html')));
   app.get('/', requireSession, (_req, res) => res.sendFile(page('chat.html')));

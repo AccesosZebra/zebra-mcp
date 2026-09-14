@@ -186,7 +186,9 @@ body[data-view="ajustes"] #error{display:none}
 .aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
 .aj-card.no-disponible{opacity:.55}
 .aj-head{display:flex;align-items:center;gap:10px}
-.aj-head img{width:38px;height:38px;border-radius:9px;flex:none;object-fit:cover}
+.aj-head img{width:38px;height:38px;flex:none;object-fit:contain}
+/* El logo de OpenAI es negro: sobre la tarjeta oscura hay que usar su versión blanca. */
+body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/openai-claro.png')}
 .aj-nombre{font-size:15px;font-weight:600}
 .aj-badge{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
 .aj-card select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font-size:13px;color:var(--fg)}
@@ -737,6 +739,7 @@ async function cargarAjustes() {
       head.className = 'aj-head';
       const img = document.createElement('img');
       img.src = p.logo; img.alt = p.nombre; img.width = 38; img.height = 38;
+      img.dataset.logo = p.id; // la hoja de estilos cambia el de OpenAI según el tema
       const nombre = document.createElement('span');
       nombre.className = 'aj-nombre'; nombre.textContent = p.nombre;
       head.append(img, nombre);

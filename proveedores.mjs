@@ -6,7 +6,7 @@ export const PROVEEDORES = {
   anthropic: {
     nombre: 'Anthropic',
     env: 'ANTHROPIC_API_KEY',
-    logo: '/logos/anthropic.jpg',
+    logo: '/logos/anthropic.png',
     pordefecto: 'claude-sonnet-5',
     disponible: true,
     nota: 'Conector MCP propio, con token. Es el que corre hoy.',
@@ -14,7 +14,7 @@ export const PROVEEDORES = {
   openai: {
     nombre: 'OpenAI',
     env: 'OPENAI_API_KEY',
-    logo: '/logos/openai.jpg',
+    logo: '/logos/openai.png', // en tema oscuro la hoja de estilos cambia a openai-claro.png
     pordefecto: null, // los nombres de modelo cambian seguido: se eligen de la lista que da su API
     disponible: true,
     nota: 'Responses API con servidor MCP remoto y campo authorization.',
