@@ -32,6 +32,20 @@ export const webhookConfig = (instancia) => ({
   headers: { 'x-zebra-secret': process.env.WHATSAPP_WEBHOOK_SECRET },
 });
 
+/**
+ * Por qué falló Evolution, en cristiano. Sus mensajes llegan en tres formas distintas y a veces
+ * en lista; si no manda ninguno, al menos el código, nunca una cadena vacía: un error sin texto
+ * manda a buscar el problema al sitio equivocado.
+ */
+export function porQueFallo(r) {
+  if (r.status === 401) {
+    return 'La clave de Evolution no tiene permiso para crear conexiones. Para eso hace falta la clave global del servidor, no la de una instancia.';
+  }
+  const crudo = r.datos?.response?.message ?? r.datos?.message ?? r.datos?.error;
+  const texto = (Array.isArray(crudo) ? crudo.join('. ') : crudo)?.toString().trim();
+  return texto || `Evolution respondió ${r.status}`;
+}
+
 /** Evolution devuelve el estado en sitios distintos según el endpoint; aquí se unifica. */
 export function estadoDe(datos) {
   const crudo = datos?.instance?.state ?? datos?.state ?? datos?.instance?.connectionStatus ?? null;
@@ -91,10 +105,7 @@ export function mountWaAdmin(app, requireSession) {
       },
     });
     log(req, 'crear numero', { instancia, status: r.status });
-    if (!r.ok) {
-      // El Evolution es compartido: si el nombre ya existe, se dice y no se adopta lo ajeno.
-      return res.status(502).json({ error: r.datos?.response?.message ?? `Evolution respondió ${r.status}` });
-    }
+    if (!r.ok) return res.status(502).json({ error: porQueFallo(r) });
     await agregarNumero({ instancia, etiqueta: typeof etiqueta === 'string' ? etiqueta.slice(0, 60) : null, por: req.user.email });
     res.json({ ok: true });
   });

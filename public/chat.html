@@ -335,12 +335,12 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
   <section id="wa" hidden>
     <div class="wa-card">
       <p class="section-label">Añadir un número</p>
-      <p class="wa-detalle">Un número por teléfono. El nombre de la conexión identifica al número en la pasarela: minúsculas, sin espacios ni acentos, y no se puede cambiar después.</p>
+      <p class="wa-detalle">Cada teléfono que vaya a contestar se añade una vez: le pones un nombre para reconocerlo, escaneas el QR con ese teléfono y eliges en qué grupos contesta.</p>
       <div class="wa-acciones">
-        <input type="text" id="wa-etiqueta" maxlength="60" placeholder="Etiqueta, p. ej. Bot Zebra" aria-label="Etiqueta del número">
-        <input type="text" id="wa-instancia" maxlength="31" placeholder="Conexión, p. ej. zebra-bot" aria-label="Nombre de la conexión">
+        <input type="text" id="wa-etiqueta" maxlength="60" placeholder="Nombre, p. ej. Bot Zebra" aria-label="Nombre del número">
         <button type="button" class="btn" id="wa-crear">Añadir número</button>
       </div>
+      <p class="wa-detalle" id="wa-conexion" hidden></p>
       <p class="form-error" id="wa-error" hidden></p>
     </div>
 
@@ -791,19 +791,28 @@ async function reaplicar(instancia, detalle) {
   } catch (e) { waError(e.message); }
 }
 
+// El nombre interno lo deduce el navegador del que escribe la persona: un solo campo, y nadie
+// tiene que entender qué es una "conexión". La misma regla que valida el servidor.
+const aConexion = (texto) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 31);
+
+$('wa-etiqueta').addEventListener('input', (e) => {
+  const conexion = aConexion(e.target.value);
+  $('wa-conexion').textContent = conexion ? `Se guardará como ${conexion}` : '';
+  $('wa-conexion').hidden = !conexion;
+});
+
 $('wa-crear').addEventListener('click', async () => {
   waError('');
   const btn = $('wa-crear');
-  const instancia = $('wa-instancia').value.trim().toLowerCase();
   const etiqueta = $('wa-etiqueta').value.trim();
-  // La misma regla que valida el servidor, para no ir al servidor a por un error evitable.
-  if (!/^[a-z0-9][a-z0-9_-]{2,30}$/.test(instancia)) {
-    return waError('El nombre de la conexión va en minúsculas, sin espacios ni acentos, de 3 a 31 caracteres. Por ejemplo: zebra-bot.');
-  }
+  const instancia = aConexion(etiqueta);
+  if (instancia.length < 3) return waError('Ponle un nombre de al menos tres letras, por ejemplo Bot Zebra.');
+
   btn.disabled = true; btn.textContent = 'Creando…';
   try {
     await waFetch('/api/wa/numeros', enviarJson({ instancia, etiqueta }));
-    $('wa-instancia').value = ''; $('wa-etiqueta').value = '';
+    $('wa-etiqueta').value = ''; $('wa-conexion').hidden = true;
     await cargarNumeros();
     vincular(instancia); // recién creado, lo siguiente es escanear
   } catch (e) { waError(e.message); }

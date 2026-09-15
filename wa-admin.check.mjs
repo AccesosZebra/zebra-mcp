@@ -5,7 +5,7 @@ process.env.AUTH_BASE_URL = 'https://ejemplo.test/';
 process.env.WHATSAPP_WEBHOOK_SECRET = 'secreto-de-prueba';
 delete process.env.APP_DATABASE_URL;
 
-const { estadoDe, webhookConfig, nombreValido, jidValido } = await import('./wa-admin.mjs');
+const { estadoDe, webhookConfig, nombreValido, jidValido, porQueFallo } = await import('./wa-admin.mjs');
 
 // El estado llega en sitios distintos segun el endpoint de Evolution.
 assert.equal(estadoDe({ instance: { instanceName: 'DataChat', state: 'open' } }), 'conectado');
@@ -35,5 +35,13 @@ assert.equal(jidValido('120363412885434823@g.us'), true);
 assert.equal(jidValido('5219993559463@s.whatsapp.net'), false, 'un privado no es un grupo');
 assert.equal(jidValido('@g.us'), false);
 assert.equal(jidValido(''), false);
+
+// Por qué falló Evolution: sus mensajes llegan de tres formas y a veces en lista. Nunca vacío,
+// que un error sin texto manda a buscar el problema al sitio equivocado.
+assert.match(porQueFallo({ status: 401, datos: {} }), /clave global/, 'el 401 al crear se explica solo');
+assert.equal(porQueFallo({ status: 403, datos: { response: { message: ['This name is already in use'] } } }), 'This name is already in use');
+assert.equal(porQueFallo({ status: 400, datos: { message: 'algo' } }), 'algo');
+assert.equal(porQueFallo({ status: 500, datos: {} }), 'Evolution respondió 500');
+assert.equal(porQueFallo({ status: 502, datos: { message: '   ' } }), 'Evolution respondió 502', 'un mensaje en blanco no dice nada');
 
 console.log('wa-admin OK');
