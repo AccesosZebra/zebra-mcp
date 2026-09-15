@@ -209,6 +209,10 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
 .wa-lista button{background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer}
 .wa-lista button:hover{color:var(--fg);border-color:var(--accent)}
 .wa-vacio{color:var(--muted);font-size:13px;margin:10px 0 0}
+/* Campos de texto: el de añadir número vive en .wa-card y el de cliente dentro de cada fila de
+   grupo, en .wa-lista. Selectores que no se solapan, para que ninguno tenga que ganarle al otro. */
+.wa-card input[type="text"]{flex:1;min-width:150px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:inherit;font-size:13px;color:var(--fg)}
+.wa-lista input[type="text"]{width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:4px 8px;font:inherit;font-size:12px;color:var(--fg)}
 .wa-qr{margin-top:16px}
 .wa-qr img{display:block;width:264px;height:264px;background:#fff;padding:10px;border-radius:10px}
 
@@ -330,30 +334,21 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
 
   <section id="wa" hidden>
     <div class="wa-card">
-      <p class="section-label">Estado de la conexión</p>
-      <p class="wa-estado" id="wa-estado">Consultando…</p>
-      <p class="wa-detalle" id="wa-detalle"></p>
+      <p class="section-label">Añadir un número</p>
+      <p class="wa-detalle">Un número por teléfono. El nombre de la conexión identifica al número en la pasarela: minúsculas, sin espacios ni acentos, y no se puede cambiar después.</p>
       <div class="wa-acciones">
-        <button type="button" class="btn" id="wa-vincular" hidden>Vincular teléfono</button>
-        <button type="button" class="btn" id="wa-desvincular" hidden>Desvincular</button>
-        <button type="button" class="btn" id="wa-webhook" hidden>Reaplicar webhook</button>
-      </div>
-      <div class="wa-qr" id="wa-qr" hidden>
-        <img id="wa-qr-img" alt="Código QR para vincular WhatsApp" width="264" height="264">
-        <p class="wa-detalle">En el teléfono del bot abre WhatsApp, entra en Dispositivos vinculados y escanea el código. Se renueva solo cada pocos segundos.</p>
+        <input type="text" id="wa-etiqueta" maxlength="60" placeholder="Etiqueta, p. ej. Bot Zebra" aria-label="Etiqueta del número">
+        <input type="text" id="wa-instancia" maxlength="31" placeholder="Conexión, p. ej. zebra-bot" aria-label="Nombre de la conexión">
+        <button type="button" class="btn" id="wa-crear">Añadir número</button>
       </div>
       <p class="form-error" id="wa-error" hidden></p>
     </div>
 
-    <div class="wa-card">
-      <p class="section-label">Dónde contesta</p>
-      <p class="wa-detalle">Solo en estos grupos, y solo cuando lo mencionan con @ o responden a un mensaje suyo. Cada grupo es de un cliente, así que ahí no hace falta nombrarlo en cada pregunta.</p>
-      <ul class="wa-lista" id="wa-grupos"></ul>
-      <div class="wa-acciones">
-        <button type="button" class="btn" id="wa-ver-grupos">Ver los grupos del teléfono</button>
-      </div>
-      <ul class="wa-lista" id="wa-descubiertos" hidden></ul>
-      <p class="wa-detalle">La lista se edita en EasyPanel, en <code>WHATSAPP_GROUPS</code>, con el formato <code>jid=Cliente</code> separado por comas. Copia el identificador del grupo con el botón de cada fila.</p>
+    <div class="aj-proveedores" id="wa-numeros"></div>
+
+    <div class="wa-qr" id="wa-qr" hidden>
+      <img id="wa-qr-img" alt="Código QR para vincular WhatsApp" width="264" height="264">
+      <p class="wa-detalle" id="wa-qr-detalle">En el teléfono del bot abre WhatsApp, entra en Dispositivos vinculados y escanea el código. Se renueva solo cada pocos segundos.</p>
     </div>
   </section>
 </div>
@@ -564,7 +559,7 @@ resetBtn.addEventListener('click', () => {
 // ── Vistas: Data Chat e Integración WA ─────────────────────────────────────
 const VISTAS = {
   chat: { pill: 'Data Chat', titulo: 'Pregúntale a la base de datos de Zebra' },
-  wa: { pill: 'Integración WA', titulo: 'El teléfono que responde por WhatsApp' },
+  wa: { pill: 'Integración WA', titulo: 'Los números que responden por WhatsApp' },
   ajustes: { pill: 'Ajustes', titulo: 'Qué modelo de IA responde las preguntas' },
 };
 const pill = document.querySelector('.pill-logo');
@@ -580,7 +575,7 @@ function verVista(v) {
   pill.textContent = VISTAS[v].pill;
   tituloTop.textContent = VISTAS[v].titulo;
   if (v !== 'wa') pararQr();
-  if (v === 'wa') estadoWa();
+  if (v === 'wa') cargarNumeros();
   if (v === 'ajustes') cargarAjustes();
 }
 document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.addEventListener('click', () => verVista(b.dataset.view)));
@@ -594,7 +589,8 @@ const ESTADOS = {
   desconocido: 'Estado desconocido',
 };
 const waError = (m) => { $('wa-error').textContent = m; $('wa-error').hidden = !m; };
-function pararQr() { clearInterval(timerQr); timerQr = null; $('wa-qr').hidden = true; }
+let vinculando = null; // de qué número se está mostrando el QR
+function pararQr() { clearInterval(timerQr); timerQr = null; vinculando = null; $('wa-qr').hidden = true; }
 
 async function waFetch(url, opts) {
   const r = await fetch(url, opts);
@@ -603,126 +599,215 @@ async function waFetch(url, opts) {
   if (!r.ok) throw new Error(d.error ?? `Error ${r.status}`);
   return d;
 }
+const enviarJson = (body) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const ruta = (instancia, cola) => `/api/wa/numeros/${encodeURIComponent(instancia)}/${cola}`;
 
-async function estadoWa() {
+// Sin diálogo del navegador: el segundo clic confirma, y a los 6 s se olvida.
+function conConfirmacion(btn, aviso, fn) {
+  const original = btn.textContent;
+  btn.addEventListener('click', () => {
+    if (btn.dataset.confirmar !== '1') {
+      btn.dataset.confirmar = '1';
+      btn.textContent = aviso;
+      setTimeout(() => { btn.dataset.confirmar = ''; btn.textContent = original; }, 6000);
+      return;
+    }
+    btn.dataset.confirmar = ''; btn.textContent = original;
+    fn();
+  });
+  return btn;
+}
+
+async function cargarNumeros() {
   waError('');
+  const cont = $('wa-numeros');
   try {
-    const d = await waFetch('/api/wa/status');
-    $('wa-estado').textContent = ESTADOS[d.estado] ?? d.estado;
-    // El número es a quién hay que etiquetar en el grupo: sin él, la mención nunca coincide.
-    $('wa-detalle').textContent = d.numero
-      ? `Etiqueta a este número en el grupo: ${d.numero} · instancia ${d.instancia}`
-      : `Instancia ${d.instancia} · no se pudo leer el número del bot`;
-    pintarGrupos(d.grupos ?? []);
-    $('wa-vincular').hidden = d.estado === 'conectado';
-    $('wa-desvincular').hidden = d.estado !== 'conectado';
-    $('wa-webhook').hidden = d.estado === 'sin-instancia';
-    if (d.estado === 'conectado') pararQr();
+    const d = await waFetch('/api/wa/numeros');
+    cont.textContent = '';
+    if (!d.numeros?.length) {
+      const vacio = document.createElement('p');
+      vacio.className = 'wa-vacio';
+      vacio.textContent = 'Todavía no hay ningún número. Añade uno arriba y vincúlalo con el QR.';
+      cont.append(vacio);
+      return;
+    }
+    for (const n of d.numeros) cont.append(tarjetaNumero(n));
   } catch (e) { waError(e.message); }
 }
 
-// Los grupos configurados en WHATSAPP_GROUPS, con el cliente al que pertenece cada uno.
-function pintarGrupos(grupos) {
-  const ul = $('wa-grupos');
+function tarjetaNumero(n) {
+  const card = document.createElement('div');
+  card.className = `aj-card${n.estado === 'conectado' ? ' is-activo' : ''}`;
+
+  const head = document.createElement('div');
+  head.className = 'aj-head';
+  const nombre = document.createElement('span');
+  nombre.className = 'aj-nombre'; nombre.textContent = n.etiqueta || n.instancia;
+  const badge = document.createElement('span');
+  badge.className = 'aj-badge'; badge.textContent = ESTADOS[n.estado] ?? n.estado;
+  head.append(nombre, badge);
+
+  // El número es a quién hay que etiquetar en el grupo: sin él, la mención nunca coincide.
+  const detalle = document.createElement('p');
+  detalle.className = 'wa-detalle';
+  detalle.textContent = n.numero
+    ? `Etiqueta a este número en el grupo: ${n.numero} · conexión ${n.instancia}`
+    : `Conexión ${n.instancia}`;
+
+  const acciones = document.createElement('div');
+  acciones.className = 'wa-acciones';
+  const boton = (texto) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.textContent = texto;
+    acciones.append(b);
+    return b;
+  };
+
+  if (n.estado === 'conectado') {
+    const ver = boton('Ver grupos del teléfono');
+    ver.addEventListener('click', () => verGrupos(n.instancia, card, ver));
+    conConfirmacion(boton('Desvincular'), 'Confirmar: dejará de responder', () => desvincular(n.instancia));
+  } else {
+    boton('Vincular teléfono').addEventListener('click', () => vincular(n.instancia));
+  }
+  boton('Reaplicar webhook').addEventListener('click', () => reaplicar(n.instancia, detalle));
+
+  const grupos = document.createElement('ul');
+  grupos.className = 'wa-lista';
+  pintarGrupos(grupos, n.grupos ?? []);
+
+  card.append(head, detalle, acciones, grupos);
+  return card;
+}
+
+// Dónde contesta este número. Solo ahí, y solo si lo mencionan o responden a un mensaje suyo.
+function pintarGrupos(ul, grupos) {
   ul.textContent = '';
   if (!grupos.length) {
     const li = document.createElement('li');
-    li.textContent = 'Todavía no hay grupos configurados: el bot no contestará en ninguno.';
+    li.textContent = 'Sin grupos: este número no contesta en ninguno.';
     ul.append(li);
     return;
   }
   for (const g of grupos) {
     const li = document.createElement('li');
-    const jid = document.createElement('span'); jid.className = 'jid'; jid.textContent = g.jid;
-    const cliente = document.createElement('span'); cliente.className = 'cliente';
-    cliente.textContent = g.cliente ? `cliente: ${g.cliente}` : 'sin cliente asignado';
-    li.append(jid, cliente);
+    const cliente = document.createElement('span');
+    cliente.className = 'nombre'; cliente.textContent = g.cliente || 'sin cliente asignado';
+    const jid = document.createElement('span');
+    jid.className = 'jid'; jid.textContent = g.jid;
+    const quitar = document.createElement('button');
+    quitar.type = 'button'; quitar.textContent = 'Quitar';
+    conConfirmacion(quitar, 'Confirmar', async () => {
+      waError('');
+      try {
+        await waFetch(`/api/wa/grupos/${encodeURIComponent(g.jid)}`, { method: 'DELETE' });
+        cargarNumeros();
+      } catch (e) { waError(e.message); }
+    });
+    li.append(cliente, jid, quitar);
     ul.append(li);
   }
 }
 
-// Los grupos donde está el teléfono, para copiar el identificador sin buscarlo a mano.
-async function verGrupos() {
+// Los grupos donde está ese teléfono, para elegirlos sin copiar identificadores a mano.
+async function verGrupos(instancia, card, btn) {
   waError('');
-  const ul = $('wa-descubiertos');
+  btn.disabled = true; btn.textContent = 'Cargando…';
   try {
-    const d = await waFetch('/api/wa/groups');
-    ul.textContent = '';
-    ul.hidden = false;
+    const d = await waFetch(ruta(instancia, 'groups'));
+    const ul = document.createElement('ul');
+    ul.className = 'wa-lista wa-descubiertos';
     if (!d.grupos?.length) {
       const li = document.createElement('li');
-      li.textContent = 'El teléfono no está en ningún grupo todavía.';
+      li.textContent = 'Este teléfono no está en ningún grupo todavía.';
       ul.append(li);
-      return;
     }
-    for (const g of d.grupos) {
+    for (const g of d.grupos ?? []) {
       const li = document.createElement('li');
       const nombre = document.createElement('span');
       nombre.className = 'nombre';
-      nombre.textContent = `${g.nombre ?? 'Sin nombre'}${g.activo ? ' · ya configurado' : ''}`;
-      const miembros = document.createElement('span');
-      miembros.className = 'cliente';
-      miembros.textContent = `${g.miembros ?? '?'} miembros`;
-      const copiar = document.createElement('button');
-      copiar.type = 'button';
-      copiar.textContent = 'Copiar id';
-      copiar.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(g.jid); copiar.textContent = 'Copiado'; }
-        catch { copiar.textContent = g.jid; } // sin permiso de portapapeles, se muestra para copiar a mano
-        setTimeout(() => { copiar.textContent = 'Copiar id'; }, 2500);
-      });
-      li.append(nombre, miembros, copiar);
+      nombre.textContent = `${g.nombre ?? 'Sin nombre'} · ${g.miembros ?? '?'} miembros`;
+      li.append(nombre);
+      if (g.activo) {
+        const ya = document.createElement('span');
+        ya.className = 'cliente'; ya.textContent = 'ya lo atiende';
+        li.append(ya);
+      } else {
+        const cliente = document.createElement('input');
+        cliente.type = 'text'; cliente.maxLength = 80; cliente.placeholder = 'Cliente';
+        cliente.setAttribute('aria-label', `Cliente del grupo ${g.nombre ?? g.jid}`);
+        const add = document.createElement('button');
+        add.type = 'button'; add.textContent = 'Atender aquí';
+        add.addEventListener('click', async () => {
+          waError('');
+          try {
+            await waFetch('/api/wa/grupos', enviarJson({ jid: g.jid, cliente: cliente.value, instancia }));
+            cargarNumeros();
+          } catch (e) { waError(e.message); }
+        });
+        li.append(cliente, add);
+      }
       ul.append(li);
     }
-  } catch (e) { ul.hidden = true; waError(e.message); }
+    card.querySelector('.wa-descubiertos')?.remove();
+    card.append(ul);
+  } catch (e) { waError(e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Ver grupos del teléfono'; }
 }
-$('wa-ver-grupos').addEventListener('click', verGrupos);
 
 async function pintarQr() {
+  if (!vinculando) return pararQr();
   try {
-    const d = await waFetch('/api/wa/qr');
+    const d = await waFetch(ruta(vinculando, 'qr'));
     // El bloque solo se muestra cuando ya hay imagen: sin src el navegador pinta una imagen rota.
     if (d.base64) {
       $('wa-qr-img').src = d.base64.startsWith('data:') ? d.base64 : `data:image/png;base64,${d.base64}`;
       $('wa-qr').hidden = false;
     }
-    if (d.estado === 'conectado') { pararQr(); estadoWa(); }
+    if (d.estado === 'conectado') { pararQr(); cargarNumeros(); }
   } catch (e) { pararQr(); waError(e.message); }
 }
 
-$('wa-vincular').addEventListener('click', async () => {
+async function vincular(instancia) {
+  waError('');
+  vinculando = instancia;
+  $('wa-qr-detalle').textContent = `Escanea con el teléfono de ${instancia}: WhatsApp, Dispositivos vinculados, Vincular dispositivo. El código se renueva solo.`;
+  await pintarQr();
+  clearInterval(timerQr);
+  timerQr = setInterval(pintarQr, 5000); // el QR caduca solo, así que se vuelve a pedir
+}
+
+async function desvincular(instancia) {
+  waError('');
+  try { await waFetch(ruta(instancia, 'session'), { method: 'DELETE' }); pararQr(); cargarNumeros(); }
+  catch (e) { waError(e.message); }
+}
+
+async function reaplicar(instancia, detalle) {
   waError('');
   try {
-    const st = await waFetch('/api/wa/status');
-    if (st.estado === 'sin-instancia') await waFetch('/api/wa/instance', { method: 'POST' });
-    $('wa-estado').textContent = 'Pidiendo el código…';
-    await pintarQr();
-    clearInterval(timerQr);
-    timerQr = setInterval(pintarQr, 5000); // el QR caduca solo, así que se vuelve a pedir
+    const d = await waFetch(ruta(instancia, 'webhook'), { method: 'POST' });
+    detalle.textContent = `Avisos apuntando a ${d.url}`;
   } catch (e) { waError(e.message); }
-});
+}
 
-$('wa-webhook').addEventListener('click', async () => {
+$('wa-crear').addEventListener('click', async () => {
   waError('');
-  try {
-    const d = await waFetch('/api/wa/webhook', { method: 'POST' });
-    $('wa-detalle').textContent = `Webhook apuntando a ${d.url}`;
-  } catch (e) { waError(e.message); }
-});
-
-// Sin diálogo del navegador: el segundo clic confirma.
-$('wa-desvincular').addEventListener('click', async (e) => {
-  const btn = e.currentTarget;
-  if (btn.dataset.confirmar !== '1') {
-    btn.dataset.confirmar = '1';
-    btn.textContent = 'Confirmar: dejará de responder';
-    setTimeout(() => { btn.dataset.confirmar = ''; btn.textContent = 'Desvincular'; }, 6000);
-    return;
+  const btn = $('wa-crear');
+  const instancia = $('wa-instancia').value.trim().toLowerCase();
+  const etiqueta = $('wa-etiqueta').value.trim();
+  // La misma regla que valida el servidor, para no ir al servidor a por un error evitable.
+  if (!/^[a-z0-9][a-z0-9_-]{2,30}$/.test(instancia)) {
+    return waError('El nombre de la conexión va en minúsculas, sin espacios ni acentos, de 3 a 31 caracteres. Por ejemplo: zebra-bot.');
   }
-  btn.dataset.confirmar = ''; btn.textContent = 'Desvincular';
-  waError('');
-  try { await waFetch('/api/wa/session', { method: 'DELETE' }); pararQr(); estadoWa(); }
-  catch (err) { waError(err.message); }
+  btn.disabled = true; btn.textContent = 'Creando…';
+  try {
+    await waFetch('/api/wa/numeros', enviarJson({ instancia, etiqueta }));
+    $('wa-instancia').value = ''; $('wa-etiqueta').value = '';
+    await cargarNumeros();
+    vincular(instancia); // recién creado, lo siguiente es escanear
+  } catch (e) { waError(e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Añadir número'; }
 });
 
 // ── Ajustes: proveedor y modelo ────────────────────────────────────────────

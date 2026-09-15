@@ -5,6 +5,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
 import { textoDeTurno } from './chat.mjs';
+import { grupos as gruposDe } from './db.mjs';
 
 const TTL_MS = 30 * 60 * 1000; // media hora en silencio cierra la conversación
 const MAX_MENSAJES = 12;       // y nunca se arrastran más de 12
@@ -15,7 +16,11 @@ export const esGrupo = (jid = '') => jid.endsWith('@g.us');
 /** ¿Este jid es el bot? WhatsApp lo nombra de dos formas y las menciones usan la nueva. */
 export const esElBot = (jid, mias) => Boolean(jid) && mias.has(numero(jid));
 
-/** WHATSAPP_GROUPS = "1203630@g.us=Sofía, 1203631@g.us=Grupo Gira" */
+/**
+ * WHATSAPP_GROUPS = "1203630@g.us=Sofía, 1203631@g.us=Grupo Gira"
+ * Ya no manda: los grupos viven en la base y se administran desde el panel. Queda para la
+ * semilla del primer arranque, que pasa lo que hubiera en el entorno a la tabla.
+ */
 export function gruposPermitidos(crudo = process.env.WHATSAPP_GROUPS ?? '') {
   const mapa = new Map();
   for (const par of crudo.split(',')) {
@@ -59,9 +64,10 @@ export function debeResponder({ data, mias, permitidos }) {
 // direccionamiento. Comparar solo contra el número hacía que ninguna mención coincidiera.
 // Evolution no expone el lid de la instancia: el que lo trae es la lista de participantes de un
 // grupo, con el teléfono de cada uno al lado. Se resuelve una vez y se recuerda.
-let mias = null;
-export async function identidades(grupoJid, senderDelSobre) {
-  if (mias?.size) return mias;
+const porNumero = new Map();
+export async function identidades(instancia, grupoJid, senderDelSobre) {
+  const guardadas = porNumero.get(instancia);
+  if (guardadas?.size) return guardadas;
   const propias = new Set();
   const apuntar = (jid) => { if (jid) propias.add(numero(jid)); };
   const base = process.env.EVOLUTION_URL.replace(/\/+$/, '');
@@ -70,19 +76,19 @@ export async function identidades(grupoJid, senderDelSobre) {
 
   apuntar(senderDelSobre); // el sobre del webhook a veces ya lo trae, en una forma u otra
   try {
-    const d = await pedir(`/instance/fetchInstances?instanceName=${encodeURIComponent(process.env.EVOLUTION_INSTANCE)}`);
+    const d = await pedir(`/instance/fetchInstances?instanceName=${encodeURIComponent(instancia)}`);
     const inst = Array.isArray(d) ? d[0] : (d?.instance ?? d);
     apuntar(inst?.ownerJid ?? inst?.owner);
 
-    const g = await pedir(`/group/participants/${process.env.EVOLUTION_INSTANCE}?groupJid=${encodeURIComponent(grupoJid)}`);
+    const g = await pedir(`/group/participants/${instancia}?groupJid=${encodeURIComponent(grupoJid)}`);
     for (const p of g?.participants ?? []) if (propias.has(numero(p.phoneNumber ?? ''))) apuntar(p.id);
   } catch (e) {
     console.error('wa: no pude averiguar quien soy:', e.message);
   }
 
-  if (!propias.size) console.error('wa: sin identidad propia, ninguna mencion va a coincidir');
+  if (!propias.size) console.error(`wa: sin identidad propia de ${instancia}, ninguna mencion va a coincidir`);
   // Con las dos formas ya no hay nada que reintentar; con una sola, se vuelve a intentar luego.
-  if (propias.size >= 2) mias = propias;
+  if (propias.size >= 2) porNumero.set(instancia, propias);
   return propias;
 }
 
@@ -97,9 +103,9 @@ function historial(clave, ahora = Date.now()) {
   return c;
 }
 
-async function enviar(destino, texto) {
+async function enviar(instancia, destino, texto) {
   const base = process.env.EVOLUTION_URL.replace(/\/+$/, '');
-  const res = await fetch(`${base}/message/sendText/${process.env.EVOLUTION_INSTANCE}`, {
+  const res = await fetch(`${base}/message/sendText/${instancia}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: process.env.EVOLUTION_API_KEY },
     body: JSON.stringify({ number: destino, text: texto }),
@@ -107,8 +113,9 @@ async function enviar(destino, texto) {
   if (!res.ok) console.error('evolution sendText:', res.status, (await res.text()).slice(0, 200));
 }
 
-async function responder({ jid, cliente, pregunta }) {
-  const c = historial(jid);
+async function responder({ instancia, jid, cliente, pregunta }) {
+  // Cada número lleva su propio hilo, aunque dos atendieran el mismo grupo.
+  const c = historial(`${instancia}:${jid}`);
   c.messages.push({ role: 'user', content: pregunta });
   c.messages = c.messages.slice(-MAX_MENSAJES);
   const t0 = Date.now();
@@ -117,19 +124,19 @@ async function responder({ jid, cliente, pregunta }) {
     const texto = r.texto || 'No pude responder eso. Pregúntamelo de otra forma.';
     if (r.stop === 'refusal') c.messages.pop();
     else c.messages.push({ role: 'assistant', content: texto });
-    console.log(JSON.stringify({ wa: jid, cliente, ms: Date.now() - t0, stop: r.stop, model: r.modelo, in: r.usage?.input_tokens ?? 0, out: r.usage?.output_tokens ?? 0 }));
-    await enviar(jid, texto);
+    console.log(JSON.stringify({ wa: jid, instancia, cliente, ms: Date.now() - t0, stop: r.stop, model: r.modelo, in: r.usage?.input_tokens ?? 0, out: r.usage?.output_tokens ?? 0 }));
+    await enviar(instancia, jid, texto);
   } catch (e) {
     console.error('wa:', e?.status ?? '', e?.message);
     c.messages.pop(); // la pregunta que falló no ensucia el hilo
-    await enviar(jid, 'Se me cayó la consulta. Vuelve a preguntarme en un momento.');
+    await enviar(instancia, jid, 'Se me cayó la consulta. Vuelve a preguntarme en un momento.');
   }
 }
 
 export function mountWhatsapp(app) {
   const esperado = Buffer.from(process.env.WHATSAPP_WEBHOOK_SECRET);
 
-  app.post('/api/whatsapp', async (req, res) => {
+  const atender = async (req, res) => {
     // Evolution manda las cabeceras que se configuren en la instancia: ahí va el secreto.
     const recibido = Buffer.from(req.get('x-zebra-secret') ?? '');
     if (recibido.length !== esperado.length || !timingSafeEqual(recibido, esperado)) {
@@ -139,20 +146,28 @@ export function mountWhatsapp(app) {
     // Un turno tarda entre 10 y 30 s y Evolution corta a los 30: se acepta y se responde aparte.
     res.json({ ok: true });
 
-    const { event, data, sender } = req.body ?? {};
+    const { event, data, sender, instance } = req.body ?? {};
     if (event !== 'messages.upsert') return;
 
+    // De qué número es el aviso: lo dice la URL, una por número. El cuerpo y el entorno son el
+    // respaldo para el webhook viejo, que apunta a /api/whatsapp a secas.
+    const instancia = req.params.instancia || instance || process.env.EVOLUTION_INSTANCE;
+    const jid = data?.key?.remoteJid ?? '';
+    if (!instancia) return console.log(JSON.stringify({ wa: jid, ignorado: 'no sé de qué número es el aviso' }));
+
     // Preguntar quién soy solo para los grupos de la lista: los demás no gastan ni una llamada.
-    const permitidos = gruposPermitidos();
-    const enLista = permitidos.has(data?.key?.remoteJid ?? '');
+    const permitidos = await gruposDe(instancia);
     const veredicto = debeResponder({
       data,
-      mias: enLista ? await identidades(data.key.remoteJid, sender) : new Set(),
+      mias: permitidos.has(jid) ? await identidades(instancia, jid, sender) : new Set(),
       permitidos,
     });
     if (!veredicto.responder) {
-      return console.log(JSON.stringify({ wa: data?.key?.remoteJid ?? '?', ignorado: veredicto.motivo }));
+      return console.log(JSON.stringify({ wa: jid, instancia, ignorado: veredicto.motivo }));
     }
-    void responder(veredicto);
-  });
+    void responder({ ...veredicto, instancia });
+  };
+
+  app.post('/api/whatsapp', atender);            // el webhook viejo, de cuando había un solo número
+  app.post('/api/whatsapp/:instancia', atender); // el de cada número
 }

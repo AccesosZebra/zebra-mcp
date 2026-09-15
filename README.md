@@ -43,9 +43,10 @@ Desplegado en EasyPanel (VPS 177.7.43.4), proyecto y app `zebra-mcp`:
 | `AUTH_SESSION_SECRET` | Firma de la cookie de sesión (`openssl rand -hex 32`) |
 | `AUTH_BASE_URL` | URL pública. De aquí sale la URI de retorno y la URL del MCP |
 | `AUTH_ALLOWED_DOMAIN` | Dominio permitido. `zebradigital.marketing` por defecto |
-| `EVOLUTION_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` | Pasarela de WhatsApp (Evolution API) |
+| `EVOLUTION_URL`, `EVOLUTION_API_KEY` | Pasarela de WhatsApp (Evolution API) |
 | `WHATSAPP_WEBHOOK_SECRET` | Secreto que Evolution manda en la cabecera `x-zebra-secret` |
-| `WHATSAPP_GROUPS` | Grupos donde contesta y su cliente: `jid=Cliente`, separados por coma |
+| `EVOLUTION_INSTANCE` | Solo para la semilla del primer arranque. Después mandan los números de la base |
+| `WHATSAPP_GROUPS` | Igual: `jid=Cliente` separados por coma, solo para sembrar la tabla una vez |
 
 Si falta alguna de las cinco primeras del bloque de login, el chat no se monta y el MCP sigue
 funcionando solo. Igual con WhatsApp: sin sus cuatro variables, el resto no se entera.
@@ -74,9 +75,12 @@ en vez de fingir que guardó.
 
 `whatsapp.mjs` responde el webhook de Evolution API:
 
-1. Evolution avisa a `POST /api/whatsapp` en cada `messages.upsert`, con el secreto en la cabecera.
-2. Solo se contesta en los grupos de `WHATSAPP_GROUPS`, y solo si mencionan al bot (`@`) o responden
-   a un mensaje suyo. Se descartan los mensajes propios, los privados y los que no son texto.
+1. Evolution avisa a `POST /api/whatsapp/<instancia>` en cada `messages.upsert`, con el secreto en
+   la cabecera. Cada número tiene su propia dirección; `POST /api/whatsapp` a secas se mantiene por
+   el webhook antiguo, de cuando había un solo número.
+2. Solo se contesta en los grupos de la tabla `wa_grupos` de ese número, y solo si mencionan al bot
+   o responden a un mensaje suyo. Se descartan los mensajes propios, los privados y los que no son
+   texto. **La mención llega como `@lid`**, no como el teléfono: el bot reconoce sus dos nombres.
 3. Cada grupo es de un cliente: dentro de ese grupo las preguntas se entienden de ese cliente sin
    repetirlo, y el prompt le prohíbe traer datos de otro.
 4. Se responde 200 de inmediato (Evolution corta a los 30 s) y el turno se procesa aparte.
@@ -92,20 +96,25 @@ apikey siempre del lado del servidor:
 
 | Ruta | Qué hace |
 |---|---|
-| `GET /api/wa/status` | Estado de la conexión, número vinculado y lista de permitidos |
-| `POST /api/wa/instance` | Crea la instancia con su webhook ya configurado |
-| `GET /api/wa/qr` | Devuelve el QR en base64 para vincular el teléfono |
-| `POST /api/wa/webhook` | Vuelve a aplicar el webhook si se perdió |
-| `DELETE /api/wa/session` | Desvincula el teléfono, sin borrar la instancia |
+| `GET /api/wa/numeros` | Los números guardados, con su estado real y los grupos de cada uno |
+| `POST /api/wa/numeros` | Crea la conexión en Evolution, con su webhook, y la guarda |
+| `GET /api/wa/numeros/:i/qr` | Devuelve el QR en base64 para vincular ese teléfono |
+| `GET /api/wa/numeros/:i/groups` | Los grupos donde está ese teléfono, para elegirlos |
+| `POST /api/wa/numeros/:i/webhook` | Vuelve a aplicar el webhook si se perdió |
+| `DELETE /api/wa/numeros/:i/session` | Desvincula el teléfono, sin borrar la conexión |
+| `POST /api/wa/grupos` | Pone un grupo a cargo de un número, con su cliente |
+| `DELETE /api/wa/grupos/:jid` | Deja de contestar en ese grupo |
 
-Borrar la instancia no se expone a propósito.
+Borrar una conexión no se expone a propósito: el Evolution es compartido con los flujos de n8n.
+El nombre de la conexión se valida contra `/^[a-z0-9][a-z0-9_-]{2,30}$/` antes de tocar nada,
+porque lo escribe una persona y acaba dentro de una URL.
 
 Para configurar el webhook a mano, sin el panel:
 
 ```bash
-curl -X POST "$EVOLUTION_URL/webhook/set/$EVOLUTION_INSTANCE" \
+curl -X POST "$EVOLUTION_URL/webhook/set/<instancia>" \
   -H "apikey: $EVOLUTION_API_KEY" -H 'Content-Type: application/json' \
-  -d '{"webhook":{"enabled":true,"url":"https://<host>/api/whatsapp",
+  -d '{"webhook":{"enabled":true,"url":"https://<host>/api/whatsapp/<instancia>",
        "events":["MESSAGES_UPSERT"],"headers":{"x-zebra-secret":"<secreto>"}}}'
 ```
 La URI `<AUTH_BASE_URL>/auth/callback` tiene que estar registrada en el cliente OAuth de Google.

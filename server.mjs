@@ -122,13 +122,22 @@ if (faltan.length) {
   mountAuth(app);
   mountChat(app, requireSession);
   // El bot de WhatsApp es opcional: sin su configuración, el chat web sigue igual.
-  const WA_ENV = ['EVOLUTION_URL', 'EVOLUTION_API_KEY', 'EVOLUTION_INSTANCE', 'WHATSAPP_WEBHOOK_SECRET'];
+  // EVOLUTION_INSTANCE ya no hace falta: los números viven en la base y se añaden desde el panel.
+  const WA_ENV = ['EVOLUTION_URL', 'EVOLUTION_API_KEY', 'WHATSAPP_WEBHOOK_SECRET'];
   const faltanWa = WA_ENV.filter((k) => !process.env[k]);
   if (faltanWa.length) {
     console.warn(`WhatsApp desactivado, faltan: ${faltanWa.join(', ')}`);
   } else {
-    const { mountWhatsapp } = await import('./whatsapp.mjs');
+    const { gruposPermitidos, mountWhatsapp } = await import('./whatsapp.mjs');
     const { mountWaAdmin } = await import('./wa-admin.mjs');
+    const { sembrar } = await import('./db.mjs');
+    // Migración de una vez: lo que hubiera en el entorno pasa a la base y desaparece de la vista.
+    try {
+      const semilla = await sembrar({ instancia: process.env.EVOLUTION_INSTANCE, grupos: gruposPermitidos() });
+      if (semilla) console.log(`WhatsApp sembrado desde el entorno: ${JSON.stringify(semilla)}`);
+    } catch (e) {
+      console.error('No pude sembrar la configuración de WhatsApp:', e.message);
+    }
     mountWhatsapp(app);
     mountWaAdmin(app, requireSession); // la pantalla "Integración WA" del panel
   }

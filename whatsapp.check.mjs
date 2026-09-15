@@ -1,8 +1,13 @@
 // Uso: node whatsapp.check.mjs
 import assert from 'node:assert/strict';
 
-const { debeResponder, gruposPermitidos, textoDe, limpiar, esGrupo, esElBot } =
+const { debeResponder, gruposPermitidos, identidades, textoDe, limpiar, esGrupo, esElBot } =
   await import('./whatsapp.mjs');
+
+// Cada número resuelve su propia identidad: la instancia es el primer argumento, y sin ella dos
+// números compartirían el @lid de uno solo. Lo demás de esa función habla con Evolution y se
+// comprueba en vivo, no aquí.
+assert.equal(identidades.length, 3, 'identidades(instancia, grupoJid, sender)');
 
 // Las dos formas en que WhatsApp nombra al bot. Las menciones usan el @lid, no el teléfono.
 const TEL = '5219901448105@s.whatsapp.net';
