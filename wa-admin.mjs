@@ -3,19 +3,22 @@
 import { agregarNumero, borrarNumero, grupos, numeros, ponerGrupo, quitarGrupo } from './db.mjs';
 import { conectar, desvincular, estado, gruposDelTelefono } from './whatsapp.mjs';
 
-// El nombre de la conexión lo escribe una persona y acaba dentro de una URL y de la base: es
-// frontera de confianza y se valida estricto, no se confía en el navegador.
+// El nombre de un número NUEVO lo escribe una persona y acaba dentro de una URL: se valida estricto.
+// Los que ya existen no se juzgan por su forma sino por estar en la base: el sembrado desde
+// Evolution se llama "DataChat", con mayúsculas, y quedaba imposible de tocar.
 export const nombreValido = (n) => typeof n === 'string' && /^[a-z0-9][a-z0-9_-]{2,30}$/.test(n);
-export const jidValido = (j) => typeof j === 'string' && /^\d{5,}@g\.us$/.test(j);
+const existe = async (n) => typeof n === 'string' && (await numeros()).some((x) => x.instancia === n);
+
+// Grupos nuevos: "120363…@g.us". Los creados antes de 2021: "<teléfono del creador>-<segundos>@g.us".
+export const jidValido = (j) => typeof j === 'string' && /^\d{5,}(-\d+)?@g\.us$/.test(j);
 
 export function mountWaAdmin(app, requireSession) {
   const log = (req, accion, extra = {}) => console.log(JSON.stringify({ wa_admin: req.user.email, accion, ...extra }));
 
-  // Toda ruta con :instancia valida el nombre y que el número exista antes de tocar nada.
+  // Toda ruta con :instancia comprueba que el número exista antes de tocar nada.
   const conNumero = (fn) => async (req, res) => {
     const { instancia } = req.params;
-    if (!nombreValido(instancia)) return res.status(400).json({ error: 'Ese nombre de número no es válido.' });
-    if (!(await numeros()).some((n) => n.instancia === instancia)) return res.status(404).json({ error: 'Ese número no existe.' });
+    if (!(await existe(instancia))) return res.status(404).json({ error: 'Ese número no existe.' });
     try {
       return await fn(req, res, instancia);
     } catch (e) {
@@ -80,7 +83,7 @@ export function mountWaAdmin(app, requireSession) {
   app.post('/api/wa/grupos', requireSession, async (req, res) => {
     const { jid, cliente, instancia } = req.body ?? {};
     if (!jidValido(jid)) return res.status(400).json({ error: 'Ese identificador de grupo no es válido.' });
-    if (!nombreValido(instancia)) return res.status(400).json({ error: 'Ese nombre de número no es válido.' });
+    if (!(await existe(instancia))) return res.status(404).json({ error: 'Ese número no existe.' });
     try {
       await ponerGrupo({
         jid,

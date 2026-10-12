@@ -16,6 +16,9 @@ for (const malo of ['../otra', 'bot/../x', 'con espacios', 'MAYUSCULAS', 'acent√
 
 // El identificador de grupo, igual: solo grupos, nunca un privado.
 assert.equal(jidValido('120363412885434823@g.us'), true);
+assert.equal(jidValido('5219991234567-1601234567@g.us'), true, 'los grupos de antes de 2021 llevan guion');
+assert.equal(jidValido('5219991234567-@g.us'), false);
+assert.equal(jidValido('../x-1@g.us'), false);
 assert.equal(jidValido('5219993559463@s.whatsapp.net'), false, 'un privado no es un grupo');
 assert.equal(jidValido('@g.us'), false);
 assert.equal(jidValido(''), false);
