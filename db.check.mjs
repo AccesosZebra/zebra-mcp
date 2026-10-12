@@ -14,14 +14,25 @@ assert.equal(await db.leerAjuste('ia'), null);
 assert.deepEqual(await db.numeros(), []);
 assert.equal((await db.grupos('zebra-bot')).size, 0);
 
-// Sembrar no hace nada si no hay base, ni si no hay instancia en el entorno.
-assert.equal(await db.sembrar({ instancia: 'zebra-bot', grupos: new Map() }), null);
-assert.equal(await db.sembrar({ instancia: null, grupos: new Map() }), null);
+assert.deepEqual(await db.conSesion(), [], 'sin base no hay números que reconectar');
+assert.equal(await db.aplicarEsquema(), false, 'sin base no hay esquema que aplicar');
 
 // Escribir: avisa de lo que falta.
 await assert.rejects(db.guardarAjuste('ia', { proveedor: 'anthropic' }), /APP_DATABASE_URL/);
 await assert.rejects(db.agregarNumero({ instancia: 'zebra-bot' }), /APP_DATABASE_URL/);
 await assert.rejects(db.ponerGrupo({ jid: '120363412885434823@g.us', instancia: 'zebra-bot' }), /APP_DATABASE_URL/);
 await assert.rejects(db.quitarGrupo('120363412885434823@g.us'), /APP_DATABASE_URL/);
+await assert.rejects(db.estadoAuth('zebra-bot'), /APP_DATABASE_URL/);
+await assert.rejects(db.borrarSesion('zebra-bot'), /APP_DATABASE_URL/);
+await assert.rejects(db.borrarNumero('zebra-bot'), /APP_DATABASE_URL/);
+
+// La sesión se guarda como JSON y sus llaves son Buffers: si la ida y vuelta las convirtiera en
+// objetos sueltos, el teléfono se desvincularía en cada despliegue.
+const { BufferJSON, initAuthCreds } = await import('baileys');
+const creds = initAuthCreds();
+const vuelta = JSON.parse(JSON.stringify(creds, BufferJSON.replacer), BufferJSON.reviver);
+assert.ok(Buffer.isBuffer(vuelta.noiseKey.private), 'las llaves vuelven como Buffer');
+assert.deepEqual(vuelta.signedIdentityKey.public, creds.signedIdentityKey.public);
+assert.equal(vuelta.registrationId, creds.registrationId);
 
 console.log('db OK');

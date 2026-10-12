@@ -121,24 +121,26 @@ if (faltan.length) {
   const page = (name) => fileURLToPath(new URL(`./public/${name}`, import.meta.url));
   mountAuth(app);
   mountChat(app, requireSession);
-  // El bot de WhatsApp es opcional: sin su configuración, el chat web sigue igual.
-  // EVOLUTION_INSTANCE ya no hace falta: los números viven en la base y se añaden desde el panel.
-  const WA_ENV = ['EVOLUTION_URL', 'EVOLUTION_API_KEY', 'WHATSAPP_WEBHOOK_SECRET'];
-  const faltanWa = WA_ENV.filter((k) => !process.env[k]);
-  if (faltanWa.length) {
-    console.warn(`WhatsApp desactivado, faltan: ${faltanWa.join(', ')}`);
+  // La base del dashboard se prepara sola: una instancia nueva arranca con las tablas creadas.
+  const { aplicarEsquema, hayBase } = await import('./db.mjs');
+  try {
+    if (await aplicarEsquema()) console.log('Base del dashboard: esquema aplicado');
+  } catch (e) {
+    console.error('No pude aplicar el esquema de la base del dashboard:', e.message);
+  }
+
+  // El bot de WhatsApp vive aquí mismo y guarda su sesión en esa base: sin ella no hay dónde
+  // recordar el teléfono vinculado, y el resto sigue igual.
+  if (!hayBase) {
+    console.warn('WhatsApp desactivado, falta APP_DATABASE_URL');
   } else {
-    const { gruposPermitidos, mountWhatsapp } = await import('./whatsapp.mjs');
+    const { arrancarWhatsapp } = await import('./whatsapp.mjs');
     const { mountWaAdmin } = await import('./wa-admin.mjs');
-    const { sembrar } = await import('./db.mjs');
-    // Migración de una vez: lo que hubiera en el entorno pasa a la base y desaparece de la vista.
     try {
-      const semilla = await sembrar({ instancia: process.env.EVOLUTION_INSTANCE, grupos: gruposPermitidos() });
-      if (semilla) console.log(`WhatsApp sembrado desde el entorno: ${JSON.stringify(semilla)}`);
+      console.log(`WhatsApp: reconectando ${JSON.stringify(await arrancarWhatsapp())}`);
     } catch (e) {
-      console.error('No pude sembrar la configuración de WhatsApp:', e.message);
+      console.error('No pude reconectar WhatsApp:', e.message);
     }
-    mountWhatsapp(app);
     mountWaAdmin(app, requireSession); // la pantalla "Integración WA" del panel
   }
 

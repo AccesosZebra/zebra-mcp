@@ -585,7 +585,6 @@ const ESTADOS = {
   conectado: 'Conectado',
   esperando: 'Esperando el escaneo',
   desconectado: 'Sin vincular',
-  'sin-instancia': 'Falta crear la instancia',
   desconocido: 'Estado desconocido',
 };
 const waError = (m) => { $('wa-error').textContent = m; $('wa-error').hidden = !m; };
@@ -670,7 +669,7 @@ function tarjetaNumero(n) {
   } else {
     boton('Vincular teléfono').addEventListener('click', () => vincular(n.instancia));
   }
-  boton('Reaplicar webhook').addEventListener('click', () => reaplicar(n.instancia, detalle));
+  conConfirmacion(boton('Borrar número'), 'Confirmar: se borra con sus grupos', () => borrarNumero(n.instancia));
 
   const grupos = document.createElement('ul');
   grupos.className = 'wa-lista';
@@ -777,18 +776,19 @@ async function vincular(instancia) {
   timerQr = setInterval(pintarQr, 5000); // el QR caduca solo, así que se vuelve a pedir
 }
 
+async function borrarNumero(instancia) {
+  waError('');
+  try {
+    await waFetch(`/api/wa/numeros/${encodeURIComponent(instancia)}`, { method: 'DELETE' });
+    if (vinculando === instancia) pararQr();
+    cargarNumeros();
+  } catch (e) { waError(e.message); }
+}
+
 async function desvincular(instancia) {
   waError('');
   try { await waFetch(ruta(instancia, 'session'), { method: 'DELETE' }); pararQr(); cargarNumeros(); }
   catch (e) { waError(e.message); }
-}
-
-async function reaplicar(instancia, detalle) {
-  waError('');
-  try {
-    const d = await waFetch(ruta(instancia, 'webhook'), { method: 'POST' });
-    detalle.textContent = `Avisos apuntando a ${d.url}`;
-  } catch (e) { waError(e.message); }
 }
 
 // El nombre interno lo deduce el navegador del que escribe la persona: un solo campo, y nadie

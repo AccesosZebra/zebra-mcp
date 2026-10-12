@@ -1,0 +1,36 @@
+# Una instancia completa: el servidor y la base del dashboard, que guarda ajustes, números de
+# WhatsApp y su sesión. La base de métricas (DATABASE_URL) es externa y va en el .env.
+#
+#   cp .env.example .env   # y rellenarlo
+#   docker compose up -d --build
+#
+# ponytail: una sola réplica de "app". Cada número de WhatsApp es una conexión de ese proceso, y
+# WhatsApp tumba una de las dos si hay dos procesos con la misma sesión.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_DATABASE_URL: postgres://postgres:${APP_DB_PASSWORD:?falta APP_DB_PASSWORD en .env}@db:5432/dashboard
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:?falta APP_DB_PASSWORD en .env}
+      POSTGRES_DB: dashboard
+    volumes:
+      - dashboard:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dashboard"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  dashboard:

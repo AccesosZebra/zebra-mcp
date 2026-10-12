@@ -1,11 +1,13 @@
-// El Data Chat por WhatsApp. Evolution API (la pasarela que Zebra ya tiene) avisa por webhook de
-// cada mensaje; aquí solo se contesta en los grupos de la lista y solo cuando mencionan al bot o
-// responden a un mensaje suyo. Cada grupo está atado a un cliente, así que dentro de ese grupo las
-// preguntas se entienden de ese cliente sin repetirlo.
-import { timingSafeEqual } from 'node:crypto';
+// El Data Chat por WhatsApp, sin pasarela externa: cada número es un dispositivo vinculado que vive
+// dentro de este proceso (Baileys, lo mismo que usaba Evolution por dentro). Solo se contesta en los
+// grupos de la lista y solo cuando mencionan al bot o responden a un mensaje suyo. Cada grupo está
+// atado a un cliente, así que dentro de ese grupo las preguntas se entienden de ese cliente.
+import makeWASocket, { DisconnectReason, makeCacheableSignalKeyStore } from 'baileys';
+import pino from 'pino';
+import QRCode from 'qrcode';
 
 import { textoDeTurno } from './chat.mjs';
-import { grupos as gruposDe } from './db.mjs';
+import { borrarSesion, conSesion, estadoAuth, grupos as gruposDe } from './db.mjs';
 
 const TTL_MS = 30 * 60 * 1000; // media hora en silencio cierra la conversación
 const MAX_MENSAJES = 12;       // y nunca se arrastran más de 12
@@ -16,22 +18,7 @@ export const esGrupo = (jid = '') => jid.endsWith('@g.us');
 /** ¿Este jid es el bot? WhatsApp lo nombra de dos formas y las menciones usan la nueva. */
 export const esElBot = (jid, mias) => Boolean(jid) && mias.has(numero(jid));
 
-/**
- * WHATSAPP_GROUPS = "1203630@g.us=Sofía, 1203631@g.us=Grupo Gira"
- * Ya no manda: los grupos viven en la base y se administran desde el panel. Queda para la
- * semilla del primer arranque, que pasa lo que hubiera en el entorno a la tabla.
- */
-export function gruposPermitidos(crudo = process.env.WHATSAPP_GROUPS ?? '') {
-  const mapa = new Map();
-  for (const par of crudo.split(',')) {
-    const [jid, ...resto] = par.split('=');
-    const id = jid.trim();
-    if (id) mapa.set(id, resto.join('=').trim() || null);
-  }
-  return mapa;
-}
-
-// Evolution normaliza el texto con formato a `conversation`.
+// El texto simple llega en `conversation`; el que lleva formato, mención o cita, en `extendedTextMessage`.
 export const textoDe = (data) => data?.message?.conversation ?? data?.message?.extendedTextMessage?.text ?? null;
 
 // La mención llega como "@5219997923682" dentro del texto; al bot no le aporta nada.
@@ -62,35 +49,7 @@ export function debeResponder({ data, mias, permitidos }) {
 // Cómo se llama el bot a sí mismo. Son DOS nombres: su número (5219…@s.whatsapp.net) y su @lid
 // (2593…@lid), que es el que aparece en las menciones desde que WhatsApp cambió el
 // direccionamiento. Comparar solo contra el número hacía que ninguna mención coincidiera.
-// Evolution no expone el lid de la instancia: el que lo trae es la lista de participantes de un
-// grupo, con el teléfono de cada uno al lado. Se resuelve una vez y se recuerda.
-const porNumero = new Map();
-export async function identidades(instancia, grupoJid, senderDelSobre) {
-  const guardadas = porNumero.get(instancia);
-  if (guardadas?.size) return guardadas;
-  const propias = new Set();
-  const apuntar = (jid) => { if (jid) propias.add(numero(jid)); };
-  const base = process.env.EVOLUTION_URL.replace(/\/+$/, '');
-  const cabeceras = { apikey: process.env.EVOLUTION_API_KEY };
-  const pedir = async (ruta) => (await fetch(`${base}${ruta}`, { headers: cabeceras })).json();
-
-  apuntar(senderDelSobre); // el sobre del webhook a veces ya lo trae, en una forma u otra
-  try {
-    const d = await pedir(`/instance/fetchInstances?instanceName=${encodeURIComponent(instancia)}`);
-    const inst = Array.isArray(d) ? d[0] : (d?.instance ?? d);
-    apuntar(inst?.ownerJid ?? inst?.owner);
-
-    const g = await pedir(`/group/participants/${instancia}?groupJid=${encodeURIComponent(grupoJid)}`);
-    for (const p of g?.participants ?? []) if (propias.has(numero(p.phoneNumber ?? ''))) apuntar(p.id);
-  } catch (e) {
-    console.error('wa: no pude averiguar quien soy:', e.message);
-  }
-
-  if (!propias.size) console.error(`wa: sin identidad propia de ${instancia}, ninguna mencion va a coincidir`);
-  // Con las dos formas ya no hay nada que reintentar; con una sola, se vuelve a intentar luego.
-  if (propias.size >= 2) porNumero.set(instancia, propias);
-  return propias;
-}
+export const misNombres = (user) => new Set([user?.id, user?.lid].filter(Boolean).map(numero));
 
 // ponytail: historial en memoria del proceso, por grupo. Se pierde al desplegar, que para preguntas
 // sueltas del equipo no importa. Si hiciera falta que sobreviva, a Postgres.
@@ -104,13 +63,13 @@ function historial(clave, ahora = Date.now()) {
 }
 
 async function enviar(instancia, destino, texto) {
-  const base = process.env.EVOLUTION_URL.replace(/\/+$/, '');
-  const res = await fetch(`${base}/message/sendText/${instancia}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: process.env.EVOLUTION_API_KEY },
-    body: JSON.stringify({ number: destino, text: texto }),
-  });
-  if (!res.ok) console.error('evolution sendText:', res.status, (await res.text()).slice(0, 200));
+  const sock = conexiones.get(instancia)?.sock;
+  try {
+    if (!sock) throw new Error('el número no está conectado');
+    await sock.sendMessage(destino, { text: texto });
+  } catch (e) {
+    console.error(`wa ${instancia}: no pude enviar:`, e.message);
+  }
 }
 
 async function responder({ instancia, jid, cliente, pregunta }) {
@@ -133,41 +92,118 @@ async function responder({ instancia, jid, cliente, pregunta }) {
   }
 }
 
-export function mountWhatsapp(app) {
-  const esperado = Buffer.from(process.env.WHATSAPP_WEBHOOK_SECRET);
+// ── Conexiones ──────────────────────────────────────────────────────────────
+// ponytail: cada número es un socket de este proceso. Nunca correr dos réplicas del contenedor
+// contra la misma base: WhatsApp acepta una sola conexión por dispositivo y tumba la otra.
+const conexiones = new Map(); // instancia → { sock, estado, qr, intentos }
+const silencio = pino({ level: 'silent' });
 
-  const atender = async (req, res) => {
-    // Evolution manda las cabeceras que se configuren en la instancia: ahí va el secreto.
-    const recibido = Buffer.from(req.get('x-zebra-secret') ?? '');
-    if (recibido.length !== esperado.length || !timingSafeEqual(recibido, esperado)) {
-      return res.status(401).json({ error: 'unauthorized' });
+// Cierres tras los que reconectar sería pelear: otro proceso tomó la sesión, o WhatsApp la vetó.
+const SIN_REINTENTO = new Set([DisconnectReason.connectionReplaced, DisconnectReason.forbidden]);
+
+/** Lo que el panel necesita saber de un número. */
+export function estado(instancia) {
+  const c = conexiones.get(instancia);
+  if (!c) return { estado: 'desconectado', qr: null, numero: null };
+  return { estado: c.estado, qr: c.qr, numero: c.estado === 'conectado' ? numero(c.sock.user?.id) : null };
+}
+
+/** Abre (o reabre) la conexión de un número. Sin sesión guardada, genera un QR para vincularlo. */
+export async function conectar(instancia) {
+  const previa = conexiones.get(instancia);
+  if (previa && previa.estado !== 'desconectado') return;
+  // Se apunta antes del primer await: el panel pide el QR cada 5 s y dos peticiones a la vez
+  // abrirían dos sockets del mismo número, que WhatsApp tumbaría uno contra otro.
+  const c = { sock: null, estado: 'esperando', qr: null, intentos: previa?.intentos ?? 0 };
+  conexiones.set(instancia, c);
+  previa?.sock?.end(undefined);
+
+  let state, saveCreds;
+  try {
+    ({ state, saveCreds } = await estadoAuth(instancia));
+  } catch (e) {
+    c.estado = 'desconectado';
+    throw e;
+  }
+  const sock = c.sock = makeWASocket({
+    auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, silencio) },
+    logger: silencio,
+    browser: ['Zebra Data Chat', 'Chrome', '1.0'],
+    markOnlineOnConnect: false, // que el teléfono siga recibiendo notificaciones
+    syncFullHistory: false,     // el bot no necesita los chats viejos
+  });
+
+  sock.ev.on('creds.update', () => saveCreds().catch((e) => console.error(`wa ${instancia}: no pude guardar la sesión:`, e.message)));
+
+  sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
+    if (conexiones.get(instancia) !== c) return; // un socket viejo que ya se reemplazó
+    if (qr) {
+      c.qr = await QRCode.toDataURL(qr, { margin: 1, width: 264 });
+      c.estado = 'esperando';
     }
-
-    // Un turno tarda entre 10 y 30 s y Evolution corta a los 30: se acepta y se responde aparte.
-    res.json({ ok: true });
-
-    const { event, data, sender, instance } = req.body ?? {};
-    if (event !== 'messages.upsert') return;
-
-    // De qué número es el aviso: lo dice la URL, una por número. El cuerpo y el entorno son el
-    // respaldo para el webhook viejo, que apunta a /api/whatsapp a secas.
-    const instancia = req.params.instancia || instance || process.env.EVOLUTION_INSTANCE;
-    const jid = data?.key?.remoteJid ?? '';
-    if (!instancia) return console.log(JSON.stringify({ wa: jid, ignorado: 'no sé de qué número es el aviso' }));
-
-    // Preguntar quién soy solo para los grupos de la lista: los demás no gastan ni una llamada.
-    const permitidos = await gruposDe(instancia);
-    const veredicto = debeResponder({
-      data,
-      mias: permitidos.has(jid) ? await identidades(instancia, jid, sender) : new Set(),
-      permitidos,
-    });
-    if (!veredicto.responder) {
-      return console.log(JSON.stringify({ wa: jid, instancia, ignorado: veredicto.motivo }));
+    if (connection === 'open') {
+      Object.assign(c, { estado: 'conectado', qr: null, intentos: 0 });
+      console.log(JSON.stringify({ wa: instancia, conectado: numero(sock.user?.id) }));
     }
-    void responder({ ...veredicto, instancia });
-  };
+    if (connection !== 'close') return;
 
-  app.post('/api/whatsapp', atender);            // el webhook viejo, de cuando había un solo número
-  app.post('/api/whatsapp/:instancia', atender); // el de cada número
+    const codigo = lastDisconnect?.error?.output?.statusCode;
+    c.estado = 'desconectado';
+    c.qr = null;
+    if (codigo === DisconnectReason.loggedOut) {
+      // Lo desvincularon desde el teléfono: las llaves ya no valen, se olvidan.
+      await borrarSesion(instancia).catch((e) => console.error(`wa ${instancia}:`, e.message));
+      return console.log(JSON.stringify({ wa: instancia, desvinculado: 'desde el teléfono' }));
+    }
+    // Sin vincular y sin escanear a tiempo: el QR caducó. Se espera a que lo pidan otra vez desde
+    // el panel, en vez de generar códigos para siempre.
+    const sinVincular = !state.creds.me && codigo !== DisconnectReason.restartRequired;
+    if (c.desvinculando || sinVincular || SIN_REINTENTO.has(codigo)) {
+      return console.log(JSON.stringify({ wa: instancia, cerrado: codigo ?? 'sin código' }));
+    }
+    // 515 llega justo después de escanear el QR y pide reabrir; lo demás son cortes de red.
+    const espera = codigo === DisconnectReason.restartRequired ? 0 : Math.min(60_000, 2_000 * 2 ** c.intentos++);
+    console.log(JSON.stringify({ wa: instancia, reconecta_en_ms: espera, codigo }));
+    setTimeout(() => conectar(instancia).catch((e) => console.error(`wa ${instancia}:`, e.message)), espera);
+  });
+
+  sock.ev.on('messages.upsert', ({ messages, type }) => {
+    if (type !== 'notify') return; // 'append' es historial que llega al vincular, no mensajes nuevos
+    for (const data of messages) atender(instancia, sock, data).catch((e) => console.error(`wa ${instancia}:`, e.message));
+  });
+}
+
+async function atender(instancia, sock, data) {
+  const jid = data?.key?.remoteJid ?? '';
+  if (!esGrupo(jid)) return; // privados y estados ni se registran: no hay nada que decidir
+  const permitidos = await gruposDe(instancia);
+  const veredicto = debeResponder({ data, mias: misNombres(sock.user), permitidos });
+  if (!veredicto.responder) return console.log(JSON.stringify({ wa: jid, instancia, ignorado: veredicto.motivo }));
+  void responder({ ...veredicto, instancia });
+}
+
+/** Los grupos donde está el teléfono, para elegirlos en el panel. */
+export async function gruposDelTelefono(instancia) {
+  const c = conexiones.get(instancia);
+  if (c?.estado !== 'conectado') throw new Error('Ese número no está conectado.');
+  return Object.values(await c.sock.groupFetchAllParticipating())
+    .map((g) => ({ jid: g.id, nombre: g.subject, miembros: g.participants?.length ?? g.size ?? null }));
+}
+
+/** Desvincula el teléfono y olvida sus llaves. El número y sus grupos se quedan. */
+export async function desvincular(instancia) {
+  const c = conexiones.get(instancia);
+  if (c) {
+    c.desvinculando = true;
+    await c.sock?.logout().catch(() => {}); // si ya estaba caído, no hay nada que avisar a WhatsApp
+    conexiones.delete(instancia);
+  }
+  await borrarSesion(instancia);
+}
+
+/** Al arrancar: reconecta los números que ya estaban vinculados. Los demás esperan al panel. */
+export async function arrancarWhatsapp() {
+  const vinculados = await conSesion();
+  for (const instancia of vinculados) await conectar(instancia);
+  return vinculados;
 }

@@ -1,11 +1,8 @@
--- Base del dashboard: servicio "zebra-mcp_db" del proyecto zebra-mcp, base "zebra-mcp".
--- Aquí vive lo que se administra desde el panel. Las claves de API NO: esas siguen en el entorno.
--- Re-ejecutable: aplicarlo dos veces no hace daño.
+-- Base del dashboard: lo que se administra desde el panel. Las claves de API NO: esas siguen en el
+-- entorno. El servidor lo aplica solo al arrancar; es re-ejecutable, aplicarlo dos veces no hace daño.
 --
---   docker exec -i $(docker ps -q -f name=zebra-mcp_db) psql -U postgres -d zebra-mcp -f -   < app-schema.sql
---
--- ponytail: la app entra como "postgres" a su propia base, que solo guarda preferencias.
--- Si algún día guarda datos de clientes, toca un rol propio sin permisos de DDL.
+-- ponytail: la app entra como "postgres" a su propia base, que guarda preferencias y la sesión de
+-- WhatsApp. Si algún día guarda datos de clientes, toca un rol propio sin permisos de DDL.
 
 -- Qué proveedor y modelo responden. Clave/valor para no migrar la tabla por cada preferencia nueva.
 create table if not exists ajustes (
@@ -15,8 +12,7 @@ create table if not exists ajustes (
   por         text                                  -- correo de quien lo cambió, para saber a quién preguntar
 );
 
--- Los números de WhatsApp del bot. El nombre es el de la instancia en Evolution y va dentro de
--- una URL, así que el servidor lo valida contra /^[a-z0-9][a-z0-9_-]{2,30}$/ antes de crearlo.
+-- Los números de WhatsApp del bot. El nombre identifica la conexión y va dentro de una URL, así que el servidor lo valida contra /^[a-z0-9][a-z0-9_-]{2,30}$/ antes de crearlo.
 create table if not exists wa_numeros (
   instancia text primary key,                       -- "zebra-bot"
   etiqueta  text,                                   -- "Bot Zebra", para leerlo en el panel
@@ -36,3 +32,12 @@ alter table wa_grupos add column if not exists instancia text references wa_nume
 alter table wa_grupos add column if not exists por text;
 alter table wa_grupos alter column instancia set not null;
 create index if not exists wa_grupos_instancia on wa_grupos (instancia);
+
+-- La sesión de cada número: las llaves del dispositivo vinculado. Sin esto, cada despliegue
+-- obligaría a escanear el QR otra vez. Quien lea esta tabla puede hacerse pasar por el bot.
+create table if not exists wa_sesion (
+  instancia text not null references wa_numeros(instancia) on delete cascade,
+  clave     text not null,                          -- 'creds' o '<tipo>-<id>': pre-key, session, sender-key…
+  valor     jsonb not null,                         -- serializado con BufferJSON de Baileys
+  primary key (instancia, clave)
+);
