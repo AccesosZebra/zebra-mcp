@@ -196,25 +196,206 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
 .aj-badge{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
 .aj-card select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font-size:13px;color:var(--fg)}
 .aj-card select:disabled{opacity:.5;cursor:not-allowed}
-.wa-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:18px 20px;max-width:580px}
-.wa-estado{margin:6px 0 2px;font-size:18px;font-weight:600}
-.wa-detalle{margin:2px 0;color:var(--muted);font-size:13px}
-.wa-detalle code{font-family:var(--font-mono);font-size:.9em}
-.wa-acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.wa-lista{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
-.wa-lista li{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px}
-.wa-lista .nombre{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.wa-lista .cliente{color:var(--muted);font-size:12px;white-space:nowrap}
-.wa-lista .jid{font-family:var(--font-mono);font-size:11px;color:var(--faint)}
-.wa-lista button{background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:8px;padding:4px 8px;font-size:11px;cursor:pointer}
-.wa-lista button:hover{color:var(--fg);border-color:var(--accent)}
-.wa-vacio{color:var(--muted);font-size:13px;margin:10px 0 0}
-/* Campos de texto: el de añadir número vive en .wa-card y el de cliente dentro de cada fila de
-   grupo, en .wa-lista. Selectores que no se solapan, para que ninguno tenga que ganarle al otro. */
-.wa-card input[type="text"]{flex:1;min-width:150px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:inherit;font-size:13px;color:var(--fg)}
-.wa-lista input[type="text"]{width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:4px 8px;font:inherit;font-size:12px;color:var(--fg)}
-.wa-qr{margin-top:16px}
-.wa-qr img{display:block;width:264px;height:264px;background:#fff;padding:10px;border-radius:10px}
+/* ── Integración WA: réplica del mockup de Stitch. Grises fríos (slate) y esmeralda en claro;
+   en oscuro, la misma pieza sobre las superficies que el mockup trae en su config (#11151c).
+   Los grises de texto chico y el verde de texto suben un tono respecto al mockup: slate-400 y
+   emerald-600 sobre blanco no llegan a AA (2.6:1 y 3.8:1). ───────────────────────────────── */
+#wa{
+  --wa-card:#fff; --wa-line:rgba(226,232,240,.8); --wa-line2:#e2e8f0; --wa-line3:#cbd5e1; --wa-divide:#f1f5f9;
+  --wa-ink:#0f172a; --wa-ink2:#334155; --wa-text:#475569; --wa-soft:#64748b; --wa-icon:#94a3b8;
+  --wa-chip:#f1f5f9; --wa-well:rgba(248,250,252,.8); --wa-hover:rgba(248,250,252,.7);
+  --wa-btn:#0f172a; --wa-btn-hover:#000; --wa-on-btn:#fff; --wa-plus:#34d399;
+  --wa-ok:#047857; --wa-ok-dot:#10b981; --wa-ok-ping:#34d399; --wa-ok-bg:#ecfdf5; --wa-ok-line:#d1fae5;
+  --wa-ok-tile:rgba(16,185,129,.1); --wa-ok-tile-line:rgba(16,185,129,.2); --wa-ok-icon:#059669;
+  --wa-warn:#b45309; --wa-warn-dot:#f59e0b; --wa-warn-bg:#fffbeb; --wa-warn-line:#fef3c7;
+  --wa-bad:#be123c; --wa-bad-bg:rgba(255,241,242,.7); --wa-bad-line:rgba(254,205,211,.7); --wa-bad-hover:#ffe4e6;
+  --wa-glow:#ecfdf5; --wa-ring:#0f172a; --wa-sel:#d1fae5; --wa-on-sel:#064e3b;
+  --wa-sh-s:0 1px 2px 0 rgba(0,0,0,.03),0 1px 6px -1px rgba(0,0,0,.02);
+  --wa-sh-c:0 4px 20px -2px rgba(0,0,0,.05);
+  --wa-sh-x:0 1px 2px 0 rgba(0,0,0,.05);
+  --wa-sh-btn:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+  --wa-sh-btn2:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
+  gap:28px;padding:24px 6px 40px;
+}
+body[data-theme="dark"] #wa{
+  --wa-card:#11151c; --wa-line:#1e2430; --wa-line2:#232a36; --wa-line3:#2f3846; --wa-divide:#1a202a;
+  --wa-ink:#f1f5f9; --wa-ink2:#e2e8f0; --wa-text:#cbd5e1; --wa-soft:#94a3b8; --wa-icon:#64748b;
+  --wa-chip:#1a202a; --wa-well:#0d1117; --wa-hover:#141a22;
+  --wa-btn:#f1f5f9; --wa-btn-hover:#fff; --wa-on-btn:#0f172a; --wa-plus:#059669;
+  --wa-ok:#34d399; --wa-ok-bg:rgba(16,185,129,.1); --wa-ok-line:rgba(16,185,129,.25);
+  --wa-ok-tile:rgba(16,185,129,.12); --wa-ok-tile-line:rgba(16,185,129,.28); --wa-ok-icon:#34d399;
+  --wa-warn:#fbbf24; --wa-warn-bg:rgba(245,158,11,.1); --wa-warn-line:rgba(245,158,11,.25);
+  --wa-bad:#fb7185; --wa-bad-bg:rgba(244,63,94,.08); --wa-bad-line:rgba(244,63,94,.3); --wa-bad-hover:rgba(244,63,94,.16);
+  --wa-glow:rgba(16,185,129,.14); --wa-ring:#f1f5f9; --wa-sel:rgba(16,185,129,.35); --wa-on-sel:#fff;
+  --wa-sh-s:0 1px 2px 0 rgba(0,0,0,.4); --wa-sh-c:0 4px 20px -2px rgba(0,0,0,.45); --wa-sh-x:0 1px 2px 0 rgba(0,0,0,.35);
+  --wa-sh-btn:0 4px 6px -1px rgba(0,0,0,.4); --wa-sh-btn2:0 10px 15px -3px rgba(0,0,0,.5);
+}
+/* #wa es una columna de alto fijo con scroll: sin esto, las tarjetas con overflow:hidden se
+   encogen en vez de empujar el scroll, y la de añadir número salía aplastada. */
+#wa > *{flex-shrink:0}
+#wa ::selection{background:var(--wa-sel);color:var(--wa-on-sel)}
+#wa h2,#wa h3,#wa h4,#wa p,#wa ol,#wa ul{margin:0}
+#wa svg{flex:none}
+#wa button{font:inherit;cursor:pointer}
+#wa button:disabled{cursor:default;opacity:.6}
+#wa button:focus-visible,#wa input:focus-visible{outline:none;box-shadow:0 0 0 2px var(--wa-card),0 0 0 4px var(--wa-ring)}
+.wa-mono{font-family:var(--font-mono)}
+
+.wa-alert{font-size:13px;color:var(--wa-bad);background:var(--wa-bad-bg);border:1px solid var(--wa-bad-line);border-radius:12px;padding:10px 14px}
+
+/* Añadir un número */
+.wa-add{position:relative;overflow:hidden;background:var(--wa-card);border:1px solid var(--wa-line);border-radius:16px;box-shadow:var(--wa-sh-s);padding:24px;transition:border-color .2s var(--ease)}
+.wa-add:hover{border-color:var(--wa-line3)}
+.wa-add::before{content:"";position:absolute;right:-64px;top:-64px;width:224px;height:224px;border-radius:50%;background:var(--wa-glow);filter:blur(64px);opacity:.7;pointer-events:none}
+.wa-add-top{position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
+.wa-add-copy{display:flex;flex-direction:column;gap:12px;max-width:672px}
+.wa-chip-title{align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--wa-text);background:var(--wa-chip);padding:4px 10px;border-radius:6px;line-height:1.5}
+.wa-add-copy > p{font-size:14px;line-height:1.625;color:var(--wa-text)}
+.wa-steps{list-style:none;padding:8px 0 4px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.wa-steps li{display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;font-weight:500;color:var(--wa-text);background:var(--wa-well);border:1px solid var(--wa-line);border-radius:12px;padding:10px}
+.wa-steps li span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-step-n{width:20px;height:20px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--wa-btn);color:var(--wa-on-btn);font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.wa-qr-hint{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:128px;flex:none;padding:12px;border:1px dashed var(--wa-line2);border-radius:12px;background:var(--wa-well);text-align:center;font-size:10px;font-weight:500;color:var(--wa-soft)}
+.wa-qr-hint svg{width:32px;height:32px;color:var(--wa-icon)}
+.wa-add-form{position:relative;margin-top:24px;padding-top:20px;border-top:1px solid var(--wa-divide);display:flex;align-items:center;gap:12px}
+.wa-input{position:relative;flex:1;min-width:0;display:block}
+.wa-input svg{position:absolute;left:14px;top:50%;width:16px;height:16px;transform:translateY(-50%);color:var(--wa-icon);stroke-width:2;pointer-events:none}
+#wa .wa-input input{width:100%;padding:10px 16px 10px 40px;font:500 14px/1.43 'Inter',system-ui,sans-serif;color:var(--wa-ink);background:var(--wa-well);border:1px solid var(--wa-line3);border-radius:12px;caret-color:var(--wa-ok-icon);transition:background .15s var(--ease),box-shadow .15s var(--ease),border-color .15s var(--ease)}
+#wa .wa-input input::placeholder{color:var(--wa-soft)}
+#wa .wa-input input:focus{outline:none;background:var(--wa-card);border-color:transparent;box-shadow:0 0 0 2px var(--wa-ring)}
+.wa-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;padding:10px 20px;border:0;border-radius:12px;background:var(--wa-btn);color:var(--wa-on-btn);font-size:14px;font-weight:600;letter-spacing:-.01em;box-shadow:var(--wa-sh-btn);transition:background .15s var(--ease),box-shadow .15s var(--ease),transform .15s var(--ease)}
+.wa-primary:hover:not(:disabled){background:var(--wa-btn-hover);box-shadow:var(--wa-sh-btn2)}
+.wa-primary:active:not(:disabled){transform:scale(.98)}
+.wa-primary svg{width:16px;height:16px;color:var(--wa-plus);stroke-width:2.2}
+.wa-hint{position:relative;margin-top:8px;font-size:12px;color:var(--wa-soft)}
+.wa-hint .wa-mono{color:var(--wa-ink2)}
+
+/* Tarjeta de cada número */
+.wa-nums{display:flex;flex-direction:column;gap:28px}
+.wa-none{border:1px dashed var(--wa-line3);border-radius:16px;padding:28px 24px;text-align:center;font-size:14px;color:var(--wa-soft);background:var(--wa-card)}
+.wa-num{background:var(--wa-card);border:1px solid var(--wa-line);border-radius:16px;box-shadow:var(--wa-sh-c);overflow:hidden}
+.wa-num-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px;border-bottom:1px solid var(--wa-divide);background:linear-gradient(to right,var(--wa-card),var(--wa-card) 50%,var(--wa-hover))}
+.wa-num-id{flex:1 1 auto;display:flex;align-items:center;gap:16px;min-width:0}
+.wa-num-txt{min-width:0}
+.wa-avatar{position:relative;flex:none}
+.wa-avatar-tile{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:var(--wa-chip);border:1px solid var(--wa-line2);color:var(--wa-soft);box-shadow:var(--wa-sh-x)}
+.wa-avatar-tile svg{width:24px;height:24px;stroke-width:1.8}
+.wa-avatar[data-estado="conectado"] .wa-avatar-tile{background:var(--wa-ok-tile);border-color:var(--wa-ok-tile-line);color:var(--wa-ok-icon)}
+.wa-dot{position:absolute;top:-4px;right:-4px;width:14px;height:14px}
+.wa-dot-core{position:absolute;inset:0;border-radius:50%;background:var(--wa-icon);border:2px solid var(--wa-card)}
+.wa-dot-ping{position:absolute;inset:0;border-radius:50%;opacity:0}
+.wa-avatar[data-estado="conectado"] .wa-dot-core{background:var(--wa-ok-dot)}
+.wa-avatar[data-estado="conectado"] .wa-dot-ping{background:var(--wa-ok-ping);opacity:.75;animation:wa-pulso 2.2s cubic-bezier(.4,0,.6,1) infinite}
+.wa-avatar[data-estado="esperando"] .wa-dot-core{background:var(--wa-warn-dot)}
+@keyframes wa-pulso{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:.35;transform:scale(1.15)}}
+.wa-num-title{display:flex;align-items:center;gap:10px;min-width:0}
+.wa-num-title h3{font-size:18px;font-weight:700;letter-spacing:-.015em;color:var(--wa-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-badge{flex:none;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:1.5;padding:2px 8px;border-radius:6px;border:1px solid transparent;background:var(--wa-chip);color:var(--wa-text)}
+.wa-badge[data-estado="conectado"]{background:var(--wa-btn);color:var(--wa-on-btn);box-shadow:var(--wa-sh-x)}
+.wa-badge[data-estado="esperando"]{background:var(--wa-warn-bg);color:var(--wa-warn);border-color:var(--wa-warn-line)}
+.wa-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:4px;font-size:12px;color:var(--wa-soft)}
+.wa-meta-k{margin-right:4px}
+.wa-meta > span{white-space:nowrap}
+.wa-mono-chip{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--wa-ink2);background:var(--wa-chip);padding:2px 6px;border-radius:4px}
+.wa-meta strong{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--wa-ink2)}
+.wa-sep{color:var(--wa-line3)}
+.wa-vivo{display:flex;align-items:center;gap:4px;margin-top:4px;font-size:12px;font-weight:500;color:var(--wa-ok)}
+.wa-vivo svg{width:12px;height:12px;stroke-width:2}
+/* Los botones no se parten: el que cede espacio es el bloque de la izquierda, cuya línea de datos sí puede bajar. */
+.wa-actions{flex:none;display:flex;gap:8px;justify-content:flex-end}
+.wa-btn{height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 16px;font-size:12px;font-weight:600;white-space:nowrap;color:var(--wa-ink2);background:var(--wa-card);border:1px solid var(--wa-line3);border-radius:8px;box-shadow:var(--wa-sh-x);transition:background .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease)}
+.wa-btn:hover:not(:disabled){background:var(--wa-well);border-color:var(--wa-icon)}
+.wa-btn svg{width:14px;height:14px;color:var(--wa-soft);stroke-width:2}
+.wa-btn{max-width:100%;min-width:0}
+.wa-btn > span:not(.wa-pill){overflow:hidden;text-overflow:ellipsis}
+.wa-btn.is-dark{background:var(--wa-btn);border-color:var(--wa-btn);color:var(--wa-on-btn)}
+.wa-btn.is-dark svg{color:var(--wa-plus)}
+.wa-btn.is-dark:hover:not(:disabled){background:var(--wa-btn-hover);border-color:var(--wa-btn-hover)}
+.wa-btn.is-danger,.wa-btn[data-confirmar="1"]{color:var(--wa-bad);background:var(--wa-bad-bg);border-color:var(--wa-bad-line)}
+.wa-btn.is-danger:hover:not(:disabled),.wa-btn[data-confirmar="1"]:hover{background:var(--wa-bad-hover);border-color:var(--wa-bad-line)}
+.wa-pill{font-family:var(--font-mono);font-size:10px;font-weight:500;padding:2px 6px;border-radius:999px;background:var(--wa-chip);color:var(--wa-text);margin-left:2px;font-variant-numeric:tabular-nums}
+
+.wa-num-body{padding:24px}
+.wa-bloque + .wa-bloque{margin-top:28px}
+.wa-sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.wa-sec-head h4{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--wa-soft)}
+.wa-sec-head p{margin-top:2px;font-size:12px;color:var(--wa-soft)}
+.wa-count{font-size:12px;font-weight:500;color:var(--wa-soft)}
+.wa-count strong{color:var(--wa-ink);font-weight:700}
+.wa-rows{list-style:none;padding:0;background:var(--wa-card);border:1px solid var(--wa-line2);border-radius:12px;box-shadow:var(--wa-sh-x);overflow:hidden}
+.wa-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;transition:background .15s var(--ease)}
+.wa-row + .wa-row{border-top:1px solid var(--wa-divide)}
+.wa-row:hover{background:var(--wa-hover)}
+.wa-row-id{display:flex;align-items:center;gap:14px;min-width:0}
+.wa-initials{width:36px;height:36px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--wa-ink2);background:var(--wa-chip);border:1px solid var(--wa-line2)}
+.wa-row-txt{min-width:0}
+.wa-row-name{display:flex;align-items:center;gap:8px;min-width:0}
+.wa-row-name p{font-size:14px;font-weight:600;color:var(--wa-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-row-name p.is-vacio{font-weight:500;font-style:italic;color:var(--wa-soft)}
+.wa-tag{flex:none;font-size:10px;font-weight:500;line-height:1.5;padding:2px 8px;border-radius:4px;border:1px solid var(--wa-ok-line);background:var(--wa-ok-bg);color:var(--wa-ok)}
+.wa-tag.is-warn{border-color:var(--wa-warn-line);background:var(--wa-warn-bg);color:var(--wa-warn)}
+.wa-row-jid{margin-top:2px;font-family:var(--font-mono);font-size:12px;letter-spacing:-.025em;color:var(--wa-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-row-act{display:flex;align-items:center;gap:12px;flex:none}
+.wa-quitar{padding:6px 14px;font-size:12px;font-weight:500;color:var(--wa-text);background:transparent;border:1px solid var(--wa-line2);border-radius:8px;transition:color .15s var(--ease),border-color .15s var(--ease),background .15s var(--ease)}
+.wa-quitar:hover,.wa-quitar[data-confirmar="1"]{color:var(--wa-bad);border-color:var(--wa-bad-line);background:var(--wa-bad-bg)}
+#wa .wa-row-act input{width:160px;padding:6px 10px;font:500 12px/1.5 'Inter',system-ui,sans-serif;color:var(--wa-ink);background:var(--wa-well);border:1px solid var(--wa-line3);border-radius:8px;caret-color:var(--wa-ok-icon)}
+#wa .wa-row-act input::placeholder{color:var(--wa-soft)}
+#wa .wa-row-act input:focus{outline:none;background:var(--wa-card);border-color:transparent;box-shadow:0 0 0 2px var(--wa-ring)}
+.wa-atender{padding:6px 14px;font-size:12px;font-weight:600;color:var(--wa-on-btn);background:var(--wa-btn);border:1px solid var(--wa-btn);border-radius:8px;transition:background .15s var(--ease)}
+.wa-atender:hover:not(:disabled){background:var(--wa-btn-hover)}
+.wa-empty{border:1px dashed var(--wa-line3);border-radius:12px;padding:20px;text-align:center;font-size:13px;color:var(--wa-soft)}
+.wa-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;font-size:12px;color:var(--wa-soft)}
+.wa-foot-estado{display:inline-flex;align-items:center;gap:6px}
+.wa-foot-estado svg{width:16px;height:16px;stroke-width:2;color:var(--wa-icon)}
+.wa-foot-estado[data-estado="conectado"] svg{color:var(--wa-ok-dot)}
+.wa-foot-estado[data-estado="esperando"] svg{color:var(--wa-warn-dot)}
+.wa-link{display:inline-flex;align-items:center;gap:4px;padding:0;background:none;border:0;font-size:12px;font-weight:600;color:var(--wa-ink);text-underline-offset:3px}
+.wa-link:hover{text-decoration:underline}
+.wa-link svg{width:13px;height:13px;stroke-width:2.2}
+
+/* El QR vive dentro de la tarjeta del número que se está vinculando */
+.wa-qr{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:28px;padding:20px;margin-bottom:28px;background:var(--wa-well);border:1px solid var(--wa-line2);border-radius:12px}
+.wa-qr-frame{width:232px;height:232px;display:grid;place-items:center;background:#fff;border:1px solid var(--wa-line2);border-radius:12px;box-shadow:var(--wa-sh-s);overflow:hidden}
+.wa-qr-frame img{width:100%;height:100%;padding:10px;display:block}
+.wa-qr-espera{font-size:12px;color:#64748b}
+.wa-qr-copy{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.wa-qr-copy h4{font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--wa-ink)}
+.wa-qr-pasos{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:paso}
+.wa-qr-pasos li{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5;color:var(--wa-text);counter-increment:paso}
+.wa-qr-pasos li::before{content:counter(paso);width:20px;height:20px;flex:none;margin-top:1px;border-radius:50%;display:grid;place-items:center;background:var(--wa-btn);color:var(--wa-on-btn);font-size:10px;font-weight:700}
+.wa-qr-pasos strong{color:var(--wa-ink);font-weight:600}
+.wa-qr-copy .wa-hint{margin-top:0}
+
+@media (min-width:1024px){
+  .wa-add,.wa-num-head{padding:28px}
+}
+@media (max-width:1023px){ .wa-qr-hint{display:none} }
+@media (max-width:1023px){
+  .wa-num-head{flex-direction:column;align-items:flex-start}
+  .wa-actions{flex:initial;align-self:stretch;flex-wrap:wrap;justify-content:flex-start}
+}
+@media (max-width:767px){
+  /* Apilada, la línea de datos no necesita separadores: cada dato va en su renglón. */
+  .wa-meta{flex-direction:column;align-items:flex-start;gap:4px}
+  .wa-sep{display:none}
+}
+@media (max-width:639px){
+  .wa-steps{grid-template-columns:1fr}
+  .wa-add-form{flex-direction:column;align-items:stretch}
+  .wa-add,.wa-num-head,.wa-num-body{padding:20px}
+  .wa-row{flex-direction:column;align-items:stretch;padding:14px 16px}
+  /* A este ancho se lee mejor un nombre en dos renglones que cortado a la mitad. */
+  .wa-row-name,.wa-num-title{flex-wrap:wrap;row-gap:4px}
+  .wa-row-name p,.wa-num-title h3{white-space:normal;overflow-wrap:anywhere}
+  .wa-row-act{justify-content:flex-end;flex-wrap:wrap}
+  #wa .wa-row-act input{flex:1;width:auto;min-width:0}
+  .wa-qr{grid-template-columns:1fr;justify-items:center;text-align:left}
+  .wa-qr-frame{width:min(232px,100%);height:auto;aspect-ratio:1}
+}
+@media (prefers-reduced-motion:reduce){
+  .wa-dot-ping{animation:none!important}
+  .wa-primary:active:not(:disabled){transform:none}
+}
 
 @media (max-width:900px){
   .app{padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 8px)}
@@ -241,6 +422,13 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
   <symbol id="i-settings" viewBox="0 0 24 24"><path d="M10.3 4.3a2 2 0 0 1 3.4 0l.4.7a2 2 0 0 0 2.3 1l.8-.3a2 2 0 0 1 2.4 2.4l-.2.8a2 2 0 0 0 1 2.3l.7.4a2 2 0 0 1 0 3.4l-.7.4a2 2 0 0 0-1 2.3l.2.8a2 2 0 0 1-2.4 2.4l-.8-.2a2 2 0 0 0-2.3 1l-.4.7a2 2 0 0 1-3.4 0l-.4-.7a2 2 0 0 0-2.3-1l-.8.2a2 2 0 0 1-2.4-2.4l.2-.8a2 2 0 0 0-1-2.3l-.7-.4a2 2 0 0 1 0-3.4l.7-.4a2 2 0 0 0 1-2.3l-.2-.8a2 2 0 0 1 2.4-2.4l.8.3a2 2 0 0 0 2.3-1l.4-.7Z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-admin" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3Z"/><rect x="9.5" y="11" width="5" height="4" rx="1"/><path d="M10.5 11V9.8a1.5 1.5 0 0 1 3 0V11"/></symbol>
   <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.12a7.5 7.5 0 0 1 15 0A17.93 17.93 0 0 1 12 21.75c-2.68 0-5.22-.58-7.5-1.63Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 0 0-5.36-1.86M17 20H7m10 0v-2c0-.66-.13-1.28-.36-1.86M7 20H2v-2a3 3 0 0 1 5.36-1.86M7 20v-2c0-.66.13-1.28.36-1.86m0 0a5 5 0 0 1 9.28 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1Zm12 0h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1ZM5 20h2a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1Z"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.42-4.03 8-9 8a9.86 9.86 0 0 1-4.26-.95L3 20l1.4-3.72A7.7 7.7 0 0 1 3 12c0-4.42 4.03-8 9-8s9 3.58 9 8Z"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
 </svg>
 
@@ -333,22 +521,48 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
   </section>
 
   <section id="wa" hidden>
-    <div class="wa-card">
-      <p class="section-label">Añadir un número</p>
-      <p class="wa-detalle">Cada teléfono que vaya a contestar se añade una vez: le pones un nombre para reconocerlo, escaneas el QR con ese teléfono y eliges en qué grupos contesta.</p>
-      <div class="wa-acciones">
-        <input type="text" id="wa-etiqueta" maxlength="60" placeholder="Nombre, p. ej. Bot Zebra" aria-label="Nombre del número">
-        <button type="button" class="btn" id="wa-crear">Añadir número</button>
+    <p class="wa-alert" id="wa-error" role="alert" hidden></p>
+
+    <div class="wa-add">
+      <div class="wa-add-top">
+        <div class="wa-add-copy">
+          <h2 class="wa-chip-title">Añadir un número</h2>
+          <p>Cada teléfono que vaya a contestar se añade una sola vez: ponle un nombre descriptivo para reconocerlo, escaneas el código QR con tu WhatsApp y eliges en qué grupos participa.</p>
+          <ol class="wa-steps">
+            <li><span class="wa-step-n">1</span><span>Nombra tu bot</span></li>
+            <li><span class="wa-step-n">2</span><span>Escanea el código QR</span></li>
+            <li><span class="wa-step-n">3</span><span>Asigna los grupos</span></li>
+          </ol>
+        </div>
+        <div class="wa-qr-hint" aria-hidden="true"><svg><use href="#i-qr"/></svg><span>QR dinámico</span></div>
       </div>
-      <p class="wa-detalle" id="wa-conexion" hidden></p>
-      <p class="form-error" id="wa-error" hidden></p>
+      <form class="wa-add-form" id="wa-form">
+        <label class="wa-input">
+          <svg aria-hidden="true"><use href="#i-user"/></svg>
+          <input type="text" id="wa-etiqueta" maxlength="60" placeholder="Nombre, p. ej. Bot Zebra Ventas" aria-label="Nombre del número" autocomplete="off">
+        </label>
+        <button type="submit" class="wa-primary" id="wa-crear"><svg aria-hidden="true"><use href="#i-plus"/></svg><span id="wa-crear-txt">Añadir número</span></button>
+      </form>
+      <p class="wa-hint" id="wa-conexion" hidden></p>
     </div>
 
-    <div class="aj-proveedores" id="wa-numeros"></div>
+    <div class="wa-nums" id="wa-numeros"></div>
 
     <div class="wa-qr" id="wa-qr" hidden>
-      <img id="wa-qr-img" alt="Código QR para vincular WhatsApp" width="264" height="264">
-      <p class="wa-detalle" id="wa-qr-detalle">En el teléfono del bot abre WhatsApp, entra en Dispositivos vinculados y escanea el código. Se renueva solo cada pocos segundos.</p>
+      <div class="wa-qr-frame">
+        <img id="wa-qr-img" alt="Código QR para vincular WhatsApp" width="232" height="232" hidden>
+        <span class="wa-qr-espera" id="wa-qr-espera">Generando el código…</span>
+      </div>
+      <div class="wa-qr-copy">
+        <h4>Escanea con el teléfono del bot</h4>
+        <ol class="wa-qr-pasos">
+          <li><span>Abre WhatsApp en ese teléfono.</span></li>
+          <li><span>Entra en <strong>Dispositivos vinculados</strong> y toca <strong>Vincular dispositivo</strong>.</span></li>
+          <li><span>Apunta la cámara a este código.</span></li>
+        </ol>
+        <p class="wa-hint" id="wa-qr-detalle">El código se renueva solo cada pocos segundos.</p>
+        <button type="button" class="wa-btn" id="wa-qr-cancelar">Cancelar</button>
+      </div>
     </div>
   </section>
 </div>
@@ -583,13 +797,24 @@ document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.addEventListen
 // ── Integración WA ─────────────────────────────────────────────────────────
 const ESTADOS = {
   conectado: 'Conectado',
-  esperando: 'Esperando el escaneo',
+  esperando: 'Esperando escaneo',
   desconectado: 'Sin vincular',
-  desconocido: 'Estado desconocido',
+  desconocido: 'Desconocido',
 };
 const waError = (m) => { $('wa-error').textContent = m; $('wa-error').hidden = !m; };
-let vinculando = null; // de qué número se está mostrando el QR
-function pararQr() { clearInterval(timerQr); timerQr = null; vinculando = null; $('wa-qr').hidden = true; }
+
+// Las tarjetas se repintan enteras: el bloque del QR es uno solo y se muda a la tarjeta que se
+// está vinculando, así que se guardan las referencias antes de que salga del documento.
+const qrPanel = $('wa-qr'), qrImg = $('wa-qr-img'), qrEspera = $('wa-qr-espera'), qrDetalle = $('wa-qr-detalle');
+let vinculando = null;           // de qué número se está mostrando el QR
+let ultimos = [];                // la última lista de números, para repintar sin volver a pedirla
+const abiertos = new Set();      // números con la lista de grupos del teléfono abierta
+const totalTelefono = new Map(); // cuántos grupos tiene cada teléfono, una vez consultado
+
+function pararQr() {
+  clearInterval(timerQr); timerQr = null; vinculando = null;
+  qrPanel.hidden = true; qrImg.hidden = true; qrImg.removeAttribute('src'); qrEspera.hidden = false;
+}
 
 async function waFetch(url, opts) {
   const r = await fetch(url, opts);
@@ -617,178 +842,253 @@ function conConfirmacion(btn, aviso, fn) {
   return btn;
 }
 
+// Construir DOM sin innerHTML: nombres de grupos y clientes los escribe gente, no se interpretan.
+function h(tag, props = {}, ...hijos) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'on') for (const [ev, fn] of Object.entries(v)) el.addEventListener(ev, fn);
+    else if (k.includes('-')) el.setAttribute(k, v);
+    else el[k] = v;
+  }
+  el.append(...hijos.flat().filter((x) => x != null && x !== false));
+  return el;
+}
+const SVG = 'http://www.w3.org/2000/svg';
+function icono(id) {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(SVG, 'use');
+  use.setAttribute('href', `#${id}`);
+  svg.append(use);
+  return svg;
+}
+// "Ventas México & Leads" → "VM"; "sofia" → "SO". Sin letras (solo emoji), un punto.
+function iniciales(texto) {
+  const palabras = (texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[\p{L}\p{N}]+/gu) ?? [];
+  if (!palabras.length) return '·';
+  const [a, b] = palabras;
+  return (b ? a[0] + b[0] : a.slice(0, 2)).toUpperCase();
+}
+const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+
 async function cargarNumeros() {
   waError('');
-  const cont = $('wa-numeros');
   try {
-    const d = await waFetch('/api/wa/numeros');
-    cont.textContent = '';
-    if (!d.numeros?.length) {
-      const vacio = document.createElement('p');
-      vacio.className = 'wa-vacio';
-      vacio.textContent = 'Todavía no hay ningún número. Añade uno arriba y vincúlalo con el QR.';
-      cont.append(vacio);
-      return;
-    }
-    for (const n of d.numeros) cont.append(tarjetaNumero(n));
+    ultimos = (await waFetch('/api/wa/numeros')).numeros ?? [];
+    pintarNumeros();
   } catch (e) { waError(e.message); }
+}
+
+function pintarNumeros() {
+  const cont = $('wa-numeros');
+  cont.textContent = '';
+  if (!ultimos.length) {
+    cont.append(h('p', { class: 'wa-none' }, 'Todavía no hay ningún número. Añade uno arriba y vincúlalo con el QR.'));
+    return;
+  }
+  for (const n of ultimos) cont.append(tarjetaNumero(n));
 }
 
 function tarjetaNumero(n) {
-  const card = document.createElement('div');
-  card.className = `aj-card${n.estado === 'conectado' ? ' is-activo' : ''}`;
+  const conectado = n.estado === 'conectado';
+  const grupos = n.grupos ?? [];
+  const abierto = conectado && abiertos.has(n.instancia);
 
-  const head = document.createElement('div');
-  head.className = 'aj-head';
-  const nombre = document.createElement('span');
-  nombre.className = 'aj-nombre'; nombre.textContent = n.etiqueta || n.instancia;
-  const badge = document.createElement('span');
-  badge.className = 'aj-badge'; badge.textContent = ESTADOS[n.estado] ?? n.estado;
-  head.append(nombre, badge);
+  // Cabecera: quién es, cómo está y a quién hay que mencionar en el grupo.
+  const avatar = h('div', { class: 'wa-avatar', 'data-estado': n.estado },
+    h('div', { class: 'wa-avatar-tile' }, icono('i-user')),
+    h('span', { class: 'wa-dot', 'aria-hidden': 'true' }, h('span', { class: 'wa-dot-ping' }), h('span', { class: 'wa-dot-core' })));
 
-  // El número es a quién hay que etiquetar en el grupo: sin él, la mención nunca coincide.
-  const detalle = document.createElement('p');
-  detalle.className = 'wa-detalle';
-  detalle.textContent = n.numero
-    ? `Etiqueta a este número en el grupo: ${n.numero} · conexión ${n.instancia}`
-    : `Conexión ${n.instancia}`;
+  const meta = h('div', { class: 'wa-meta' },
+    n.numero
+      ? h('span', {}, h('span', { class: 'wa-meta-k' }, 'Mencionar a:'), h('span', { class: 'wa-mono-chip' }, n.numero))
+      : h('span', {}, n.estado === 'esperando' ? 'Esperando que escaneen el QR' : 'Ningún teléfono vinculado'),
+    h('span', { class: 'wa-sep', 'aria-hidden': 'true' }, '•'),
+    h('span', {}, 'Conexión: ', h('strong', {}, n.instancia)));
+  const vivo = conectado && grupos.length
+    ? h('p', { class: 'wa-vivo' }, icono('i-message'), `Contestando en ${plural(grupos.length, 'grupo', 'grupos')}`)
+    : null;
 
-  const acciones = document.createElement('div');
-  acciones.className = 'wa-acciones';
-  const boton = (texto) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'btn'; b.textContent = texto;
-    acciones.append(b);
-    return b;
-  };
-
-  if (n.estado === 'conectado') {
-    const ver = boton('Ver grupos del teléfono');
-    ver.addEventListener('click', () => verGrupos(n.instancia, card, ver));
-    conConfirmacion(boton('Desvincular'), 'Confirmar: dejará de responder', () => desvincular(n.instancia));
+  const acciones = h('div', { class: 'wa-actions' });
+  if (conectado) {
+    const total = totalTelefono.get(n.instancia);
+    acciones.append(
+      h('button', { type: 'button', class: 'wa-btn', 'aria-expanded': String(abierto), on: { click: () => alternarTelefono(n.instancia) } },
+        icono('i-users'),
+        h('span', {}, abierto ? 'Ocultar grupos del teléfono' : 'Ver grupos del teléfono'),
+        total != null ? h('span', { class: 'wa-pill', 'aria-label': plural(total, 'grupo', 'grupos') }, String(total)) : null),
+      conConfirmacion(h('button', { type: 'button', class: 'wa-btn' }, 'Desvincular'), 'Confirmar: dejará de responder', () => desvincular(n.instancia)));
   } else {
-    boton('Vincular teléfono').addEventListener('click', () => vincular(n.instancia));
+    acciones.append(h('button', { type: 'button', class: 'wa-btn is-dark', disabled: vinculando === n.instancia, on: { click: () => vincular(n.instancia) } },
+      icono('i-qr'), h('span', {}, vinculando === n.instancia ? 'Mostrando el QR' : 'Vincular teléfono')));
   }
-  conConfirmacion(boton('Borrar número'), 'Confirmar: se borra con sus grupos', () => borrarNumero(n.instancia));
+  acciones.append(conConfirmacion(h('button', { type: 'button', class: 'wa-btn is-danger' }, 'Borrar número'),
+    'Confirmar: se borra con sus grupos', () => borrarNumero(n.instancia)));
 
-  const grupos = document.createElement('ul');
-  grupos.className = 'wa-lista';
-  pintarGrupos(grupos, n.grupos ?? []);
+  const cabecera = h('div', { class: 'wa-num-head' },
+    h('div', { class: 'wa-num-id' }, avatar,
+      h('div', { class: 'wa-num-txt' },
+        h('div', { class: 'wa-num-title' }, h('h3', {}, n.etiqueta || n.instancia), h('span', { class: 'wa-badge', 'data-estado': n.estado }, ESTADOS[n.estado] ?? n.estado)),
+        meta, vivo)),
+    acciones);
 
-  card.append(head, detalle, acciones, grupos);
-  return card;
+  // Cuerpo: el QR si se está vinculando, los grupos donde contesta y, si se pidieron, los del teléfono.
+  const cuerpo = h('div', { class: 'wa-num-body' });
+  if (vinculando === n.instancia) { qrPanel.hidden = false; cuerpo.append(qrPanel); }
+  cuerpo.append(bloqueGrupos(n, conectado, grupos));
+  if (abierto) {
+    const telefono = h('div', { class: 'wa-bloque' });
+    cuerpo.append(telefono);
+    cargarTelefono(n.instancia, telefono);
+  }
+  cuerpo.append(h('div', { class: 'wa-foot' },
+    h('span', { class: 'wa-foot-estado', 'data-estado': n.estado },
+      icono(conectado ? 'i-check-circle' : 'i-alert'),
+      conectado ? 'Conexión directa con WhatsApp activa'
+        : n.estado === 'esperando' ? 'Esperando el escaneo del QR'
+          : 'Sin conexión: vincula el teléfono para que conteste'),
+    conectado && !abierto ? h('button', { type: 'button', class: 'wa-link', on: { click: () => alternarTelefono(n.instancia) } }, icono('i-plus'), 'Elegir grupos del teléfono') : null));
+
+  return h('section', { class: 'wa-num', 'aria-label': n.etiqueta || n.instancia }, cabecera, cuerpo);
 }
 
 // Dónde contesta este número. Solo ahí, y solo si lo mencionan o responden a un mensaje suyo.
-function pintarGrupos(ul, grupos) {
-  ul.textContent = '';
+function bloqueGrupos(n, conectado, grupos) {
+  const cabeza = h('div', { class: 'wa-sec-head' },
+    h('div', {}, h('h4', {}, 'Grupos vinculados a este número'),
+      h('p', {}, 'El bot contesta aquí solo cuando lo mencionan o responden a un mensaje suyo.')),
+    grupos.length ? h('span', { class: 'wa-count' }, 'Mostrando ', h('strong', {}, `${grupos.length} de ${grupos.length}`), grupos.length === 1 ? ' grupo' : ' grupos') : null);
+
   if (!grupos.length) {
-    const li = document.createElement('li');
-    li.textContent = 'Sin grupos: este número no contesta en ninguno.';
-    ul.append(li);
-    return;
+    return h('div', { class: 'wa-bloque' }, cabeza, h('p', { class: 'wa-empty' }, conectado
+      ? 'Todavía no contesta en ningún grupo. Abre los grupos del teléfono y elige dónde.'
+      : 'Sin grupos. Vincula el teléfono y luego elige en qué grupos contesta.'));
   }
-  for (const g of grupos) {
-    const li = document.createElement('li');
-    const cliente = document.createElement('span');
-    cliente.className = 'nombre'; cliente.textContent = g.cliente || 'sin cliente asignado';
-    const jid = document.createElement('span');
-    jid.className = 'jid'; jid.textContent = g.jid;
-    const quitar = document.createElement('button');
-    quitar.type = 'button'; quitar.textContent = 'Quitar';
-    conConfirmacion(quitar, 'Confirmar', async () => {
+
+  const filas = grupos.map((g) => {
+    const quitar = conConfirmacion(h('button', { type: 'button', class: 'wa-quitar' }, 'Quitar'), 'Confirmar', async () => {
       waError('');
-      try {
-        await waFetch(`/api/wa/grupos/${encodeURIComponent(g.jid)}`, { method: 'DELETE' });
-        cargarNumeros();
-      } catch (e) { waError(e.message); }
+      try { await waFetch(`/api/wa/grupos/${encodeURIComponent(g.jid)}`, { method: 'DELETE' }); cargarNumeros(); }
+      catch (e) { waError(e.message); }
     });
-    li.append(cliente, jid, quitar);
-    ul.append(li);
-  }
+    return h('li', { class: 'wa-row' },
+      h('div', { class: 'wa-row-id' },
+        h('span', { class: 'wa-initials', 'aria-hidden': 'true' }, iniciales(g.cliente)),
+        h('div', { class: 'wa-row-txt' },
+          h('div', { class: 'wa-row-name' },
+            h('p', { class: g.cliente ? '' : 'is-vacio' }, g.cliente || 'Sin cliente asignado'),
+            conectado ? h('span', { class: 'wa-tag' }, 'Escuchando') : h('span', { class: 'wa-tag is-warn' }, 'Sin conexión')),
+          h('p', { class: 'wa-row-jid' }, g.jid))),
+      h('div', { class: 'wa-row-act' }, quitar));
+  });
+  return h('div', { class: 'wa-bloque' }, cabeza, h('ul', { class: 'wa-rows' }, filas));
+}
+
+function alternarTelefono(instancia) {
+  if (abiertos.has(instancia)) abiertos.delete(instancia); else abiertos.add(instancia);
+  pintarNumeros();
 }
 
 // Los grupos donde está ese teléfono, para elegirlos sin copiar identificadores a mano.
-async function verGrupos(instancia, card, btn) {
-  waError('');
-  btn.disabled = true; btn.textContent = 'Cargando…';
+async function cargarTelefono(instancia, cont) {
+  const cabeza = h('div', { class: 'wa-sec-head' },
+    h('div', {}, h('h4', {}, 'Grupos del teléfono'), h('p', {}, 'Elige dónde contesta y de qué cliente es cada grupo.')));
+  cont.append(cabeza, h('p', { class: 'wa-empty' }, 'Cargando los grupos del teléfono…'));
   try {
-    const d = await waFetch(ruta(instancia, 'groups'));
-    const ul = document.createElement('ul');
-    ul.className = 'wa-lista wa-descubiertos';
-    if (!d.grupos?.length) {
-      const li = document.createElement('li');
-      li.textContent = 'Este teléfono no está en ningún grupo todavía.';
-      ul.append(li);
+    const lista = ((await waFetch(ruta(instancia, 'groups'))).grupos ?? [])
+      .sort((a, b) => (a.activo - b.activo) || (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es'));
+    const antes = totalTelefono.get(instancia);
+    totalTelefono.set(instancia, lista.length);
+    if (antes !== lista.length) {
+      // El contador del botón sale de esta consulta: se actualiza en su sitio, sin repintar.
+      const boton = cont.closest('.wa-num')?.querySelector('[aria-expanded]');
+      boton?.querySelector('.wa-pill')?.remove();
+      boton?.append(h('span', { class: 'wa-pill', 'aria-label': plural(lista.length, 'grupo', 'grupos') }, String(lista.length)));
     }
-    for (const g of d.grupos ?? []) {
-      const li = document.createElement('li');
-      const nombre = document.createElement('span');
-      nombre.className = 'nombre';
-      nombre.textContent = `${g.nombre ?? 'Sin nombre'} · ${g.miembros ?? '?'} miembros`;
-      li.append(nombre);
-      if (g.activo) {
-        const ya = document.createElement('span');
-        ya.className = 'cliente'; ya.textContent = 'ya lo atiende';
-        li.append(ya);
-      } else {
-        const cliente = document.createElement('input');
-        cliente.type = 'text'; cliente.maxLength = 80; cliente.placeholder = 'Cliente';
-        cliente.setAttribute('aria-label', `Cliente del grupo ${g.nombre ?? g.jid}`);
-        const add = document.createElement('button');
-        add.type = 'button'; add.textContent = 'Atender aquí';
-        add.addEventListener('click', async () => {
-          waError('');
-          try {
-            await waFetch('/api/wa/grupos', enviarJson({ jid: g.jid, cliente: cliente.value, instancia }));
-            cargarNumeros();
-          } catch (e) { waError(e.message); }
-        });
-        li.append(cliente, add);
-      }
-      ul.append(li);
-    }
-    card.querySelector('.wa-descubiertos')?.remove();
-    card.append(ul);
-  } catch (e) { waError(e.message); }
-  finally { btn.disabled = false; btn.textContent = 'Ver grupos del teléfono'; }
+    cont.lastChild.remove();
+    if (!lista.length) return cont.append(h('p', { class: 'wa-empty' }, 'Este teléfono no está en ningún grupo todavía.'));
+    cabeza.append(h('span', { class: 'wa-count' }, h('strong', {}, String(lista.length)), lista.length === 1 ? ' grupo' : ' grupos'));
+    cont.append(h('ul', { class: 'wa-rows' }, lista.map((g) => filaTelefono(instancia, g))));
+  } catch (e) {
+    cont.lastChild.textContent = `No pude traer los grupos: ${e.message}`;
+  }
+}
+
+function filaTelefono(instancia, g) {
+  const nombre = g.nombre || 'Grupo sin nombre';
+  let accion;
+  if (g.activo) {
+    accion = h('span', { class: 'wa-tag' }, 'Ya contesta aquí');
+  } else {
+    const cliente = h('input', { type: 'text', maxLength: 80, placeholder: 'Cliente', autocomplete: 'off', 'aria-label': `Cliente del grupo ${nombre}` });
+    const add = h('button', { type: 'button', class: 'wa-atender' }, 'Atender aquí');
+    const atender = async () => {
+      waError('');
+      add.disabled = true; add.textContent = 'Guardando…';
+      try {
+        await waFetch('/api/wa/grupos', enviarJson({ jid: g.jid, cliente: cliente.value, instancia }));
+        cargarNumeros(); // la lista del teléfono sigue abierta: se pueden elegir varios seguidos
+      } catch (e) { waError(e.message); add.disabled = false; add.textContent = 'Atender aquí'; }
+    };
+    add.addEventListener('click', atender);
+    cliente.addEventListener('keydown', (e) => { if (e.key === 'Enter') atender(); });
+    accion = [cliente, add];
+  }
+  return h('li', { class: 'wa-row' },
+    h('div', { class: 'wa-row-id' },
+      h('span', { class: 'wa-initials', 'aria-hidden': 'true' }, iniciales(g.nombre)),
+      h('div', { class: 'wa-row-txt' },
+        h('div', { class: 'wa-row-name' }, h('p', { title: nombre }, nombre)),
+        h('p', { class: 'wa-row-jid' }, g.miembros != null ? `${plural(g.miembros, 'miembro', 'miembros')} · ${g.jid}` : g.jid))),
+    h('div', { class: 'wa-row-act' }, accion));
 }
 
 async function pintarQr() {
   if (!vinculando) return pararQr();
   try {
     const d = await waFetch(ruta(vinculando, 'qr'));
-    // El bloque solo se muestra cuando ya hay imagen: sin src el navegador pinta una imagen rota.
+    // La imagen solo se muestra cuando ya existe: sin src el navegador pinta una imagen rota.
     if (d.base64) {
-      $('wa-qr-img').src = d.base64.startsWith('data:') ? d.base64 : `data:image/png;base64,${d.base64}`;
-      $('wa-qr').hidden = false;
+      qrImg.src = d.base64.startsWith('data:') ? d.base64 : `data:image/png;base64,${d.base64}`;
+      qrImg.hidden = false; qrEspera.hidden = true;
     }
     if (d.estado === 'conectado') { pararQr(); cargarNumeros(); }
-  } catch (e) { pararQr(); waError(e.message); }
+  } catch (e) { pararQr(); pintarNumeros(); waError(e.message); }
 }
 
 async function vincular(instancia) {
   waError('');
   vinculando = instancia;
-  $('wa-qr-detalle').textContent = `Escanea con el teléfono de ${instancia}: WhatsApp, Dispositivos vinculados, Vincular dispositivo. El código se renueva solo.`;
+  const n = ultimos.find((x) => x.instancia === instancia);
+  qrDetalle.textContent = `Es para ${n?.etiqueta || instancia}. El código se renueva solo cada pocos segundos.`;
+  pintarNumeros();
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  qrPanel.scrollIntoView({ block: 'nearest', behavior: quieto ? 'auto' : 'smooth' });
   await pintarQr();
   clearInterval(timerQr);
   timerQr = setInterval(pintarQr, 5000); // el QR caduca solo, así que se vuelve a pedir
+}
+$('wa-qr-cancelar').addEventListener('click', () => { pararQr(); pintarNumeros(); });
+
+async function desvincular(instancia) {
+  waError('');
+  try {
+    await waFetch(ruta(instancia, 'session'), { method: 'DELETE' });
+    abiertos.delete(instancia); totalTelefono.delete(instancia);
+    pararQr(); cargarNumeros();
+  } catch (e) { waError(e.message); }
 }
 
 async function borrarNumero(instancia) {
   waError('');
   try {
     await waFetch(`/api/wa/numeros/${encodeURIComponent(instancia)}`, { method: 'DELETE' });
+    abiertos.delete(instancia); totalTelefono.delete(instancia);
     if (vinculando === instancia) pararQr();
     cargarNumeros();
   } catch (e) { waError(e.message); }
-}
-
-async function desvincular(instancia) {
-  waError('');
-  try { await waFetch(ruta(instancia, 'session'), { method: 'DELETE' }); pararQr(); cargarNumeros(); }
-  catch (e) { waError(e.message); }
 }
 
 // El nombre interno lo deduce el navegador del que escribe la persona: un solo campo, y nadie
@@ -798,25 +1098,28 @@ const aConexion = (texto) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '')
 
 $('wa-etiqueta').addEventListener('input', (e) => {
   const conexion = aConexion(e.target.value);
-  $('wa-conexion').textContent = conexion ? `Se guardará como ${conexion}` : '';
-  $('wa-conexion').hidden = !conexion;
+  const hint = $('wa-conexion');
+  hint.textContent = '';
+  if (conexion) hint.append('Se guardará como ', h('span', { class: 'wa-mono' }, conexion));
+  hint.hidden = !conexion;
 });
 
-$('wa-crear').addEventListener('click', async () => {
+$('wa-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
   waError('');
-  const btn = $('wa-crear');
+  const btn = $('wa-crear'), txt = $('wa-crear-txt');
   const etiqueta = $('wa-etiqueta').value.trim();
   const instancia = aConexion(etiqueta);
   if (instancia.length < 3) return waError('Ponle un nombre de al menos tres letras, por ejemplo Bot Zebra.');
 
-  btn.disabled = true; btn.textContent = 'Creando…';
+  btn.disabled = true; txt.textContent = 'Creando…';
   try {
     await waFetch('/api/wa/numeros', enviarJson({ instancia, etiqueta }));
     $('wa-etiqueta').value = ''; $('wa-conexion').hidden = true;
     await cargarNumeros();
     vincular(instancia); // recién creado, lo siguiente es escanear
   } catch (e) { waError(e.message); }
-  finally { btn.disabled = false; btn.textContent = 'Añadir número'; }
+  finally { btn.disabled = false; txt.textContent = 'Añadir número'; }
 });
 
 // ── Ajustes: proveedor y modelo ────────────────────────────────────────────
