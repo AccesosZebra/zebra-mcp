@@ -189,9 +189,22 @@ body[data-view="ajustes"] #error{display:none}
 .aj-activo{margin:6px 0 2px;font-size:18px;font-weight:600}
 .aj-nota{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
 .aj-nota code{font-family:var(--font-mono);font-size:12px;padding:1px 5px;border-radius:5px;background:color-mix(in srgb,var(--fg) 8%,transparent);overflow-wrap:anywhere}
-.aj-base{flex-shrink:0;max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px 22px;display:flex;flex-direction:column;gap:16px}
-.aj-base-head h2{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
-.aj-base-head p{margin:4px 0 0;color:var(--muted);font-size:13px;line-height:1.5;max-width:68ch}
+.aj-base{flex-shrink:0;max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);transition:border-color .18s var(--ease),box-shadow .18s var(--ease)}
+.aj-base:not([open]):hover{border-color:var(--border2)}
+.aj-base[open]{box-shadow:var(--shadow-lg)}
+/* La tarjeta plegada es un resumen que se lee de un vistazo; el detalle, al abrirla. */
+.aj-base-sum{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-radius:var(--r-card)}
+.aj-base-sum::-webkit-details-marker{display:none}
+.aj-base-sum:focus-visible{outline:none;box-shadow:0 0 0 1px var(--accent)}
+.aj-base-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.aj-base-tit{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.aj-base-res{font-size:13px;color:var(--muted);line-height:1.45}
+.aj-base-res .es-falta{color:var(--danger)}
+.aj-base-ver{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+.aj-base-ver svg{width:16px;height:16px;transform:rotate(-90deg);transition:transform .2s var(--ease)}
+.aj-base[open] .aj-base-ver svg{transform:rotate(90deg)}
+.aj-base[open] .aj-base-sum{border-bottom:1px solid var(--border);border-radius:var(--r-card) var(--r-card) 0 0}
+.aj-base-body{display:flex;flex-direction:column;gap:16px;padding:18px 20px 20px}
 .aj-campos{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:12px}
 .aj-campo{display:flex;flex-direction:column;gap:6px;min-width:0}
 .aj-campo > span,.aj-guia-head label{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -212,7 +225,8 @@ body[data-view="ajustes"] #error{display:none}
 .aj-base .form-error{margin:0}
 .aj-permisos{padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
 .aj-permisos h3{margin:0;font-size:14px;font-weight:600}
-@media (max-width:700px){ .aj-campos{grid-template-columns:1fr} .aj-base{padding:16px} }
+@media (max-width:700px){ .aj-campos{grid-template-columns:1fr} .aj-base-sum,.aj-base-body{padding-left:16px;padding-right:16px} .aj-ver-txt{display:none} }
+@media (prefers-reduced-motion:reduce){ .aj-base-ver svg{transition:none} }
 .aj-proveedores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-width:900px}
 .aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
 .aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
@@ -638,11 +652,16 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     </div>
     <div class="aj-proveedores" id="aj-proveedores"></div>
 
-    <form class="aj-base" id="aj-contexto">
-      <div class="aj-base-head">
-        <h2>La base de este negocio</h2>
-        <p>Lo que el bot sabe antes de consultar: quién eres y qué hay en la base de métricas. Cada instancia tiene la suya y vale desde la pregunta siguiente.</p>
-      </div>
+    <details class="aj-base" id="aj-base">
+      <summary class="aj-base-sum">
+        <span class="aj-base-txt">
+          <span class="aj-base-tit">La base de este negocio</span>
+          <span class="aj-base-res" id="aj-resumen">Consultando…</span>
+        </span>
+        <span class="aj-base-ver" aria-hidden="true"><span class="aj-ver-txt">Ver detalle</span><svg><use href="#i-chevron"/></svg></span>
+      </summary>
+    <form class="aj-base-body" id="aj-contexto">
+      <p class="aj-nota">Lo que el bot sabe antes de consultar: quién eres y qué hay en la base de métricas. Cada instancia tiene la suya y vale desde la pregunta siguiente.</p>
       <div class="aj-campos">
         <label class="aj-campo"><span>Nombre del negocio</span><input type="text" id="aj-nombre" maxlength="60" autocomplete="off" placeholder="p. ej. Sofía Residencial"></label>
         <label class="aj-campo"><span>A qué se dedica</span><input type="text" id="aj-giro" maxlength="120" autocomplete="off" placeholder="p. ej. una desarrolladora inmobiliaria"></label>
@@ -666,6 +685,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
         <div class="aj-acciones" id="aj-permisos-acc"></div>
       </div>
     </form>
+    </details>
   </section>
 
   <section id="wa" hidden>
@@ -1398,7 +1418,9 @@ function contarGuia() {
   else if ($('aj-estado').classList.contains('es-pendiente')) estadoGuia('');
 }
 
+let ajustesVistos = null; // lo último que llegó de /api/settings, para repintar el resumen al guardar
 function pintarBase(d) {
+  ajustesVistos = d;
   const c = d.contexto ?? {};
   $('aj-nombre').maxLength = c.limites?.nombre ?? 60;
   $('aj-giro').maxLength = c.limites?.giro ?? 120;
@@ -1414,11 +1436,30 @@ function pintarBase(d) {
       : '');
   }
   contarGuia();
+  pintarResumen(d);
   const sinBase = !d.hayBase;
   for (const id of ['aj-nombre', 'aj-giro', 'aj-guia', 'aj-guardar', 'aj-borrador']) $(id).disabled = sinBase;
   if (sinBase) estadoGuia('Para guardar hace falta la base del dashboard (APP_DATABASE_URL).');
   pintarPermisos(d.permisos ?? {});
 }
+
+// Lo que se lee con la tarjeta cerrada: quién es, de dónde viene la guía y cuánto ve el bot.
+function pintarResumen(d) {
+  const c = d.contexto ?? {}, ve = d.permisos?.ve ?? {};
+  const res = $('aj-resumen');
+  res.textContent = '';
+  const quien = c.nombre ? (c.giro ? `${c.nombre}, ${c.giro}` : c.nombre) : 'Sin nombre de negocio';
+  const guia = c.guia
+    ? `Guía de ${(c.guia.length).toLocaleString('es')} caracteres${c.por === 'semilla' ? ' (la original de Zebra)' : ''}`
+    : h('span', { class: 'es-falta' }, 'Sin guía: el bot explora la base en cada pregunta');
+  const vista = ve.error ? null : `ve ${plural(ve.vistas ?? 0, 'vista', 'vistas')} en ${plural(ve.esquemas ?? 0, 'esquema', 'esquemas')}`;
+  res.append(quien, ' · ', guia, vista ? ` · ${vista}` : '');
+}
+
+// Abierta por edición a medias o un borrador sin guardar: que no se pierda de vista.
+$('aj-base').addEventListener('toggle', () => {
+  $('aj-base').querySelector('.aj-ver-txt').textContent = $('aj-base').open ? 'Ocultar' : 'Ver detalle';
+});
 
 function pintarPermisos(p) {
   const ve = p.ve ?? {};
@@ -1457,6 +1498,7 @@ $('aj-contexto').addEventListener('submit', async (e) => {
     const { contexto } = await waFetch('/api/settings/contexto', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
     guiaGuardada = { nombre: contexto.nombre, giro: contexto.giro, guia: contexto.guia };
     estadoGuia('Guardada. Vale desde la pregunta siguiente.');
+    if (ajustesVistos) pintarResumen({ ...ajustesVistos, contexto: { ...ajustesVistos.contexto, ...contexto } });
     contarGuia();
     if (contexto.nombre) { VISTAS.chat.titulo = `Pregúntale a la base de datos de ${contexto.nombre}`; }
   } catch (err) { guiaError(err.message); estadoGuia('Cambios sin guardar', 'es-pendiente'); }
@@ -1480,6 +1522,7 @@ $('aj-borrador').addEventListener('click', async () => {
     campoGuia.value = borrador;
     contarGuia();
     estadoGuia('Borrador listo: revísalo y guarda.', 'es-pendiente');
+    $('aj-base').open = true;
     campoGuia.focus(); campoGuia.setSelectionRange(0, 0); campoGuia.scrollTop = 0;
   } catch (err) { guiaError(err.message); estadoGuia(''); contarGuia(); }
   finally { btn.disabled = false; btn.textContent = 'Generar borrador con IA'; }

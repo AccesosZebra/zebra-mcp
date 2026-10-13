@@ -8,22 +8,22 @@ import { guardarAjuste, hayBase, leerAjuste } from './db.mjs';
 import { completar } from './proveedores.mjs';
 
 // La guía con la que nació el proyecto. Se siembra sola en la instancia de Zebra (ver sembrarZebra).
-export const GUIA_ZEBRA = `Base de métricas de Zebra (Postgres 17, solo lectura). Hay dos fuentes:
+export const GUIA_ZEBRA = `Base de métricas de Zebra (Postgres 17, solo lectura).
 
-1) Un esquema por cliente ("Grupo Gira", "Midstorage", "Sofía", "Zenco Desarrollos"…): vistas espejo de las
-   hojas de Sheets de ese cliente, con sufijo del cliente (casi todo texto; revisa columnas con get_schema):
-   entrada_leads_<x>, citas_agendadas_<x>, citas_realizadas_<x>, apartados_<x>, cierres_<x>,
-   ventas_perdidas_<x>, spent_campañas_<x> (gasto), glosario_asesores_<x>, perfilado_ia_<x>,
-   v_funnel_resumen_<x>, v_lead_funnel_<x>. Los esquemas "<Cliente>_callpicker" tienen llamadas.
-   Es la fuente para cualquier cliente.
+Responde SOLO con la capa canónica: los esquemas mart, crm, ops y ads. Hoy tiene un solo cliente,
+Sofía (cliente_id 'sofia'). Si preguntan por otro cliente, di que todavía no está en la capa
+canónica y no lo busques en otros esquemas.
 
-2) Capa canónica, hoy SOLO con el cliente Sofía (cliente_id 'sofia'):
-   - mart: KPIs ya calculados por cliente_id y fecha. v_kpi_diario (gasto, leads por fuente, citas,
-     apartados, cierres, valor, llamadas, presupuesto), v_kpi_campana_diario y v_cohorte_* (por campaña),
-     v_kpi_asesor_diario (por asesor), v_perdida_*, v_presupuesto_mes, v_frescura.
-   - crm: detalle de leads, eventos de etapa y llamadas. ops: clientes, presupuesto, tipo de cambio.
-   - ads: gasto diario por campaña de Meta y Google.
-   Para Sofía prefiere mart; para los demás usa su esquema.`;
+- mart: KPIs ya calculados por cliente_id y fecha. Empieza siempre aquí.
+  v_kpi_diario (gasto, leads por fuente, citas, apartados, cierres, valor, llamadas, presupuesto),
+  v_kpi_campana_diario y v_cohorte_* (por campaña), v_kpi_asesor_diario (por asesor),
+  v_perdida_*, v_presupuesto_mes, v_frescura (qué tan al día están los datos).
+- crm: detalle de leads, eventos de etapa y llamadas, para lo que mart no trae agregado.
+- ops: clientes, presupuesto, tipo de cambio.
+- ads: gasto diario por campaña de Meta y Google.
+
+Los demás esquemas (uno por cliente: "Grupo Gira", "Midstorage", "Zenco Desarrollos"…, y los
+"<Cliente>_callpicker") son copias en bruto de hojas de cálculo: no los uses para responder.`;
 
 // Sin guía, el modelo no sabe nada de la base: que explore antes de consultar, y que no adivine.
 export const GUIA_GENERICA = `Base de métricas (Postgres, solo lectura). Todavía no hay una guía que la describa:
@@ -97,11 +97,16 @@ export async function conteos() {
 }
 
 /**
- * Semilla de una sola vez: si nadie ha guardado contexto y esta es la base de Zebra (la única con
- * mart.v_kpi_diario), se guarda la guía de siempre. En el clon de un cliente no se siembra nada.
+ * Semilla: si nadie ha guardado contexto y esta es la base de Zebra (la única con
+ * mart.v_kpi_diario), se guarda la guía de Zebra. Si lo guardado es una semilla anterior que nadie
+ * editó, se pone al día; en cuanto alguien guarda desde el panel, ya no se toca. En el clon de un
+ * cliente no se siembra nada.
  */
+/** La semilla guardada es de una versión anterior y nadie la ha tocado: se puede poner al día. */
+export const semillaVieja = (c) => c?.por === 'semilla' && c.guia !== GUIA_ZEBRA;
+
 export async function sembrarZebra() {
-  if (!hayBase || contexto) return false;
+  if (!hayBase || (contexto && !semillaVieja(contexto))) return false;
   const { rows } = await lector().query(
     "select 1 from information_schema.tables where table_schema = 'mart' and table_name = 'v_kpi_diario'");
   if (!rows.length) return false;

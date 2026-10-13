@@ -21,6 +21,16 @@ assert.equal(g.quienEs({ nombre: '', giro: 'algo' }), 'este negocio', 'sin nombr
 assert.equal(await g.sembrarZebra(), false);
 await assert.rejects(g.guardarContexto({ nombre: 'X' }), /APP_DATABASE_URL/);
 
+// La guía de Zebra responde solo desde la capa canónica.
+assert.match(g.GUIA_ZEBRA, /SOLO con la capa canónica/);
+assert.match(g.GUIA_ZEBRA, /no los uses para responder/);
+
+// Una semilla vieja que nadie tocó se pone al día; lo que alguien guardó, nunca.
+assert.equal(g.semillaVieja({ por: 'semilla', guia: 'la guía de antes' }), true);
+assert.equal(g.semillaVieja({ por: 'semilla', guia: g.GUIA_ZEBRA }), false, 'ya al día');
+assert.equal(g.semillaVieja({ por: 'carlos@zebradigital.marketing', guia: 'editada' }), false);
+assert.equal(g.semillaVieja(null), false);
+
 // Validación: recorta espacios, respeta topes, rechaza tipos raros.
 assert.deepEqual(g.validarContexto({ nombre: ' A ', giro: '', guia: ' g ' }), { nombre: 'A', giro: '', guia: 'g' });
 assert.deepEqual(g.validarContexto(), { nombre: '', giro: '', guia: '' });
