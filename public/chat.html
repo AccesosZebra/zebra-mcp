@@ -234,10 +234,12 @@ body[data-theme="dark"] #wa{
    encogen en vez de empujar el scroll, y la de añadir número salía aplastada. */
 #wa > *{flex-shrink:0}
 #wa ::selection{background:var(--wa-sel);color:var(--wa-on-sel)}
-#wa h2,#wa h3,#wa h4,#wa p,#wa ol,#wa ul{margin:0}
-#wa svg{flex:none}
-#wa button{font:inherit;cursor:pointer}
-#wa button:disabled{cursor:default;opacity:.6}
+/* Resets sin especificidad: con #wa delante les ganaban a todas las clases de la sección y
+   anulaban sus márgenes y tamaños de letra (los botones salían a 15 px en vez de 12). */
+:where(#wa) :is(h2,h3,h4,p,ol,ul){margin:0}
+:where(#wa) svg{flex:none}
+:where(#wa) button{font:inherit;cursor:pointer}
+:where(#wa) button:disabled{cursor:default;opacity:.6}
 #wa button:focus-visible,#wa input:focus-visible{outline:none;box-shadow:0 0 0 2px var(--wa-card),0 0 0 4px var(--wa-ring)}
 .wa-mono{font-family:var(--font-mono)}
 
@@ -366,6 +368,66 @@ body[data-theme="dark"] #wa{
 .wa-qr-pasos strong{color:var(--wa-ink);font-weight:600}
 .wa-qr-copy .wa-hint{margin-top:0}
 
+/* Separadores de la línea de datos: con la tarjeta estrecha, cada dato va en su renglón, para que
+   ningún "•" quede colgando al final de una línea. Se mide la tarjeta, no la ventana: la barra
+   lateral plegada o desplegada cambia el espacio real. */
+.wa-num{container-type:inline-size}
+@container (max-width:960px){
+  .wa-meta{flex-direction:column;align-items:flex-start;gap:4px}
+  .wa-sep{display:none}
+}
+
+/* Manual de uso */
+.wa-ayuda{display:inline-flex;align-items:center;gap:6px;margin-top:2px;align-self:flex-start;padding:0;background:none;border:0;font-size:13px;font-weight:600;color:var(--wa-ok);text-underline-offset:3px}
+.wa-ayuda:hover{text-decoration:underline}
+.wa-ayuda svg{width:16px;height:16px;stroke-width:2}
+.wa-none .wa-ayuda{margin:10px auto 0}
+.wa-manual{width:min(640px,calc(100vw - 32px));max-height:min(86vh,860px);padding:0;border:1px solid var(--wa-line);border-radius:16px;background:var(--wa-card);color:var(--wa-ink);box-shadow:0 24px 48px -12px rgba(15,23,42,.28);overflow:hidden;font:400 14px/1.6 'Inter',system-ui,sans-serif}
+.wa-manual[open]{display:flex;flex-direction:column;animation:wa-entra .24s var(--ease)}
+.wa-manual::backdrop{background:rgba(15,23,42,.45)}
+body[data-theme="dark"] .wa-manual::backdrop{background:rgba(0,0,0,.65)}
+@keyframes wa-entra{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+.wa-manual-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 24px 18px;border-bottom:1px solid var(--wa-divide)}
+.wa-manual-head h2{font-size:19px;font-weight:700;letter-spacing:-.015em;line-height:1.3;color:var(--wa-ink);text-wrap:balance}
+.wa-manual-head p{margin-top:4px;font-size:13px;color:var(--wa-soft);text-wrap:pretty}
+.wa-cerrar{flex:none;width:34px;height:34px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--wa-line2);background:var(--wa-card);color:var(--wa-text);transition:background .15s var(--ease),border-color .15s var(--ease)}
+.wa-cerrar:hover{background:var(--wa-well);border-color:var(--wa-line3)}
+.wa-cerrar svg{width:16px;height:16px;stroke-width:2}
+.wa-manual-body{overflow-y:auto;padding:22px 24px 8px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--wa-line3) transparent}
+.wa-manual-body > * + *{margin-top:22px}
+.wa-pasos{list-style:none;padding:0;counter-reset:paso}
+.wa-pasos > li{position:relative;padding:0 0 22px 44px;counter-increment:paso}
+.wa-pasos > li::before{content:counter(paso);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--wa-btn);color:var(--wa-on-btn);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+/* La línea que une los pasos: se lee como un camino, no como una lista suelta. */
+.wa-pasos > li:last-child{padding-bottom:0}
+.wa-pasos > li:not(:last-child)::after{content:"";position:absolute;left:13.5px;top:34px;bottom:6px;width:1px;background:var(--wa-line2)}
+.wa-pasos h3{font-size:15px;font-weight:650;color:var(--wa-ink);line-height:28px}
+.wa-pasos p{margin-top:2px;color:var(--wa-text);text-wrap:pretty}
+.wa-pasos p + p{margin-top:6px}
+.wa-pasos strong{color:var(--wa-ink);font-weight:600}
+.wa-ruta{font-weight:500;color:var(--wa-ink)}
+.wa-dato{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--wa-ink2);background:var(--wa-chip);padding:1px 6px;border-radius:4px;white-space:nowrap}
+/* El momento clave del manual: cómo se ve una mención bien hecha, como en WhatsApp. */
+.wa-chat{margin-top:12px;padding:14px;border-radius:12px;background:var(--wa-well);border:1px solid var(--wa-line2);display:flex;flex-direction:column;gap:8px}
+.wa-pasos .wa-chat p{margin:0}
+.wa-burbuja{max-width:88%;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.45;color:var(--wa-ink);box-shadow:var(--wa-sh-x)}
+.wa-burbuja.es-mia{align-self:flex-end;background:#d9fdd3;color:#111b21;border-top-right-radius:3px}
+.wa-burbuja.es-bot{align-self:flex-start;background:var(--wa-card);border:1px solid var(--wa-line2);border-top-left-radius:3px}
+.wa-burbuja .quien{display:block;font-size:11px;font-weight:600;color:var(--wa-ok);margin-bottom:2px}
+.wa-mencion{color:#02729f;font-weight:600}
+body[data-theme="dark"] .wa-burbuja.es-mia{background:#144d37;color:#e9edef}
+body[data-theme="dark"] .wa-mencion{color:#53bdeb}
+.wa-clave{display:flex;gap:12px;padding:14px 16px;border-radius:12px;background:var(--wa-warn-bg);border:1px solid var(--wa-warn-line);color:var(--wa-ink)}
+.wa-clave svg{width:20px;height:20px;flex:none;margin-top:1px;color:var(--wa-warn);stroke-width:2}
+.wa-clave strong{display:block;font-weight:700;color:var(--wa-ink)}
+.wa-clave p{color:var(--wa-text)}
+.wa-falla h3{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--wa-soft);margin-bottom:10px}
+.wa-falla ul{list-style:none;padding:0;border:1px solid var(--wa-line2);border-radius:12px;overflow:hidden}
+.wa-falla li{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:12px 16px;font-size:13px;color:var(--wa-text)}
+.wa-falla li + li{border-top:1px solid var(--wa-divide)}
+.wa-falla li strong{color:var(--wa-ink);font-weight:600}
+.wa-manual-foot{display:flex;justify-content:flex-end;padding:14px 24px;border-top:1px solid var(--wa-divide);background:var(--wa-well)}
+
 @media (min-width:1024px){
   .wa-add,.wa-num-head{padding:28px}
 }
@@ -381,6 +443,9 @@ body[data-theme="dark"] #wa{
 }
 @media (max-width:639px){
   .wa-steps{grid-template-columns:1fr}
+  .wa-manual-head,.wa-manual-body{padding-left:18px;padding-right:18px}
+  .wa-manual-foot{padding:12px 18px}
+  .wa-manual-foot .wa-primary{width:100%}
   .wa-add-form{flex-direction:column;align-items:stretch}
   .wa-add,.wa-num-head,.wa-num-body{padding:20px}
   .wa-row{flex-direction:column;align-items:stretch;padding:14px 16px}
@@ -393,7 +458,7 @@ body[data-theme="dark"] #wa{
   .wa-qr-frame{width:min(232px,100%);height:auto;aspect-ratio:1}
 }
 @media (prefers-reduced-motion:reduce){
-  .wa-dot-ping{animation:none!important}
+  .wa-dot-ping,.wa-manual[open]{animation:none!important}
   .wa-primary:active:not(:disabled){transform:none}
 }
 
@@ -429,6 +494,8 @@ body[data-theme="dark"] #wa{
   <symbol id="i-check-circle" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
   <symbol id="i-message" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.42-4.03 8-9 8a9.86 9.86 0 0 1-4.26-.95L3 20l1.4-3.72A7.7 7.7 0 0 1 3 12c0-4.42 4.03-8 9-8s9 3.58 9 8Z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.04A8.97 8.97 0 0 0 6 3.75c-1.05 0-2.06.18-3 .51v14.25A8.99 8.99 0 0 1 6 18c2.3 0 4.4.87 6 2.29m0-14.25a8.97 8.97 0 0 1 6-2.29c1.05 0 2.06.18 3 .51v14.25A8.99 8.99 0 0 0 18 18a8.97 8.97 0 0 0-6 2.29m0-14.25v14.25"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6l12 12"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
 </svg>
 
@@ -476,6 +543,10 @@ body[data-theme="dark"] #wa{
       </div>
     </div>
     <div class="header-actions">
+      <button type="button" class="btn" id="wa-manual-abrir" aria-label="Manual de uso" aria-haspopup="dialog" hidden>
+        <svg viewBox="0 0 24 24"><use href="#i-book"/></svg>
+        <span class="btn-label">Manual de uso</span>
+      </button>
       <button type="button" class="btn" id="reset" hidden>
         <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
         <span class="btn-label">Nueva conversación</span>
@@ -533,6 +604,7 @@ body[data-theme="dark"] #wa{
             <li><span class="wa-step-n">2</span><span>Escanea el código QR</span></li>
             <li><span class="wa-step-n">3</span><span>Asigna los grupos</span></li>
           </ol>
+          <button type="button" class="wa-ayuda" data-manual aria-haspopup="dialog"><svg aria-hidden="true"><use href="#i-book"/></svg>¿Primera vez? Lee el manual de uso</button>
         </div>
         <div class="wa-qr-hint" aria-hidden="true"><svg><use href="#i-qr"/></svg><span>QR dinámico</span></div>
       </div>
@@ -564,6 +636,72 @@ body[data-theme="dark"] #wa{
         <button type="button" class="wa-btn" id="wa-qr-cancelar">Cancelar</button>
       </div>
     </div>
+
+    <dialog class="wa-manual" id="wa-manual" aria-labelledby="wa-manual-titulo">
+      <header class="wa-manual-head">
+        <div>
+          <h2 id="wa-manual-titulo">Cómo usar el bot de WhatsApp</h2>
+          <p>El bot responde preguntas sobre las métricas de un cliente dentro de un grupo de WhatsApp. Solo contesta en los grupos que actives aquí, y solo cuando lo etiquetan.</p>
+        </div>
+        <button type="button" class="wa-cerrar" data-cerrar aria-label="Cerrar el manual"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
+      </header>
+
+      <div class="wa-manual-body">
+        <ol class="wa-pasos">
+          <li>
+            <h3>Conecta el teléfono del bot</h3>
+            <p>Se hace una sola vez. Escribe un nombre en <strong>Añadir un número</strong>, pulsa <strong>Añadir número</strong> y escanea el código QR con el teléfono que será el bot. En ese teléfono: <span class="wa-ruta">WhatsApp → Dispositivos vinculados → Vincular dispositivo</span>.</p>
+            <p>Cuando su tarjeta diga <strong>Conectado</strong>, está listo. Usa un número dedicado al bot, no uno personal.</p>
+          </li>
+          <li>
+            <h3>Crea un grupo para el cliente</h3>
+            <p>En WhatsApp, desde cualquier teléfono, crea un grupo nuevo con las personas que van a hacer preguntas. Un grupo por cliente: el bot da por hecho que todo lo que se pregunta ahí es de ese cliente.</p>
+          </li>
+          <li>
+            <h3>Añade el número del bot al grupo</h3>
+            <p>Agrégalo como participante, igual que a cualquier persona. Su número es el que aparece en la tarjeta junto a <strong>Mencionar a:</strong><span id="wa-manual-numero"></span>.</p>
+            <p>Guárdalo antes como contacto, por ejemplo «Zebra Bot», para encontrarlo fácil.</p>
+          </li>
+          <li>
+            <h3>Activa el grupo aquí</h3>
+            <p>En la tarjeta del número, pulsa <strong>Ver grupos del teléfono</strong>. Busca el grupo, escribe el nombre del cliente tal como aparece en los reportes (por ejemplo, Sofía) y pulsa <strong>Atender aquí</strong>.</p>
+            <p>Pasará a <strong>Grupos vinculados a este número</strong> con la etiqueta <strong>Escuchando</strong>.</p>
+          </li>
+          <li>
+            <h3>Etiqueta al bot para preguntarle</h3>
+            <p>Escribe <strong>@</strong>, elige al bot en la lista que aparece y luego escribe tu pregunta:</p>
+            <div class="wa-chat" role="img" aria-label="Ejemplo: alguien escribe @Zebra Bot ¿cuántos leads entraron esta semana?, y el bot responde con la cifra.">
+              <p class="wa-burbuja es-mia"><span class="wa-mencion">@Zebra Bot</span> ¿cuántos leads entraron esta semana?</p>
+              <p class="wa-burbuja es-bot"><span class="quien">Zebra Bot</span>Esta semana entraron 142 leads: 96 de Meta y 46 de Google.</p>
+            </div>
+            <p>Para repreguntar, responde a su mensaje (desliza el mensaje hacia la derecha) y escribe, por ejemplo, «¿y en julio?». Recuerda la conversación del grupo durante media hora.</p>
+          </li>
+        </ol>
+
+        <div class="wa-clave" role="note">
+          <svg aria-hidden="true"><use href="#i-alert"/></svg>
+          <div>
+            <strong>Si no lo etiquetas, no contesta.</strong>
+            <p>El bot está en el grupo, pero ignora todo mensaje que no lo mencione o que no responda a un mensaje suyo. Así no interrumpe las conversaciones normales.</p>
+          </div>
+        </div>
+
+        <section class="wa-falla" aria-labelledby="wa-falla-titulo">
+          <h3 id="wa-falla-titulo">Si no contesta, revisa</h3>
+          <ul>
+            <li><strong>¿Lo elegiste de la lista al escribir @?</strong>Escribir «@Zebra Bot» a mano no cuenta: el nombre tiene que quedar resaltado.</li>
+            <li><strong>¿Su tarjeta dice Conectado?</strong>Si dice Sin vincular, pulsa Vincular teléfono y escanea otra vez.</li>
+            <li><strong>¿El grupo aparece como Escuchando?</strong>Si no está en Grupos vinculados a este número, actívalo (paso 4).</li>
+            <li><strong>¿Le diste tiempo?</strong>Suele tardar entre 10 y 30 segundos; las preguntas más complejas, algo más.</li>
+            <li><strong>¿Era texto, en un grupo?</strong>No escucha notas de voz, fotos ni mensajes privados al número del bot.</li>
+          </ul>
+        </section>
+      </div>
+
+      <footer class="wa-manual-foot">
+        <button type="button" class="wa-primary" data-cerrar>Entendido</button>
+      </footer>
+    </dialog>
   </section>
 </div>
 
@@ -786,6 +924,7 @@ function verVista(v) {
   $('wa').hidden = v !== 'wa';
   $('ajustes').hidden = v !== 'ajustes';
   resetBtn.hidden = v !== 'chat' || history.length === 0;
+  $('wa-manual-abrir').hidden = v !== 'wa';
   pill.textContent = VISTAS[v].pill;
   tituloTop.textContent = VISTAS[v].titulo;
   if (v !== 'wa') pararQr();
@@ -885,7 +1024,9 @@ function pintarNumeros() {
   const cont = $('wa-numeros');
   cont.textContent = '';
   if (!ultimos.length) {
-    cont.append(h('p', { class: 'wa-none' }, 'Todavía no hay ningún número. Añade uno arriba y vincúlalo con el QR.'));
+    cont.append(h('div', { class: 'wa-none' },
+      h('p', {}, 'Todavía no hay ningún número. Añade uno arriba y vincúlalo con el QR.'),
+      h('button', { type: 'button', class: 'wa-ayuda', 'aria-haspopup': 'dialog', on: { click: abrirManual } }, icono('i-book'), 'Ver cómo funciona, paso a paso')));
     return;
   }
   for (const n of ultimos) cont.append(tarjetaNumero(n));
@@ -1090,6 +1231,24 @@ async function borrarNumero(instancia) {
     cargarNumeros();
   } catch (e) { waError(e.message); }
 }
+
+// ── Manual de uso ──────────────────────────────────────────────────────────
+// <dialog> nativo: atrapa el foco, cierra con Esc y devuelve el foco al botón que lo abrió.
+const manual = $('wa-manual');
+function abrirManual() {
+  // Si ya hay un número conectado, el manual dice cuál es: un dato menos que buscar.
+  const conectado = ultimos.find((n) => n.estado === 'conectado' && n.numero);
+  const hueco = $('wa-manual-numero');
+  hueco.textContent = '';
+  if (conectado) hueco.append(' (ahora mismo, ', h('span', { class: 'wa-dato' }, conectado.numero), ` en ${conectado.etiqueta || conectado.instancia})`);
+  manual.showModal();
+  manual.querySelector('.wa-manual-body').scrollTop = 0;
+}
+$('wa-manual-abrir').addEventListener('click', abrirManual);
+document.querySelectorAll('[data-manual]').forEach((b) => b.addEventListener('click', abrirManual));
+manual.querySelectorAll('[data-cerrar]').forEach((b) => b.addEventListener('click', () => manual.close()));
+// Clic en el fondo oscuro: el propio <dialog> es el destino solo cuando se pulsa fuera de su contenido.
+manual.addEventListener('click', (e) => { if (e.target === manual) manual.close(); });
 
 // El nombre interno lo deduce el navegador del que escribe la persona: un solo campo, y nadie
 // tiene que entender qué es una "conexión". La misma regla que valida el servidor.
