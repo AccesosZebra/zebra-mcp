@@ -5,6 +5,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 
+import { guiaActual } from './guia.mjs';
+
 const { DATABASE_URL, MCP_AUTH_TOKEN, PORT = '3000' } = process.env;
 if (!DATABASE_URL || !MCP_AUTH_TOKEN || MCP_AUTH_TOKEN.length < 32) {
   console.error('Faltan DATABASE_URL o MCP_AUTH_TOKEN (mínimo 32 caracteres)');
@@ -31,28 +33,14 @@ async function registrar(tool, detalle, fn) {
   }
 }
 
-const CAPAS = `Base de métricas de Zebra (Postgres 17, solo lectura). Hay dos fuentes:
-
-1) Un esquema por cliente ("Grupo Gira", "Midstorage", "Sofía", "Zenco Desarrollos"…): vistas espejo de las
-   hojas de Sheets de ese cliente, con sufijo del cliente (casi todo texto; revisa columnas con get_schema):
-   entrada_leads_<x>, citas_agendadas_<x>, citas_realizadas_<x>, apartados_<x>, cierres_<x>,
-   ventas_perdidas_<x>, spent_campañas_<x> (gasto), glosario_asesores_<x>, perfilado_ia_<x>,
-   v_funnel_resumen_<x>, v_lead_funnel_<x>. Los esquemas "<Cliente>_callpicker" tienen llamadas.
-   Es la fuente para cualquier cliente.
-
-2) Capa canónica, hoy SOLO con el cliente Sofía (cliente_id 'sofia'):
-   - mart: KPIs ya calculados por cliente_id y fecha. v_kpi_diario (gasto, leads por fuente, citas,
-     apartados, cierres, valor, llamadas, presupuesto), v_kpi_campana_diario y v_cohorte_* (por campaña),
-     v_kpi_asesor_diario (por asesor), v_perdida_*, v_presupuesto_mes, v_frescura.
-   - crm: detalle de leads, eventos de etapa y llamadas. ops: clientes, presupuesto, tipo de cambio.
-   - ads: gasto diario por campaña de Meta y Google.
-   Para Sofía prefiere mart; para los demás usa su esquema.`;
+// La guía de la base ya no vive aquí: cada instancia la edita en Ajustes (guia.mjs). Se lee en cada
+// petición, así que un cambio vale desde la pregunta siguiente.
 
 function crearServidor() {
   const server = new McpServer({ name: 'zebra-db', version: '1.0.0' });
 
   server.registerTool('list_tables', {
-    description: `Lista las tablas y vistas disponibles, con el nombre listo para usar en SQL.\n\n${CAPAS}`,
+    description: `Lista las tablas y vistas disponibles, con el nombre listo para usar en SQL.\n\n${guiaActual()}`,
   }, () => registrar('list_tables', null, async () => {
     const { rows } = await pool.query(
       `select quote_ident(table_schema) || '.' || quote_ident(table_name) as nombre,
@@ -64,7 +52,7 @@ function crearServidor() {
   }));
 
   server.registerTool('get_schema', {
-    description: 'Columnas y tipos de una tabla o vista. Formato "esquema.tabla", p. ej. "mart.v_kpi_diario" o "Grupo Gira".cierres_gira.',
+    description: 'Columnas y tipos de una tabla o vista. Formato "esquema.tabla", p. ej. "ventas".cierres o "Mi Cliente".leads (con comillas si hay mayúsculas, acentos o espacios).',
     inputSchema: { table_name: z.string().describe('esquema.tabla') },
   }, ({ table_name }) => registrar('get_schema', table_name, async () => {
     const [esquema, ...resto] = table_name.replaceAll('"', '').split('.');
@@ -79,7 +67,7 @@ function crearServidor() {
   server.registerTool('query_readonly', {
     description: `Ejecuta UNA consulta SELECT (o WITH … SELECT) de solo lectura y devuelve JSON.
 Máximo ${MAX_FILAS} filas y 20 s: agrega en SQL (sum, count, group by) en vez de traer filas crudas.
-Identificadores con mayúsculas, acentos, ñ o espacios van entre comillas dobles.\n\n${CAPAS}`,
+Identificadores con mayúsculas, acentos, ñ o espacios van entre comillas dobles.\n\n${guiaActual()}`,
     inputSchema: { sql: z.string().describe('Una sola consulta SELECT, sin punto y coma') },
     annotations: { readOnlyHint: true },
   }, ({ sql }) => registrar('query_readonly', sql.slice(0, 300), async () => {
@@ -128,6 +116,20 @@ if (faltan.length) {
     if (await aplicarEsquema()) console.log('Base del dashboard: esquema aplicado');
   } catch (e) {
     console.error('No pude aplicar el esquema de la base del dashboard:', e.message);
+  }
+
+  // Qué negocio es y cómo es su base. En la de Zebra se siembra la guía de siempre, una vez.
+  const { aplicarPermisos, cargarContexto, hayAdmin, sembrarZebra } = await import('./guia.mjs');
+  await cargarContexto();
+  try {
+    if (await sembrarZebra()) console.log('Contexto: sembrada la guía de Zebra');
+  } catch (e) {
+    console.error('No pude revisar si había que sembrar la guía:', e.message);
+  }
+  // Con conexión de administrador, el lector ve también las vistas creadas desde el último arranque.
+  if (hayAdmin()) {
+    try { console.log(`Permisos de lectura: ${JSON.stringify(await aplicarPermisos())}`); }
+    catch (e) { console.error('No pude aplicar los permisos de lectura:', e.message); }
   }
 
   // El bot de WhatsApp vive aquí mismo y guarda su sesión en esa base: sin ella no hay dónde

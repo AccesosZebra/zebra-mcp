@@ -4,6 +4,7 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:cr
 import Anthropic from '@anthropic-ai/sdk';
 
 import { guardarAjuste, leerAjuste } from './db.mjs';
+import { quienEs } from './guia.mjs';
 
 export const PROVEEDORES = {
   anthropic: {
@@ -162,7 +163,9 @@ const ambitoDe = (cliente) => `
 Este grupo es del cliente **${cliente}**: toda pregunta se entiende de ese cliente, sin preguntarlo.
 Si te piden datos de otro cliente, dilo y no los traigas.`;
 
-export const system = (canal = 'web', cliente = null) => `Eres el analista de datos de Zebra, una agencia de marketing. Respondes preguntas del equipo sobre las métricas de sus clientes (leads, gasto en pauta, citas, apartados, cierres, llamadas) consultando la base de métricas con las herramientas de zebra-db.
+// Quién es el negocio sale de Ajustes (guia.mjs); qué hay en la base, de la guía que traen las
+// propias herramientas. Aquí solo va cómo trabajar y cómo responder, igual para cualquier cliente.
+export const system = (canal = 'web', cliente = null) => `Eres el analista de datos de ${quienEs()}. Respondes preguntas del equipo sobre sus métricas (leads, gasto, citas, ventas y lo que describa la guía de la base) consultando la base de métricas con las herramientas de zebra-db. La descripción de esas herramientas trae la guía: qué hay y dónde buscarlo.
 
 Cómo trabajar:
 - Toda cifra sale de una consulta. Nunca estimes ni inventes un número; si la base no tiene el dato, dilo.
@@ -241,11 +244,40 @@ export async function pedirOpenAI(messages, canal = 'web', cliente = null, model
   const herramientas = salida
     .filter((o) => o.type === 'mcp_call')
     .map((o) => ({ name: o.name, input: parseArgs(o.arguments), error: Boolean(o.error), preview: String(o.output ?? o.error ?? '').slice(0, 400) }));
-  const texto = datos.output_text ?? salida
-    .filter((o) => o.type === 'message')
-    .flatMap((o) => (o.content ?? []).filter((c) => c.type === 'output_text').map((c) => c.text))
-    .join('');
-  return { texto: (texto ?? '').trim(), herramientas, usage: datos.usage ?? null };
+  return { texto: textoOpenAI(datos), herramientas, usage: datos.usage ?? null };
+}
+
+const textoOpenAI = (datos) => (datos.output_text ?? (Array.isArray(datos.output) ? datos.output : [])
+  .filter((o) => o.type === 'message')
+  .flatMap((o) => (o.content ?? []).filter((c) => c.type === 'output_text').map((c) => c.text))
+  .join('') ?? '').trim();
+
+/**
+ * Una sola llamada al proveedor activo, sin herramientas: para tareas de redacción del panel, como
+ * el borrador de la guía de la base. Devuelve el texto.
+ */
+export async function completar(instrucciones, texto) {
+  const { proveedor, modelo } = activo();
+  if (!modelo) throw new Error('Primero elige un modelo en Ajustes.');
+  if (proveedor === 'openai') {
+    const k = clave('openai');
+    if (!k) throw new Error('Falta la clave de OpenAI: pégala en Ajustes.');
+    const res = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${k}` },
+      body: JSON.stringify({ model: modelo, instructions: instrucciones, input: texto }),
+    });
+    const datos = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(datos?.error?.message ?? `OpenAI respondió ${res.status}`);
+    return textoOpenAI(datos);
+  }
+  const msg = await anthropic().messages.create({
+    model: modelo,
+    max_tokens: 4_000,
+    system: instrucciones,
+    messages: [{ role: 'user', content: texto }],
+  });
+  return msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
 }
 
 const parseArgs = (a) => { try { return typeof a === 'string' ? JSON.parse(a) : (a ?? {}); } catch { return {}; } };

@@ -1,5 +1,6 @@
 // Backend del chat web: recibe la conversación, se la pasa al proveedor activo (que consulta la
 // base a través del MCP) y devuelve la respuesta en NDJSON, como el Editor de Prompt Studio.
+import { contextoActual } from './guia.mjs';
 import { activo, pedirOpenAI, streamAnthropic } from './proveedores.mjs';
 
 const MAX_MENSAJES = 60;
@@ -74,7 +75,7 @@ function turno({ messages, canal = 'web', cliente = null, send, onFinal }) {
 
 export function mountChat(app, requireSession) {
   // La barra lateral muestra quién está dentro.
-  app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email }));
+  app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email, negocio: contextoActual()?.nombre || null }));
 
   app.post('/api/chat', requireSession, async (req, res) => {
     const { messages } = req.body ?? {};

@@ -29,16 +29,17 @@ Luego, en el panel: **Integración WA → Añadir número → escanear el QR →
 | `server.mjs` | Arranque, ruta `/mcp` con token, `/health`, y monta chat, login y WhatsApp si hay configuración |
 | `chat.mjs` | `/api/chat` (Claude + conector MCP, NDJSON) y `/api/me` |
 | `proveedores.mjs` | Quién contesta: registro de proveedores, el prompt común y la elección activa |
-| `ajustes.mjs` | `/api/settings`: leer y cambiar proveedor y modelo desde la pantalla Ajustes |
+| `ajustes.mjs` | `/api/settings`: proveedor y modelo, claves de IA, la base del negocio y los permisos, desde la pantalla Ajustes |
 | `db.mjs` | La base del dashboard: lo que se administra desde el panel |
 | `app-schema.sql` | Tablas de esa base. Re-ejecutable; el servidor lo aplica al arrancar |
+| `guia.mjs` | Lo que describe la base de métricas de esta instancia: nombre del negocio, guía, borrador y permisos |
 | `whatsapp.mjs` | El bot de WhatsApp: una conexión por número dentro del proceso, y cuándo contestar |
 | `wa-admin.mjs` | Las rutas de la pantalla "Integración WA" |
 | `docker-compose.yml` | Una instancia completa: el servidor y su base del dashboard |
 | `auth.mjs` | Login con Google y cookie de sesión firmada (HMAC), restringido a un dominio |
 | `public/chat.html` | La interfaz: barra lateral, conversación, tablas y consultas |
 | `public/login.html` | Pantalla de acceso |
-| `grants.sql` | Permisos del rol `claude_readonly`. Re-ejecutable |
+| `grants.sql` | Permisos del rol de lectura. Sin nombres fijos; re-ejecutable |
 | `check.mjs` | Comprobaciones del MCP contra un servidor en marcha |
 | `auth.check.mjs` | Comprobaciones de la firma de sesión |
 
@@ -51,6 +52,7 @@ Luego, en el panel: **Integración WA → Añadir número → escanear el QR →
 | `PORT` | Puerto, 3000 por defecto |
 | `ANTHROPIC_API_KEY` | Opcional. Respaldo de la clave de Anthropic, que normalmente se pega en Ajustes |
 | `OPENAI_API_KEY` | Opcional. Igual, para OpenAI |
+| `METRICAS_ADMIN_URL` | Opcional. Conexión de administrador a la base de métricas, solo para aplicar `grants.sql` (al arrancar y desde Ajustes) |
 | `AI_PROVIDER` | `anthropic` (por defecto) u `openai`. Solo vale hasta el primer guardado en Ajustes |
 | `AI_MODEL` | Modelo del proveedor elegido. Vacío = el de por defecto del proveedor |
 | `APP_DATABASE_URL` | Base del dashboard. Sin ella, Ajustes no puede guardar y WhatsApp no se monta. Con compose la arma él desde `APP_DB_PASSWORD` |
@@ -84,6 +86,25 @@ correo de quien lo cambió. Lo guardado se lee una vez al arrancar y se recuerda
 Mientras no se haya guardado nada, mandan `AI_PROVIDER` y `AI_MODEL`. Después manda la base. Sin
 `APP_DATABASE_URL` la pantalla sigue mostrando quién contesta, pero avisa de que no puede guardar
 en vez de fingir que guardó.
+
+### La base de este negocio
+
+Cada instancia apunta a una base de métricas parecida a la de Zebra, pero no igual. Lo que el
+modelo necesita saber de ella se edita aquí, no en el código (`guia.mjs`):
+
+- **Nombre del negocio y a qué se dedica**: entran en el prompt ("Eres el analista de datos de…")
+  y en el título del chat.
+- **Guía de la base**: va en la descripción de `list_tables` y `query_readonly`, así que el modelo
+  la lee antes de cada consulta. Vale desde la pregunta siguiente, sin reiniciar. Sin guía se usa
+  una genérica que manda a explorar con `list_tables` y `get_schema`: funciona, pero más lento.
+- **Generar borrador con IA**: recorre lo que ve el rol de lectura (esquemas, tablas, columnas y
+  2 filas de ejemplo por objeto, hasta 150 objetos) y el modelo en uso redacta la guía. No se
+  guarda sola: se revisa y se guarda.
+- **Semilla de Zebra**: la primera vez que arranca, si no hay contexto guardado y la base tiene
+  `mart.v_kpi_diario`, se guarda la guía de siempre de Zebra. En un clon no se siembra nada.
+- **Permisos de lectura**: el panel dice cuántas vistas ve el bot. Con `METRICAS_ADMIN_URL`, el
+  servidor aplica `grants.sql` al arrancar y hay un botón para repetirlo cuando se crean vistas.
+  Sin ella, a mano: `psql "<conexión de administrador>" -c "set zebra.lector = 'claude_readonly'" -f grants.sql`.
 
 ### Claves de API
 
@@ -164,3 +185,13 @@ MCP_URL=https://<host>/mcp npm run check   # lo mismo contra el servidor despleg
 - Cada consulta corre en una transacción de solo lectura, envuelta en un `SELECT`, con el
   protocolo extendido (una sola sentencia), 20 s de límite y un tope de 500 filas.
 - `/mcp` exige el token; el resto exige sesión de Google del dominio permitido.
+
+## Una instancia para un cliente
+
+1. Base de métricas del cliente con un rol de solo lectura (`create role claude_readonly login password '…'`).
+2. `cp .env.example .env`: `DATABASE_URL` con ese rol, Google, `AUTH_*`, `APP_DB_PASSWORD` y,
+   si se quiere el botón de permisos, `METRICAS_ADMIN_URL`.
+3. `docker compose up -d --build`.
+4. En el panel, **Ajustes**: pegar la clave de IA, elegir modelo, poner el nombre del negocio,
+   **Generar borrador**, revisarlo y guardar. Comprobar en "Permisos de lectura" que el bot ve las vistas.
+5. **Integración WA**: añadir el número, escanear el QR y activar los grupos (ver "Manual de uso").

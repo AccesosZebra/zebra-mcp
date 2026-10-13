@@ -50,7 +50,9 @@ assert.equal(activo().proveedor, 'anthropic');
 
 // ── El prompt es el mismo para todos, y cambia solo por canal y cliente ─────
 const web = system('web');
-assert.match(web, /analista de datos de Zebra/);
+// Sin contexto guardado no sabe de qué negocio es: nada de Zebra escrito en el código.
+assert.match(web, /analista de datos de este negocio/);
+assert.doesNotMatch(web, /Zebra, una agencia/);
 assert.doesNotMatch(web, /WhatsApp/);
 
 const wa = system('whatsapp');
