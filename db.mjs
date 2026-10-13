@@ -27,6 +27,12 @@ function exigirBase() {
   if (!hayBase) throw new Error('Falta APP_DATABASE_URL: todavía no hay dónde guardar.');
 }
 
+/** Una consulta cualquiera a la base del dashboard, para módulos con tablas propias (usuarios). */
+export async function consulta(texto, params = []) {
+  exigirBase();
+  return db().query(texto, params);
+}
+
 /** Guarda un ajuste, pisando el anterior. Deja constancia de quién lo cambió. */
 export async function guardarAjuste(clave, valor, por = null) {
   exigirBase();

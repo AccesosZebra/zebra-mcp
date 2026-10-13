@@ -175,15 +175,49 @@ body.nav-collapsed .sb-session{flex-direction:column;gap:6px;padding:6px 0}
 .disclaimer{text-align:center;font-size:11px;color:var(--faint);margin:8px 0 0}
 
 /* Pantallas "Integración WA" y "Ajustes" */
-#wa,#ajustes{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
-body[data-view="wa"] .chat-messages,
-body[data-view="wa"] .chat-composer-zone,
-body[data-view="wa"] .disclaimer,
-body[data-view="wa"] #error,
-body[data-view="ajustes"] .chat-messages,
-body[data-view="ajustes"] .chat-composer-zone,
-body[data-view="ajustes"] .disclaimer,
-body[data-view="ajustes"] #error{display:none}
+#wa,#ajustes,#admin{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
+/* Fuera del chat, lo del chat no se ve: una regla para todas las vistas, no una por vista. */
+body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.disclaimer,#error){display:none}
+
+/* ── Admin: usuarios con contraseña ─────────────────────────────────────── */
+#admin > *{flex-shrink:0}
+.ad-card{max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.ad-card h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.ad-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:10px;align-items:end}
+.ad-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ad-form input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
+.ad-form input:focus{outline:none;border-color:var(--accent)}
+.ad-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent);justify-content:center}
+.ad-temporal{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,#10b981 45%,transparent);background:color-mix(in srgb,#10b981 8%,transparent)}
+.ad-temporal p{margin:0;font-size:13px;line-height:1.5;color:var(--fg)}
+.ad-clave{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ad-clave code{font-family:var(--font-mono);font-size:16px;font-weight:500;letter-spacing:.06em;padding:6px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border2);user-select:all}
+.ad-lista{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden}
+.ad-lista li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;flex-wrap:wrap}
+.ad-lista li + li{border-top:1px solid var(--border)}
+.ad-quien{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ad-quien strong{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.ad-quien span{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ad-estado{font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap}
+.ad-estado.es-activo{border-color:color-mix(in srgb,#10b981 50%,transparent);color:#10b981}
+.ad-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ad-acc .btn{padding:6px 10px;font-size:12px}
+.ad-acc .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
+.ad-vacio{margin:0;padding:18px;text-align:center;font-size:13px;color:var(--muted);border:1px dashed var(--border2);border-radius:var(--r-card)}
+@media (max-width:700px){ .ad-form{grid-template-columns:1fr} .ad-card{padding:16px} }
+
+/* Cambiar contraseña (solo usuarios del cliente) */
+.sb-clave{display:none}
+body.es-cliente .sb-clave{display:inline-block}
+.cl-dialog{width:min(420px,calc(100vw - 32px));padding:0;border:1px solid var(--border);border-radius:var(--r-card);background:var(--surface);color:var(--fg)}
+.cl-dialog::backdrop{background:rgba(0,0,0,.55)}
+.cl-dialog form{display:flex;flex-direction:column;gap:12px;padding:22px}
+.cl-dialog h2{margin:0;font-size:17px;font-weight:600}
+.cl-dialog label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.cl-dialog input{background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:10px 11px;font:inherit;font-size:14px;color:var(--fg)}
+.cl-dialog input:focus{outline:none;border-color:var(--accent)}
+.cl-acc{display:flex;justify-content:flex-end;gap:8px}
+.cl-acc .btn[type="submit"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 /* Ajustes: cabecera, proveedores y la base del negocio, con los tokens del panel. */
 .aj-top{display:flex;flex-direction:column;gap:4px;max-width:900px}
 .aj-activo{margin:6px 0 2px;font-size:18px;font-weight:600}
@@ -576,9 +610,9 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-report"/></svg><span>Reporte</span></button>
     <button class="app-tab active" data-view="chat" title="Data Chat"><svg><use href="#i-chat"/></svg><span>Data Chat</span></button>
     <button class="app-tab" data-view="wa" title="Integración WA"><svg><use href="#i-wa"/></svg><span>Integración WA</span></button>
-    <div class="sb-group">Sistema</div>
-    <button class="app-tab" data-view="ajustes" title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
-    <button class="app-tab" disabled title="Próximamente"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
+    <div class="sb-group" data-solo-admin>Sistema</div>
+    <button class="app-tab" data-view="ajustes" data-solo-admin title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
+    <button class="app-tab" data-view="admin" data-solo-admin title="Admin"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
   </nav>
 
   <div class="sb-foot">
@@ -590,6 +624,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     <div class="sb-session">
       <span class="avatar" id="avatar" aria-hidden="true"></span>
       <span class="email" id="email" title=""></span>
+      <button type="button" class="sb-clave" id="cl-abrir" title="Cambiar contraseña">Clave</button>
       <form method="post" action="/auth/logout"><button type="submit">Salir</button></form>
     </div>
   </div>
@@ -687,6 +722,48 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     </form>
     </details>
   </section>
+
+  <section id="admin" hidden>
+    <div class="aj-top">
+      <p class="section-label">Usuarios</p>
+      <p class="aj-activo">Quién entra al panel</p>
+      <p class="aj-nota" id="ad-google">El equipo entra con Google.</p>
+      <p class="form-error" id="ad-error" hidden></p>
+    </div>
+
+    <div class="ad-card">
+      <h2>Añadir un usuario del cliente</h2>
+      <p class="aj-nota">Entra con su correo y una contraseña. Ve el Data Chat y la Integración WA; no ve Ajustes ni esta pestaña.</p>
+      <form class="ad-form" id="ad-form">
+        <label>Correo<input type="email" id="ad-email" required autocomplete="off" placeholder="nombre@cliente.com"></label>
+        <label>Nombre<input type="text" id="ad-nombre" maxlength="80" autocomplete="off" placeholder="Opcional"></label>
+        <button type="submit" class="btn" id="ad-crear">Crear usuario</button>
+      </form>
+      <div class="ad-temporal" id="ad-temporal" hidden role="status">
+        <p id="ad-temporal-txt"></p>
+        <div class="ad-clave"><code id="ad-temporal-clave"></code><button type="button" class="btn" id="ad-copiar">Copiar</button></div>
+        <p class="aj-nota">Se muestra una sola vez. Compártela por un canal privado; la persona puede cambiarla después desde el botón «Clave» de la barra lateral.</p>
+      </div>
+    </div>
+
+    <div class="ad-card">
+      <h2>Usuarios con contraseña</h2>
+      <div id="ad-lista"></div>
+    </div>
+  </section>
+
+  <dialog class="cl-dialog" id="cl-dialog" aria-labelledby="cl-titulo">
+    <form id="cl-form">
+      <h2 id="cl-titulo">Cambiar contraseña</h2>
+      <label>Contraseña actual<input type="password" id="cl-actual" autocomplete="current-password" required></label>
+      <label>Contraseña nueva (mínimo 10 caracteres)<input type="password" id="cl-nueva" autocomplete="new-password" minlength="10" required></label>
+      <p class="form-error" id="cl-error" hidden></p>
+      <div class="cl-acc">
+        <button type="button" class="btn" id="cl-cancelar">Cancelar</button>
+        <button type="submit" class="btn" id="cl-guardar">Guardar</button>
+      </div>
+    </form>
+  </dialog>
 
   <section id="wa" hidden>
     <p class="wa-alert" id="wa-error" role="alert" hidden></p>
@@ -831,7 +908,12 @@ $('theme-btn').addEventListener('click', () => setTheme(document.body.dataset.th
   setNav(window.innerWidth < 900 ? true : nav === '1');
   setTheme(theme === 'light' ? 'light' : 'dark');
 })();
-fetch('/api/me').then((r) => r.json()).then(({ email, negocio }) => {
+fetch('/api/me').then((r) => r.json()).then(({ email, negocio, rol }) => {
+  // Un usuario del cliente no ve Ajustes ni Admin (el servidor tampoco se los deja usar).
+  if (rol === 'cliente') {
+    document.body.classList.add('es-cliente');
+    document.querySelectorAll('[data-solo-admin]').forEach((b) => b.remove());
+  }
   // El título lleva el nombre del negocio de esta instancia, si ya se dijo en Ajustes.
   if (negocio) {
     VISTAS.chat.titulo = `Pregúntale a la base de datos de ${negocio}`;
@@ -1014,6 +1096,7 @@ const VISTAS = {
   chat: { pill: 'Data Chat', titulo: 'Pregúntale a la base de datos' },
   wa: { pill: 'Integración WA', titulo: 'Los números que responden por WhatsApp' },
   ajustes: { pill: 'Ajustes', titulo: 'Qué modelo de IA responde las preguntas' },
+  admin: { pill: 'Admin', titulo: 'Quién puede entrar al panel' },
 };
 const pill = document.querySelector('.pill-logo');
 const tituloTop = document.querySelector('.topbar-title');
@@ -1024,6 +1107,7 @@ function verVista(v) {
   document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
   $('wa').hidden = v !== 'wa';
   $('ajustes').hidden = v !== 'ajustes';
+  $('admin').hidden = v !== 'admin';
   resetBtn.hidden = v !== 'chat' || history.length === 0;
   $('wa-manual-abrir').hidden = v !== 'wa';
   pill.textContent = VISTAS[v].pill;
@@ -1031,6 +1115,7 @@ function verVista(v) {
   if (v !== 'wa') pararQr();
   if (v === 'wa') cargarNumeros();
   if (v === 'ajustes') cargarAjustes();
+  if (v === 'admin') cargarUsuarios();
 }
 document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.addEventListener('click', () => verVista(b.dataset.view)));
 
@@ -1635,6 +1720,88 @@ function bloqueClave(p, hayBase) {
       '. Se prueba antes de guardarla y se guarda cifrada.'));
   return caja;
 }
+
+// ── Admin: usuarios con contraseña ─────────────────────────────────────────
+const adError = (m) => { $('ad-error').textContent = m; $('ad-error').hidden = !m; };
+
+function mostrarTemporal(email, clave, accion) {
+  $('ad-temporal-txt').textContent = accion === 'reset'
+    ? `Nueva contraseña temporal de ${email}. La anterior ya no sirve y sus sesiones abiertas se cerraron.`
+    : `Usuario creado: ${email}. Su contraseña temporal es:`;
+  $('ad-temporal-clave').textContent = clave;
+  $('ad-temporal').hidden = false;
+  $('ad-copiar').textContent = 'Copiar';
+}
+$('ad-copiar').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('ad-temporal-clave').textContent); $('ad-copiar').textContent = 'Copiada'; }
+  catch { $('ad-copiar').textContent = 'Selecciónala y copia'; }
+});
+
+async function cargarUsuarios() {
+  adError('');
+  try {
+    const d = await waFetch('/api/usuarios');
+    $('ad-google').textContent = `El equipo entra con Google como administrador: ${d.dominios.map((x) => '@' + x).join(', ')}. Los demás, con un usuario de aquí.`;
+    if (!d.hayBase) adError('Para crear usuarios hace falta la base del dashboard (APP_DATABASE_URL).');
+    const cont = $('ad-lista');
+    cont.textContent = '';
+    if (!d.usuarios.length) {
+      cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay usuarios con contraseña.'));
+      return;
+    }
+    cont.append(h('ul', { class: 'ad-lista' }, d.usuarios.map(filaUsuario)));
+  } catch (e) { adError(e.message); }
+}
+
+function filaUsuario(u) {
+  const ruta = `/api/usuarios/${encodeURIComponent(u.email)}`;
+  const patch = (body) => waFetch(ruta, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const accion = (fn) => async () => { adError(''); try { await fn(); } catch (e) { adError(e.message); } };
+
+  const reset = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Resetear contraseña'), 'Confirmar: cierra su sesión',
+    accion(async () => { const { temporal } = await patch({ resetear: true }); mostrarTemporal(u.email, temporal, 'reset'); cargarUsuarios(); }));
+  const estado = h('button', { type: 'button', class: 'btn' }, u.activo ? 'Desactivar' : 'Activar');
+  estado.addEventListener('click', accion(async () => { await patch({ activo: !u.activo }); cargarUsuarios(); }));
+  const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Borrar'), 'Confirmar: se borra',
+    accion(async () => { await waFetch(ruta, { method: 'DELETE' }); cargarUsuarios(); }));
+
+  const alta = new Date(u.creado).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  return h('li', {},
+    h('div', { class: 'ad-quien' }, h('strong', {}, u.nombre || u.email), h('span', {}, `${u.nombre ? u.email + ' · ' : ''}alta ${alta}${u.por ? ` por ${u.por}` : ''}`)),
+    h('div', { class: 'ad-acc' }, h('span', { class: `ad-estado${u.activo ? ' es-activo' : ''}` }, u.activo ? 'Activo' : 'Desactivado'), reset, estado, quitar));
+}
+
+$('ad-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  adError('');
+  const btn = $('ad-crear'), email = $('ad-email').value.trim();
+  btn.disabled = true; btn.textContent = 'Creando…';
+  try {
+    const { temporal } = await waFetch('/api/usuarios', enviarJson({ email, nombre: $('ad-nombre').value }));
+    mostrarTemporal(email.toLowerCase(), temporal, 'crear');
+    $('ad-email').value = ''; $('ad-nombre').value = '';
+    cargarUsuarios();
+  } catch (err) { adError(err.message); }
+  finally { btn.disabled = false; btn.textContent = 'Crear usuario'; }
+});
+
+// ── Cambiar contraseña (usuarios del cliente) ──────────────────────────────
+const clDialog = $('cl-dialog');
+const clError = (m) => { $('cl-error').textContent = m; $('cl-error').hidden = !m; };
+$('cl-abrir').addEventListener('click', () => { clError(''); $('cl-form').reset(); clDialog.showModal(); });
+$('cl-cancelar').addEventListener('click', () => clDialog.close());
+$('cl-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clError('');
+  const btn = $('cl-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    await waFetch('/api/me/contrasena', enviarJson({ actual: $('cl-actual').value, nueva: $('cl-nueva').value }));
+    btn.textContent = 'Guardada';
+    setTimeout(() => clDialog.close(), 900);
+  } catch (err) { clError(err.message); }
+  finally { setTimeout(() => { btn.disabled = false; btn.textContent = 'Guardar'; }, 900); }
+});
 
 verVista('chat');
 input.focus();

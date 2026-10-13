@@ -1,19 +1,25 @@
-// Login con Google para el chat. Port de lib/auth/* de Prompt Studio: OAuth
-// "authorization code" hablando directo con Google y una cookie de sesión
-// firmada con HMAC-SHA256. Solo entran correos verificados del dominio.
+// Login del panel, con dos puertas (el modelo de Zebra Reports):
+// - Google, para el equipo: entran como administradores los correos verificados de los dominios
+//   de AUTH_ALLOWED_DOMAIN (lista separada por comas). Port de lib/auth/* de Prompt Studio.
+// - Correo y contraseña, para la gente del cliente: rol "cliente", usuarios creados en Admin.
+// La sesión es una cookie firmada con HMAC-SHA256 que dice quién es y con qué rol.
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
+
+import { autenticar, cambiarContrasena, frenoLogin, hayUsuarios, sesionVigente } from './usuarios.mjs';
 
 const SESSION_COOKIE = 'zebra_chat_session';
 const STATE_COOKIE = 'zebra_chat_oauth_state';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
-const allowedDomain = () => (process.env.AUTH_ALLOWED_DOMAIN || 'zebradigital.marketing').toLowerCase();
+/** Los dominios que entran con Google, como administradores. */
+export const allowedDomains = () => (process.env.AUTH_ALLOWED_DOMAIN || 'zebradigital.marketing')
+  .split(',').map((d) => d.trim().toLowerCase().replace(/^@/, '')).filter(Boolean);
 
 // El "@" delante evita dominios parecidos (evilzebradigital.marketing).
 export function isEmailAllowed(email) {
   if (typeof email !== 'string') return false;
   const e = email.trim().toLowerCase();
-  return e.split('@').length === 2 && e.endsWith('@' + allowedDomain());
+  return e.split('@').length === 2 && allowedDomains().some((d) => e.endsWith('@' + d));
 }
 
 function secret() {
@@ -23,8 +29,9 @@ function secret() {
 }
 const sign = (part) => createHmac('sha256', secret()).update(part).digest('base64url');
 
-export function signSession(email, now = Date.now()) {
-  const payload = { email: email.trim().toLowerCase(), exp: Math.floor(now / 1000) + SESSION_TTL_SECONDS };
+/** rol "admin" (Google) o "cliente" (contraseña, con su versión de sesión `v`). */
+export function signSession(email, now = Date.now(), { rol = 'admin', v } = {}) {
+  const payload = { email: email.trim().toLowerCase(), exp: Math.floor(now / 1000) + SESSION_TTL_SECONDS, rol, ...(rol === 'cliente' ? { v: v ?? 0 } : {}) };
   const part = Buffer.from(JSON.stringify(payload)).toString('base64url');
   return `${part}.${sign(part)}`;
 }
@@ -40,7 +47,11 @@ export function verifySession(token, now = Date.now()) {
   let payload;
   try { payload = JSON.parse(Buffer.from(part, 'base64url').toString('utf8')); } catch { return null; }
   if (typeof payload?.exp !== 'number' || Math.floor(now / 1000) >= payload.exp) return null;
-  return isEmailAllowed(payload.email) ? payload : null;
+  // Las cookies de antes de los roles no traen rol: eran todas de Google.
+  const rol = payload.rol ?? 'admin';
+  if (rol === 'cliente') return typeof payload.email === 'string' ? { ...payload, rol } : null;
+  // Un admin tiene que seguir siendo de un dominio permitido: quitar uno de la lista lo saca.
+  return rol === 'admin' && isEmailAllowed(payload.email) ? { ...payload, rol } : null;
 }
 
 function readCookie(req, name) {
@@ -82,14 +93,22 @@ async function exchangeCode(req, code) {
   };
 }
 
-export function requireSession(req, res, next) {
+export async function requireSession(req, res, next) {
   const session = verifySession(readCookie(req, SESSION_COOKIE));
-  if (session) {
+  // Un cliente se revalida contra la base: desactivarlo o resetearle la contraseña lo saca en ≤ 60 s.
+  const vigente = session && (session.rol !== 'cliente' || await sesionVigente(session.email, session.v));
+  if (vigente) {
     req.user = session;
     return next();
   }
   if (req.originalUrl.startsWith('/api/')) return res.status(401).json({ error: 'Tu sesión venció. Vuelve a entrar.' });
   res.redirect('/login');
+}
+
+/** Solo el equipo (Google). Va siempre después de requireSession. */
+export function requireAdmin(req, res, next) {
+  if (req.user?.rol === 'admin') return next();
+  res.status(403).json({ error: 'Esta sección es solo para administradores.' });
 }
 
 export function mountAuth(app) {
@@ -104,8 +123,9 @@ export function mountAuth(app) {
       state,
       access_type: 'online',
       prompt: 'select_account',
-      hd: allowedDomain(), // solo una pista para Google; el filtro real es el del callback
     });
+    // Solo una pista para Google, y solo si hay un dominio; el filtro real es el del callback.
+    if (allowedDomains().length === 1) params.set('hd', allowedDomains()[0]);
     res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
   });
 
@@ -122,12 +142,49 @@ export function mountAuth(app) {
     let identity;
     try { identity = await exchangeCode(req, String(code)); } catch { return fail('google'); }
 
-    const hdMismatch = identity.hd != null && identity.hd.toLowerCase() !== allowedDomain();
+    const hdMismatch = identity.hd != null && !allowedDomains().includes(identity.hd.toLowerCase());
     if (!identity.emailVerified || !isEmailAllowed(identity.email) || hdMismatch) return fail('domain');
 
     res.clearCookie(STATE_COOKIE, { path: '/' });
-    res.cookie(SESSION_COOKIE, signSession(identity.email), cookieOpts(req, SESSION_TTL_SECONDS * 1000));
+    res.cookie(SESSION_COOKIE, signSession(identity.email, Date.now(), { rol: 'admin' }), cookieOpts(req, SESSION_TTL_SECONDS * 1000));
     res.redirect('/');
+  });
+
+  // Lo que la página de login necesita saber para pintarse: sin secretos.
+  app.get('/auth/config', (_req, res) => res.json({ dominios: allowedDomains(), contrasena: hayUsuarios() }));
+
+  // La puerta del cliente. Un solo mensaje para "no existe" y "clave mala": no se confirma quién existe.
+  app.post('/auth/password', async (req, res) => {
+    const { email, password } = req.body ?? {};
+    if (!hayUsuarios()) return res.status(503).json({ error: 'El acceso con contraseña no está disponible en esta instancia.' });
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+      return res.status(400).json({ error: 'Escribe tu correo y tu contraseña.' });
+    }
+    const clave = `${email.trim().toLowerCase()}|${req.ip ?? ''}`;
+    if (!frenoLogin.permitido(clave)) return res.status(429).json({ error: 'Demasiados intentos. Espera 15 minutos.' });
+    let u;
+    try { u = await autenticar(email, password); } catch (e) {
+      console.error('login contraseña:', e.message);
+      return res.status(503).json({ error: 'No se pudo comprobar la contraseña. Intenta en un momento.' });
+    }
+    if (!u) return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
+    frenoLogin.limpiar(clave);
+    console.log(JSON.stringify({ login: u.email, via: 'contraseña' }));
+    res.cookie(SESSION_COOKIE, signSession(u.email, Date.now(), { rol: 'cliente', v: u.v }), cookieOpts(req, SESSION_TTL_SECONDS * 1000));
+    res.json({ ok: true });
+  });
+
+  // El cliente cambia su propia contraseña. Sube su versión: cierra sus otras sesiones y renueva esta.
+  app.post('/api/me/contrasena', requireSession, async (req, res) => {
+    if (req.user.rol !== 'cliente') return res.status(403).json({ error: 'Tu cuenta entra con Google: la contraseña se cambia ahí.' });
+    const { actual, nueva } = req.body ?? {};
+    try {
+      const v = await cambiarContrasena(req.user.email, actual, nueva);
+      res.cookie(SESSION_COOKIE, signSession(req.user.email, Date.now(), { rol: 'cliente', v }), cookieOpts(req, SESSION_TTL_SECONDS * 1000));
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
   app.post('/auth/logout', (_req, res) => {

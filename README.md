@@ -36,7 +36,9 @@ Luego, en el panel: **Integración WA → Añadir número → escanear el QR →
 | `whatsapp.mjs` | El bot de WhatsApp: una conexión por número dentro del proceso, y cuándo contestar |
 | `wa-admin.mjs` | Las rutas de la pantalla "Integración WA" |
 | `docker-compose.yml` | Una instancia completa: el servidor y su base del dashboard |
-| `auth.mjs` | Login con Google y cookie de sesión firmada (HMAC), restringido a un dominio |
+| `auth.mjs` | Login con Google (equipo, admin) y con contraseña (cliente), cookie firmada con rol |
+| `usuarios.mjs` | Usuarios con contraseña: scrypt, freno de intentos y revocación de sesiones |
+| `admin.mjs` | La pestaña Admin: crear, resetear, activar y borrar usuarios |
 | `public/chat.html` | La interfaz: barra lateral, conversación, tablas y consultas |
 | `public/login.html` | Pantalla de acceso |
 | `grants.sql` | Permisos del rol de lectura. Sin nombres fijos; re-ejecutable |
@@ -59,7 +61,7 @@ Luego, en el panel: **Integración WA → Añadir número → escanear el QR →
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Cliente OAuth de Google |
 | `AUTH_SESSION_SECRET` | Firma de la cookie de sesión (`openssl rand -hex 32`) |
 | `AUTH_BASE_URL` | URL pública. De aquí sale la URI de retorno y la URL del MCP |
-| `AUTH_ALLOWED_DOMAIN` | Dominio permitido. `zebradigital.marketing` por defecto |
+| `AUTH_ALLOWED_DOMAIN` | Dominios que entran con Google como administradores, separados por comas. `zebradigital.marketing` por defecto |
 
 Si falta alguna de las cuatro de Google y sesión (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
 `AUTH_SESSION_SECRET`, `AUTH_BASE_URL`), el chat no se monta y el MCP sigue funcionando solo. Las
@@ -119,6 +121,24 @@ Cada tarjeta tiene su **Clave de API**: se pega ahí, sin entrar a EasyPanel.
   4 caracteres. En los logs queda quién la cambió, no cuál.
 - Manda la del panel; si no hay, la variable de entorno. Así una instancia vieja sigue funcionando
   hasta que alguien pegue la suya, y después la variable se puede borrar.
+
+## Quién entra
+
+Dos puertas, como en Zebra Reports:
+
+| Puerta | Quién | Rol | Ve |
+|---|---|---|---|
+| Google | Correos verificados de `AUTH_ALLOWED_DOMAIN` (lista) | `admin` | Todo |
+| Correo y contraseña | Usuarios creados en **Admin** | `cliente` | Data Chat e Integración WA |
+
+- Ajustes y Admin están cerrados en el servidor (`requireAdmin`), no solo escondidos.
+- Las contraseñas se guardan con scrypt (`usuarios.mjs`); al crear o resetear se genera una
+  temporal que se muestra una sola vez. El usuario la cambia desde **Clave**, en la barra lateral.
+- La cookie de un cliente lleva su versión de sesión: resetear, cambiar la contraseña o
+  desactivarlo lo saca (al instante en este proceso; en ≤ 60 s si hubiera caché vieja).
+- 5 intentos fallidos por correo en 15 minutos y se frena. Un solo mensaje para "no existe" y
+  "contraseña incorrecta".
+- Sin `APP_DATABASE_URL` no hay acceso con contraseña: la página de login solo muestra Google.
 
 ## WhatsApp
 

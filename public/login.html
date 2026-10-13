@@ -12,6 +12,7 @@
 <style>
 :root{--bg:#0a0a0a;--surface:#161616;--border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.14);--fg:#fff;--muted:#a3a3a3;--danger:#e24b4a;--ease:cubic-bezier(.16,1,.3,1);color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font:400 15px/1.5 'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;display:grid;place-items:center;padding:24px 16px}
 .login-card{width:min(420px,100%);display:flex;flex-direction:column;align-items:flex-start;gap:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px}
@@ -26,6 +27,16 @@ strong{color:var(--fg);font-weight:600}
 .btn:active{transform:none}
 .btn:focus-visible{outline:none;box-shadow:0 0 0 1px var(--bg),0 0 0 2px var(--fg)}
 .btn svg{width:16px;height:16px}
+/* Segunda puerta: correo y contraseña, para quien no es del equipo. */
+.sep{width:100%;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--border)}
+.form{width:100%;display:flex;flex-direction:column;gap:10px}
+.campo{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.campo input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:11px 12px;font:inherit;font-size:15px;color:var(--fg);transition:border-color .15s var(--ease)}
+.campo input:focus{outline:none;border-color:var(--fg)}
+.btn-sec{background:transparent;color:var(--fg);border-color:var(--border2);cursor:pointer;font-family:inherit}
+.btn-sec:hover{border-color:var(--fg)}
+.btn:disabled{opacity:.6;cursor:default;transform:none;box-shadow:none}
 @media (prefers-reduced-motion:reduce){.btn,.btn:hover{transition:none;transform:none}}
 </style>
 </head>
@@ -34,27 +45,67 @@ strong{color:var(--fg);font-weight:600}
   <svg viewBox="0 0 244 39" height="18" width="113" fill="none" role="img" aria-label="Zebra"><path fill-rule="evenodd" clip-rule="evenodd" d="M131.868 25.8267C131.001 22.2349 128.485 20.097 124.971 18.8142C125.449 18.5149 125.839 18.2583 126.186 18.0445C130.394 15.3079 131.478 10.305 128.702 6.11461C126.533 2.86489 123.323 1.28279 119.462 1.15451C114.517 1.02623 109.616 1.11175 104.671 1.11175C104.454 1.11175 104.193 1.15451 103.933 1.15451V38.0987C104.193 38.0987 104.367 38.1415 104.584 38.1415C109.919 38.1415 115.255 38.1842 120.59 38.0987C121.978 38.0987 123.41 37.7994 124.711 37.3718C130.003 35.7042 133.04 30.7013 131.868 25.8267ZM127.791 28.1358C127.661 31.4282 124.841 34.2076 121.198 34.2931C116.946 34.4214 112.695 34.3359 108.314 34.3359V4.9601C112.218 4.9601 116.079 4.83182 119.94 5.00286C123.28 5.1739 125.839 7.86775 125.882 10.9037C125.926 13.4692 124.494 15.7783 122.195 16.7617C121.935 16.89 121.675 16.9755 121.545 17.0183C121.501 17.0183 121.501 17.0183 121.458 17.061C120.59 17.3604 119.94 18.2156 119.94 19.199C119.94 20.3535 120.807 21.2942 121.935 21.4225C125.622 21.8501 127.921 24.715 127.791 28.1358Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M54.1788 38.0987V1.19727H79.0343V4.91734H58.56V17.3176H70.1852V21.166H58.6034V34.3359H79.7717V38.0987" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M24.4217 4.91734H1.21458V1.19727H32.0996C23.9445 12.272 15.8763 23.2184 7.67787 34.3786H31.4923V38.0987H0C8.15502 27.024 16.2233 16.0776 24.4217 4.91734Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M224.697 0L205.307 38.1842H209.948C209.948 38.1842 212.898 32.54 214.026 30.1455H235.281C236.452 32.54 239.359 38.1842 239.359 38.1842H244L224.697 0ZM216.021 26.2116L224.697 8.68018L233.416 26.2543H216.021V26.2116Z" fill="currentColor"/><path d="M185.961 35.02C185.7 35.02 185.483 35.0628 185.266 35.0628C184.009 35.1056 182.967 34.678 182.143 33.7373C181.84 33.3952 181.579 33.0531 181.232 32.54C179.28 29.6751 177.372 26.853 175.246 23.6888C180.538 22.577 184.529 17.959 184.529 12.443C184.529 6.07185 179.237 0.940709 172.73 0.940709H156.637V38.3553H160.585V24.0308H170.952L171.299 24.544C171.993 25.5702 172.687 26.5964 173.338 27.6226C175.029 30.1882 176.808 32.8821 178.586 35.4904C179.931 37.4146 182.057 38.5263 184.442 38.5263C185.093 38.5263 185.7 38.4408 186.351 38.2698L186.524 38.227V35.02M172.73 20.3963H160.585V4.57527H172.73C177.198 4.57527 180.842 8.12431 180.842 12.4858C180.842 16.8472 177.198 20.3963 172.73 20.3963Z" fill="currentColor"/></svg>
   <span class="pill-logo">Reporte de Métricas</span>
   <div>
-    <h1>Acceso del equipo</h1>
-    <p>Pregúntale a la base de métricas de Zebra. Entra con tu cuenta de Google del dominio <strong>@zebradigital.marketing</strong>.</p>
+    <h1>Acceso</h1>
+    <p id="intro">Pregúntale a la base de métricas. El equipo entra con su cuenta de Google; si te dieron un usuario, entra con tu correo y contraseña.</p>
   </div>
   <p class="login-error" id="error" role="alert" hidden></p>
   <a class="btn" href="/auth/google">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.94 11A8.994 8.994 0 1 1 17 4.75"/><path d="M21 12h-9"/></svg>
     Entrar con Google
   </a>
+  <div class="sep" id="sep">o con tu correo</div>
+  <form class="form" id="form-clave">
+    <label class="campo">Correo<input type="email" name="email" autocomplete="username" required></label>
+    <label class="campo">Contraseña<input type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit" class="btn btn-sec" id="entrar">Entrar</button>
+  </form>
 </main>
 <script>
 const MESSAGES = {
-  domain: 'Solo se permite el acceso con una cuenta @zebradigital.marketing.',
+  domain: 'Esa cuenta de Google no tiene acceso. Si te dieron un usuario, entra con tu correo y contraseña.',
   state: 'El inicio de sesión expiró o no es válido. Intenta de nuevo.',
   google: 'No se pudo completar el inicio con Google. Intenta de nuevo.',
 };
 const code = new URLSearchParams(location.search).get('error');
-if (code) {
-  const el = document.getElementById('error');
-  el.textContent = MESSAGES[code] ?? MESSAGES.google;
-  el.hidden = false;
-}
+const errorEl = document.getElementById('error');
+const mostrar = (m) => { errorEl.textContent = m; errorEl.hidden = !m; };
+if (code) mostrar(MESSAGES[code] ?? MESSAGES.google);
+
+// Qué dominios entran con Google y si esta instancia acepta contraseñas: lo dice el servidor.
+fetch('/auth/config').then((r) => r.json()).then(({ dominios = [], contrasena }) => {
+  if (dominios.length) {
+    const lista = dominios.map((d) => '@' + d).join(' o ');
+    document.getElementById('intro').textContent = contrasena
+      ? `Pregúntale a la base de métricas. El equipo entra con Google (${lista}); si te dieron un usuario, entra con tu correo y contraseña.`
+      : `Pregúntale a la base de métricas. Entra con tu cuenta de Google ${lista}.`;
+    MESSAGES.domain = contrasena
+      ? `Esa cuenta de Google no tiene acceso (solo ${lista}). Si te dieron un usuario, entra con tu correo y contraseña.`
+      : `Solo se permite el acceso con una cuenta ${lista}.`;
+    if (code === 'domain') mostrar(MESSAGES.domain);
+  }
+  if (!contrasena) { document.getElementById('sep').hidden = true; document.getElementById('form-clave').hidden = true; }
+}).catch(() => {});
+
+document.getElementById('form-clave').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target, btn = document.getElementById('entrar');
+  mostrar('');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try {
+    const r = await fetch('/auth/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: f.email.value, password: f.password.value }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error ?? 'No se pudo entrar. Intenta de nuevo.');
+    location.href = '/';
+  } catch (err) {
+    mostrar(err.message);
+    f.password.value = ''; f.password.focus();
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+});
 </script>
 </body>
 </html>

@@ -105,7 +105,8 @@ if (faltan.length) {
   console.warn(`Chat desactivado, faltan: ${faltan.join(', ')}`);
 } else {
   const { fileURLToPath } = await import('node:url');
-  const { mountAuth, requireSession } = await import('./auth.mjs');
+  const { mountAuth, requireAdmin, requireSession } = await import('./auth.mjs');
+  const soloAdmin = [requireSession, requireAdmin]; // Ajustes y Admin: el cliente no entra
   const { mountChat } = await import('./chat.mjs');
   const page = (name) => fileURLToPath(new URL(`./public/${name}`, import.meta.url));
   mountAuth(app);
@@ -150,7 +151,9 @@ if (faltan.length) {
   const { mountAjustes } = await import('./ajustes.mjs');
   const { cargar } = await import('./proveedores.mjs');
   console.log(`Contesta: ${JSON.stringify(await cargar())}`); // lo guardado manda desde el primer turno
-  mountAjustes(app, requireSession); // la pantalla "Ajustes" del panel
+  mountAjustes(app, soloAdmin); // la pantalla "Ajustes" del panel
+  const { mountAdmin } = await import('./admin.mjs');
+  mountAdmin(app, soloAdmin); // la pestaña "Admin": usuarios con contraseña
 
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));
   // Logos de los proveedores. Lista cerrada de archivos: nada que venga del navegador toca el disco.

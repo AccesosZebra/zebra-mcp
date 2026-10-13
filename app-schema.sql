@@ -42,3 +42,15 @@ create table if not exists wa_sesion (
   valor     jsonb not null,                         -- serializado con BufferJSON de Baileys
   primary key (instancia, clave)
 );
+
+-- Usuarios con contraseña: la gente del cliente, que no entra con Google. Los crea un
+-- administrador en la pestaña Admin. Nunca se guarda la contraseña, solo su hash scrypt.
+create table if not exists usuarios (
+  email  text primary key,                          -- siempre en minúsculas
+  nombre text not null default '',
+  hash   text not null,                             -- scrypt$N$r$p$salt$hash
+  activo boolean not null default true,
+  v      integer not null default 0,                -- subirla revoca todas sus sesiones vivas
+  creado timestamptz not null default now(),
+  por    text                                       -- correo del administrador que lo creó
+);
