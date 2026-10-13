@@ -109,8 +109,9 @@ const esperado = Buffer.from(`Bearer ${MCP_AUTH_TOKEN}`);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// Chat con login de Google. Si falta configuración, el MCP sigue funcionando solo.
-const CHAT_ENV = ['ANTHROPIC_API_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'AUTH_SESSION_SECRET', 'AUTH_BASE_URL'];
+// Chat con login de Google. Si falta configuración, el MCP sigue funcionando solo. Las claves de
+// IA no hacen falta para arrancar: se pegan desde Ajustes.
+const CHAT_ENV = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'AUTH_SESSION_SECRET', 'AUTH_BASE_URL'];
 const faltan = CHAT_ENV.filter((k) => !process.env[k]);
 if (faltan.length) {
   console.warn(`Chat desactivado, faltan: ${faltan.join(', ')}`);
@@ -151,7 +152,7 @@ if (faltan.length) {
 
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));
   // Logos de los proveedores. Lista cerrada de archivos: nada que venga del navegador toca el disco.
-  const LOGOS = new Set(['anthropic.png', 'openai.png', 'openai-claro.png', 'gemini.jpg']);
+  const LOGOS = new Set(['anthropic.png', 'openai.png', 'openai-claro.png']);
   app.get('/logos/:archivo', (req, res) => {
     if (!LOGOS.has(req.params.archivo)) return res.status(404).end();
     res.sendFile(page(`logos/${req.params.archivo}`));

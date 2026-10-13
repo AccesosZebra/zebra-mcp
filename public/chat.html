@@ -187,7 +187,6 @@ body[data-view="ajustes"] #error{display:none}
 .aj-proveedores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-width:900px}
 .aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
 .aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
-.aj-card.no-disponible{opacity:.55}
 .aj-head{display:flex;align-items:center;gap:10px}
 .aj-head img{width:38px;height:38px;flex:none;object-fit:contain}
 /* El logo de OpenAI es negro: sobre la tarjeta oscura hay que usar su versión blanca. */
@@ -196,6 +195,29 @@ body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/ope
 .aj-badge{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
 .aj-card select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font-size:13px;color:var(--fg)}
 .aj-card select:disabled{opacity:.5;cursor:not-allowed}
+/* Clave de API de cada proveedor: entra por aquí y nunca vuelve al navegador, solo su final. */
+.aj-clave{margin-top:4px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.aj-clave-tit{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.aj-clave-estado{display:flex;align-items:baseline;gap:8px;font-size:13px;line-height:1.6;color:var(--fg)}
+.aj-clave-estado > span:last-child{flex:1;min-width:0}
+.aj-clave-estado .fin{font-family:var(--font-mono);font-size:12px;padding:1px 6px;border-radius:5px;background:color-mix(in srgb,var(--fg) 8%,transparent)}
+.aj-clave-estado .de{color:var(--muted)}
+.aj-clave-estado.es-falta{color:var(--muted)}
+.aj-clave-estado.es-mala{color:var(--danger)}
+.aj-punto{width:7px;height:7px;flex:none;border-radius:50%;background:#10b981;transform:translateY(-1px)}
+.es-falta .aj-punto{background:var(--faint)}
+.es-mala .aj-punto{background:var(--danger)}
+.aj-clave-form{display:flex;flex-wrap:wrap;gap:8px}
+.aj-clave-form input{flex:1 1 200px;min-width:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:inherit;font-family:var(--font-mono);font-size:12px;color:var(--fg)}
+.aj-clave-form input::placeholder{font-family:'Inter',system-ui,sans-serif;font-size:13px;color:var(--faint)}
+.aj-clave-form input:focus{outline:none;border-color:var(--accent)}
+.aj-clave-acc{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.aj-clave-acc .btn{padding:6px 10px;font-size:12px}
+.aj-clave-acc .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
+.aj-clave-ayuda{font-size:12px;color:var(--muted)}
+.aj-clave-ayuda a{color:var(--fg);text-underline-offset:3px}
+.aj-card .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;border-color:var(--border2)}
+.aj-clave-error{font-size:12px;color:var(--danger)}
 /* ── Integración WA: réplica del mockup de Stitch. Grises fríos (slate) y esmeralda en claro;
    en oscuro, la misma pieza sobre las superficies que el mockup trae en su config (#11151c).
    Los grises de texto chico y el verde de texto suben un tono respecto al mockup: slate-400 y
@@ -1287,73 +1309,119 @@ async function cargarAjustes() {
     $('aj-activo').textContent = `${d.activo.proveedor} · ${d.activo.modelo ?? 'sin modelo definido'}`;
     $('aj-donde').textContent = d.hayBase
       ? 'El cambio aplica al instante, también en WhatsApp. Queda guardado en la base del dashboard.'
-      : 'Falta APP_DATABASE_URL en EasyPanel: mientras tanto mandan las variables de entorno y aquí no se puede guardar.';
+      : 'Falta APP_DATABASE_URL: mientras tanto mandan las variables de entorno y aquí no se puede guardar.';
     const cont = $('aj-proveedores');
     cont.textContent = '';
-    for (const p of d.proveedores) {
-      const info = d.modelos?.[p.id] ?? {};
-      const card = document.createElement('div');
-      card.className = `aj-card${p.id === d.activo.proveedor ? ' is-activo' : ''}${p.disponible ? '' : ' no-disponible'}`;
-
-      const head = document.createElement('div');
-      head.className = 'aj-head';
-      const img = document.createElement('img');
-      img.src = p.logo; img.alt = p.nombre; img.width = 38; img.height = 38;
-      img.dataset.logo = p.id; // la hoja de estilos cambia el de OpenAI según el tema
-      const nombre = document.createElement('span');
-      nombre.className = 'aj-nombre'; nombre.textContent = p.nombre;
-      head.append(img, nombre);
-      if (p.id === d.activo.proveedor) {
-        const badge = document.createElement('span');
-        badge.className = 'aj-badge'; badge.textContent = 'En uso';
-        head.append(badge);
-      }
-
-      const nota = document.createElement('p');
-      nota.className = 'wa-detalle'; nota.textContent = p.nota;
-
-      const sel = document.createElement('select');
-      sel.disabled = !p.disponible || !info.modelos?.length;
-      if (info.error) {
-        sel.append(new Option(info.error, ''));
-      } else {
-        sel.append(new Option('Elige un modelo…', ''));
-        for (const m of info.modelos ?? []) {
-          const op = new Option(m, m);
-          if (p.id === d.activo.proveedor && m === d.activo.modelo) op.selected = true;
-          sel.append(op);
-        }
-      }
-
-      const usar = document.createElement('button');
-      usar.type = 'button'; usar.className = 'btn'; usar.textContent = 'Usar este modelo';
-      usar.disabled = sel.disabled;
-      usar.addEventListener('click', async () => {
-        if (!sel.value) return ajError('Elige un modelo primero.');
-        ajError('');
-        usar.disabled = true; usar.textContent = 'Guardando…';
-        try {
-          await waFetch('/api/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ proveedor: p.id, modelo: sel.value }),
-          });
-          cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
-        } catch (e) {
-          ajError(e.message);
-          usar.disabled = false; usar.textContent = 'Usar este modelo';
-        }
-      });
-
-      card.append(head, nota, sel, usar);
-      if (!p.clave) {
-        const falta = document.createElement('p');
-        falta.className = 'wa-detalle'; falta.textContent = `Falta la variable ${p.env} en EasyPanel.`;
-        card.append(falta);
-      }
-      cont.append(card);
-    }
+    for (const p of d.proveedores) cont.append(tarjetaProveedor(p, d));
   } catch (e) { ajError(e.message); }
+}
+
+function tarjetaProveedor(p, d) {
+  const info = d.modelos?.[p.id] ?? {};
+  const enUso = p.id === d.activo.proveedor;
+  const card = h('div', { class: `aj-card${enUso ? ' is-activo' : ''}` });
+
+  const img = h('img', { src: p.logo, alt: p.nombre, width: 38, height: 38 });
+  img.dataset.logo = p.id; // la hoja de estilos cambia el de OpenAI según el tema
+  const head = h('div', { class: 'aj-head' }, img, h('span', { class: 'aj-nombre' }, p.nombre),
+    enUso ? h('span', { class: 'aj-badge' }, 'En uso') : null);
+
+  const sel = h('select', { 'aria-label': `Modelo de ${p.nombre}` });
+  sel.disabled = !info.modelos?.length;
+  if (info.error) {
+    sel.append(new Option(p.clave.hay ? info.error : 'Pega una clave para ver sus modelos', ''));
+  } else {
+    sel.append(new Option('Elige un modelo…', ''));
+    for (const m of info.modelos ?? []) {
+      const op = new Option(m, m);
+      if (enUso && m === d.activo.modelo) op.selected = true;
+      sel.append(op);
+    }
+  }
+
+  const usar = h('button', { type: 'button', class: 'btn', disabled: sel.disabled }, 'Usar este modelo');
+  usar.addEventListener('click', async () => {
+    if (!sel.value) return ajError('Elige un modelo primero.');
+    ajError('');
+    usar.disabled = true; usar.textContent = 'Guardando…';
+    try {
+      await waFetch('/api/settings', enviarJson({ proveedor: p.id, modelo: sel.value }));
+      cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
+    } catch (e) {
+      ajError(e.message);
+      usar.disabled = false; usar.textContent = 'Usar este modelo';
+    }
+  });
+
+  card.append(head, h('p', { class: 'wa-detalle' }, p.nota), sel, usar, bloqueClave(p, d.hayBase));
+  return card;
+}
+
+// La clave de un proveedor: de dónde viene, cómo termina, y el campo para pegar una nueva.
+function bloqueClave(p, hayBase) {
+  const k = p.clave;
+  const caja = h('div', { class: 'aj-clave' }, h('span', { class: 'aj-clave-tit' }, 'Clave de API'));
+
+  let estado;
+  if (!k.legible) {
+    estado = h('p', { class: 'aj-clave-estado es-mala' }, h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
+      h('span', {}, 'No se puede leer la clave guardada. Vuelve a pegarla.'));
+  } else if (k.hay) {
+    estado = h('p', { class: 'aj-clave-estado' }, h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
+      h('span', {}, 'Termina en ', h('span', { class: 'fin' }, k.fin), ' ',
+        h('span', { class: 'de' }, k.origen === 'panel' ? '· guardada aquí' : `· viene de la variable ${p.env}`)));
+  } else {
+    estado = h('p', { class: 'aj-clave-estado es-falta' }, h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
+      h('span', {}, 'Sin clave: este proveedor no puede contestar.'));
+  }
+  caja.append(estado);
+
+  if (!hayBase) {
+    caja.append(h('p', { class: 'aj-clave-ayuda' }, 'Para guardar claves aquí hace falta la base del dashboard (APP_DATABASE_URL).'));
+    return caja;
+  }
+
+  const error = h('p', { class: 'aj-clave-error', role: 'alert', hidden: true });
+  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: `Pega la clave de ${p.nombre}`, 'aria-label': `Clave de API de ${p.nombre}` });
+  const guardarBtn = h('button', { type: 'submit', class: 'btn' }, 'Guardar clave');
+  const form = h('form', { class: 'aj-clave-form' }, campo, guardarBtn);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    error.hidden = true;
+    if (!campo.value.trim()) { error.textContent = 'Pega la clave primero.'; error.hidden = false; return; }
+    guardarBtn.disabled = true; guardarBtn.textContent = 'Probando la clave…';
+    try {
+      await waFetch('/api/settings/clave', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proveedor: p.id, clave: campo.value }) });
+      campo.value = '';
+      cargarAjustes(); // con la clave nueva, el selector ya trae sus modelos
+    } catch (err) {
+      error.textContent = err.message; error.hidden = false;
+      guardarBtn.disabled = false; guardarBtn.textContent = 'Guardar clave';
+    }
+  });
+
+  // Con una clave que funciona, el campo queda detrás de "Cambiar": que no parezca que falta algo.
+  const plegado = k.hay && k.legible;
+  form.hidden = plegado;
+  const acciones = h('div', { class: 'aj-clave-acc' });
+  if (plegado) {
+    const cambiar = h('button', { type: 'button', class: 'btn' }, 'Cambiar clave');
+    cambiar.addEventListener('click', () => { form.hidden = false; cambiar.hidden = true; campo.focus(); });
+    acciones.append(cambiar);
+  }
+  if (k.origen === 'panel') {
+    acciones.append(conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Quitar clave'),
+      'Confirmar: se borra la clave',
+      async () => {
+        try { await waFetch(`/api/settings/clave/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); cargarAjustes(); }
+        catch (err) { error.textContent = err.message; error.hidden = false; }
+      }));
+  }
+
+  caja.append(form, acciones, error,
+    h('p', { class: 'aj-clave-ayuda' }, 'Se saca en ', h('a', { href: p.consola, target: '_blank', rel: 'noopener noreferrer' }, new URL(p.consola).host),
+      '. Se prueba antes de guardarla y se guarda cifrada.'));
+  return caja;
 }
 
 verVista('chat');

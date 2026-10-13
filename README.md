@@ -49,8 +49,8 @@ Luego, en el panel: **Integración WA → Añadir número → escanear el QR →
 | `DATABASE_URL` | Postgres con el rol `claude_readonly` |
 | `MCP_AUTH_TOKEN` | Token que exige `/mcp` en la cabecera `Authorization` |
 | `PORT` | Puerto, 3000 por defecto |
-| `ANTHROPIC_API_KEY` | Clave de la API de Anthropic |
-| `OPENAI_API_KEY` | Clave de OpenAI, si se usa ese proveedor |
+| `ANTHROPIC_API_KEY` | Opcional. Respaldo de la clave de Anthropic, que normalmente se pega en Ajustes |
+| `OPENAI_API_KEY` | Opcional. Igual, para OpenAI |
 | `AI_PROVIDER` | `anthropic` (por defecto) u `openai`. Solo vale hasta el primer guardado en Ajustes |
 | `AI_MODEL` | Modelo del proveedor elegido. Vacío = el de por defecto del proveedor |
 | `APP_DATABASE_URL` | Base del dashboard. Sin ella, Ajustes no puede guardar y WhatsApp no se monta. Con compose la arma él desde `APP_DB_PASSWORD` |
@@ -59,8 +59,9 @@ Luego, en el panel: **Integración WA → Añadir número → escanear el QR →
 | `AUTH_BASE_URL` | URL pública. De aquí sale la URI de retorno y la URL del MCP |
 | `AUTH_ALLOWED_DOMAIN` | Dominio permitido. `zebradigital.marketing` por defecto |
 
-Si falta alguna de las cinco primeras del bloque de login, el chat no se monta y el MCP sigue
-funcionando solo. WhatsApp no tiene variables propias: solo necesita `APP_DATABASE_URL`.
+Si falta alguna de las cuatro de Google y sesión (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`AUTH_SESSION_SECRET`, `AUTH_BASE_URL`), el chat no se monta y el MCP sigue funcionando solo. Las
+claves de IA no hacen falta para arrancar: sin ninguna, el chat dice que falta y dónde pegarla. WhatsApp no tiene variables propias: solo necesita `APP_DATABASE_URL`.
 
 ## Las dos bases
 
@@ -70,9 +71,9 @@ funcionando solo. WhatsApp no tiene variables propias: solo necesita `APP_DATABA
 | Dashboard | `APP_DATABASE_URL` | Lo que se administra desde el panel, y la sesión de WhatsApp |
 
 La del dashboard es Postgres 17 sin puerto público (en Zebra, el servicio `zebra-mcp_db` de
-EasyPanel; en compose, el servicio `db`). Sus tablas están en `app-schema.sql`. Ahí **no** van
-claves de API: esas siguen siendo variables de entorno. **Sí** va la sesión de WhatsApp
-(`wa_sesion`): quien lea esa tabla puede hacerse pasar por el bot, así que la base no se expone.
+EasyPanel; en compose, el servicio `db`). Sus tablas están en `app-schema.sql`. Ahí van las
+claves de IA, cifradas, y la sesión de WhatsApp (`wa_sesion`), que no: quien lea esa tabla puede
+hacerse pasar por el bot, así que la base no se expone.
 
 ## La pantalla "Ajustes"
 
@@ -83,6 +84,20 @@ correo de quien lo cambió. Lo guardado se lee una vez al arrancar y se recuerda
 Mientras no se haya guardado nada, mandan `AI_PROVIDER` y `AI_MODEL`. Después manda la base. Sin
 `APP_DATABASE_URL` la pantalla sigue mostrando quién contesta, pero avisa de que no puede guardar
 en vez de fingir que guardó.
+
+### Claves de API
+
+Cada tarjeta tiene su **Clave de API**: se pega ahí, sin entrar a EasyPanel.
+
+- Antes de guardarla se prueba contra el proveedor (pidiendo su lista de modelos). Si no la
+  acepta, no se guarda y se muestra por qué.
+- Se guarda en `ajustes` (clave `claves-ia`) cifrada con AES-256-GCM. La llave se deriva de
+  `AUTH_SESSION_SECRET` con HKDF: una copia de la base sola no basta para leerlas. **Rotar
+  `AUTH_SESSION_SECRET` las deja ilegibles**: la tarjeta lo dice y hay que volver a pegarlas.
+- Nunca vuelve al navegador: la pantalla solo sabe si hay clave, de dónde viene y sus últimos
+  4 caracteres. En los logs queda quién la cambió, no cuál.
+- Manda la del panel; si no hay, la variable de entorno. Así una instancia vieja sigue funcionando
+  hasta que alguien pegue la suya, y después la variable se puede borrar.
 
 ## WhatsApp
 

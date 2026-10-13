@@ -32,7 +32,7 @@ function errorMessage(e) {
   const m = e?.message ?? '';
   if (/credit balance/i.test(m)) return 'La cuenta del proveedor se quedó sin saldo.';
   if (e?.status === 429) return 'Se alcanzó el límite de uso de la API. Intenta en un momento.';
-  if (e?.status === 401) return 'La API key del proveedor no es válida.';
+  if (e?.status === 401) return 'La clave de API del proveedor no es válida: cámbiala en Ajustes.';
   if (e?.status) return `No se pudo obtener la respuesta (${e.status}).`;
   return m || 'No se pudo obtener la respuesta.';
 }

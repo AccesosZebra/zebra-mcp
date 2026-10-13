@@ -1,5 +1,6 @@
--- Base del dashboard: lo que se administra desde el panel. Las claves de API NO: esas siguen en el
--- entorno. El servidor lo aplica solo al arrancar; es re-ejecutable, aplicarlo dos veces no hace daño.
+-- Base del dashboard: lo que se administra desde el panel. Las claves de API van en `ajustes`
+-- (clave 'claves-ia') cifradas con AES-256-GCM: la llave sale de AUTH_SESSION_SECRET, que no vive
+-- aquí. El servidor lo aplica solo al arrancar; es re-ejecutable, aplicarlo dos veces no hace daño.
 --
 -- ponytail: la app entra como "postgres" a su propia base, que guarda preferencias y la sesión de
 -- WhatsApp. Si algún día guarda datos de clientes, toca un rol propio sin permisos de DDL.

@@ -1,5 +1,6 @@
 // Quién contesta las preguntas. El MCP es el mismo para todos (es protocolo abierto); lo que
 // cambia es qué proveedor ejecuta el bucle de consultas contra él.
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 
 import { guardarAjuste, leerAjuste } from './db.mjs';
@@ -10,26 +11,96 @@ export const PROVEEDORES = {
     env: 'ANTHROPIC_API_KEY',
     logo: '/logos/anthropic.png',
     pordefecto: 'claude-sonnet-5',
-    disponible: true,
     nota: 'Conector MCP propio, con token. Es el que corre hoy.',
+    consola: 'https://console.anthropic.com/settings/keys',
   },
   openai: {
     nombre: 'OpenAI',
     env: 'OPENAI_API_KEY',
     logo: '/logos/openai.png', // en tema oscuro la hoja de estilos cambia a openai-claro.png
     pordefecto: null, // los nombres de modelo cambian seguido: se eligen de la lista que da su API
-    disponible: true,
     nota: 'Responses API con servidor MCP remoto y campo authorization.',
-  },
-  gemini: {
-    nombre: 'Google Gemini',
-    env: 'GEMINI_API_KEY',
-    logo: '/logos/gemini.jpg',
-    pordefecto: null,
-    disponible: false,
-    nota: 'Su documentación se contradice sobre MCP remoto y no dice cómo autenticar. Sin token, nuestro servidor responde 401.',
+    consola: 'https://platform.openai.com/api-keys',
   },
 };
+
+// ── Claves de API ───────────────────────────────────────────────────────────
+// Se pegan desde Ajustes y viven en la base del dashboard, cifradas: una copia de la base no
+// basta para usarlas. La llave sale de AUTH_SESSION_SECRET, así que rotarlo deja las guardadas
+// ilegibles; el panel lo dice y se vuelven a pegar. Si no hay clave en el panel, manda la
+// variable de entorno, como antes.
+const llave = () => Buffer.from(hkdfSync('sha256', process.env.AUTH_SESSION_SECRET ?? '', 'zebra-mcp', 'claves-ia', 32));
+
+export function cifrar(texto) {
+  const iv = randomBytes(12);
+  const c = createCipheriv('aes-256-gcm', llave(), iv);
+  const datos = Buffer.concat([c.update(texto, 'utf8'), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), datos]).toString('base64');
+}
+
+/** El texto, o null si no se puede leer (otra llave, o el valor se alteró). */
+export function descifrar(b64) {
+  try {
+    const b = Buffer.from(b64, 'base64');
+    const d = createDecipheriv('aes-256-gcm', llave(), b.subarray(0, 12));
+    d.setAuthTag(b.subarray(12, 28));
+    return Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8');
+  } catch {
+    return null;
+  }
+}
+
+let guardadas = {}; // lo que hay en la base, cifrado: id → { cifrada, fin, por, cuando }
+const enClaro = {}; // id → la clave descifrada, o null si no se pudo leer
+
+function recordar(fila) {
+  guardadas = fila ?? {};
+  for (const id of Object.keys(PROVEEDORES)) {
+    enClaro[id] = guardadas[id] ? descifrar(guardadas[id].cifrada) : undefined;
+  }
+}
+
+/** La clave que se usa: la del panel; si no hay, la del entorno. */
+export const clave = (id) => enClaro[id] || process.env[PROVEEDORES[id]?.env] || null;
+
+/** Lo que el panel puede saber de una clave. Nunca la clave: solo de dónde viene y cómo termina. */
+export function estadoClave(id) {
+  if (guardadas[id]) {
+    const legible = Boolean(enClaro[id]);
+    return { hay: legible, origen: 'panel', fin: guardadas[id].fin, legible, por: guardadas[id].por ?? null };
+  }
+  const delEntorno = process.env[PROVEEDORES[id]?.env];
+  return delEntorno
+    ? { hay: true, origen: 'entorno', fin: delEntorno.slice(-4), legible: true, por: null }
+    : { hay: false, origen: null, fin: null, legible: true, por: null };
+}
+
+/** Prueba la clave contra el proveedor, y solo si responde la guarda. */
+export async function guardarClave(id, valor, por = null) {
+  if (!PROVEEDORES[id]) throw new Error('Ese proveedor no existe.');
+  const limpia = typeof valor === 'string' ? valor.trim() : '';
+  if (limpia.length < 20 || limpia.length > 300 || /\s/.test(limpia)) {
+    throw new Error('Eso no parece una clave de API: pégala completa, sin espacios.');
+  }
+  try {
+    await listarModelos(id, limpia);
+  } catch (e) {
+    throw new Error(`${PROVEEDORES[id].nombre} no aceptó la clave: ${e.message}`);
+  }
+  const nuevas = { ...guardadas, [id]: { cifrada: cifrar(limpia), fin: limpia.slice(-4), por, cuando: new Date().toISOString() } };
+  await guardarAjuste('claves-ia', nuevas, por);
+  recordar(nuevas);
+  return estadoClave(id);
+}
+
+/** Quita la del panel. Si hay variable de entorno, vuelve a mandar ella. */
+export async function quitarClave(id, por = null) {
+  if (!PROVEEDORES[id]) throw new Error('Ese proveedor no existe.');
+  const { [id]: _fuera, ...resto } = guardadas;
+  await guardarAjuste('claves-ia', resto, por);
+  recordar(resto);
+  return estadoClave(id);
+}
 
 // La elección vive en la base del dashboard, así que la pantalla Ajustes la cambia al instante.
 // Se lee una vez al arrancar y se recuerda: cada turno pregunta quién contesta, y no vale ir a la
@@ -38,8 +109,13 @@ let elegido = null;
 
 /** Trae de la base lo guardado. Se llama al arrancar; si la base falla, se sigue con el entorno. */
 export async function cargar() {
-  try { elegido = await leerAjuste('ia'); }
-  catch (e) { console.error('ajustes: no pude leer la base, sigo con el entorno:', e.message); }
+  try {
+    elegido = await leerAjuste('ia');
+    recordar(await leerAjuste('claves-ia'));
+    for (const id of Object.keys(PROVEEDORES)) {
+      if (guardadas[id] && !enClaro[id]) console.error(`ajustes: la clave de ${id} no se puede leer (¿cambió AUTH_SESSION_SECRET?)`);
+    }
+  } catch (e) { console.error('ajustes: no pude leer la base, sigo con el entorno:', e.message); }
   return activo();
 }
 
@@ -57,8 +133,8 @@ export function activo() {
 /** Una elección utilizable, o una excepción con el motivo en cristiano. */
 export function validar({ proveedor, modelo }) {
   const p = PROVEEDORES[proveedor];
-  if (!p?.disponible) throw new Error('Ese proveedor no está disponible.');
-  if (!process.env[p.env]) throw new Error(`Falta la variable ${p.env} en EasyPanel.`);
+  if (!p) throw new Error('Ese proveedor no está disponible.');
+  if (!clave(proveedor)) throw new Error(`Falta la clave de ${p.nombre}: pégala en su tarjeta.`);
   if (typeof modelo !== 'string' || !modelo.trim() || modelo.length > 120) throw new Error('Elige un modelo.');
   return { proveedor, modelo: modelo.trim() };
 }
@@ -107,8 +183,14 @@ Hoy es ${new Date().toISOString().slice(0, 10)}.${canal === 'whatsapp' ? WHATSAP
 const urlMcp = () => `${process.env.AUTH_BASE_URL.replace(/\/+$/, '')}/mcp`;
 
 // ── Anthropic ───────────────────────────────────────────────────────────────
-let anthropicClient;
-const anthropic = () => (anthropicClient ??= new Anthropic()); // ANTHROPIC_API_KEY
+// Se rehace solo si la clave cambió desde el panel.
+let anthropicClient, anthropicClave;
+function anthropic() {
+  const k = clave('anthropic');
+  if (!k) throw new Error('Falta la clave de Anthropic: pégala en Ajustes.');
+  if (k !== anthropicClave) { anthropicClient = new Anthropic({ apiKey: k }); anthropicClave = k; }
+  return anthropicClient;
+}
 
 /** Devuelve el stream del SDK: el chat web lo consume evento a evento. */
 export function streamAnthropic(messages, canal = 'web', cliente = null, modelo) {
@@ -134,9 +216,11 @@ export function streamAnthropic(messages, canal = 'web', cliente = null, modelo)
 // Responses API: el bucle de herramientas lo ejecuta OpenAI contra nuestro MCP, igual que Anthropic.
 // Sin streaming, por simplicidad: se emite el texto final de una vez.
 export async function pedirOpenAI(messages, canal = 'web', cliente = null, modelo) {
+  const k = clave('openai');
+  if (!k) throw new Error('Falta la clave de OpenAI: pégala en Ajustes.');
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${k}` },
     body: JSON.stringify({
       model: modelo,
       instructions: system(canal, cliente),
@@ -174,23 +258,25 @@ async function listar(url, cabeceras, mapear) {
   return mapear(d);
 }
 
+/** Los modelos de un proveedor con una clave dada. También sirve para probar una clave nueva. */
+function listarModelos(id, k) {
+  return id === 'anthropic'
+    ? listar('https://api.anthropic.com/v1/models?limit=40',
+        { 'x-api-key': k, 'anthropic-version': '2023-06-01' },
+        (d) => (d.data ?? []).map((m) => m.id))
+    : listar('https://api.openai.com/v1/models',
+        { Authorization: `Bearer ${k}` },
+        (d) => (d.data ?? []).map((m) => m.id).filter((x) => /^(gpt|o\d)/.test(x)).sort());
+}
+
 /** Para la pantalla de Ajustes: qué modelos ofrece cada proveedor con la clave que hay puesta. */
 export async function modelosDisponibles() {
   const salida = {};
-  for (const [id, p] of Object.entries(PROVEEDORES)) {
-    if (!process.env[p.env]) { salida[id] = { error: `falta ${p.env}` }; continue; }
-    if (!p.disponible) { salida[id] = { error: 'no disponible todavía' }; continue; }
-    try {
-      salida[id] = {
-        modelos: id === 'anthropic'
-          ? await listar('https://api.anthropic.com/v1/models?limit=40',
-              { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-              (d) => (d.data ?? []).map((m) => m.id))
-          : await listar('https://api.openai.com/v1/models',
-              { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-              (d) => (d.data ?? []).map((m) => m.id).filter((id) => /^(gpt|o\d)/.test(id)).sort()),
-      };
-    } catch (e) { salida[id] = { error: e.message }; }
+  for (const id of Object.keys(PROVEEDORES)) {
+    const k = clave(id);
+    if (!k) { salida[id] = { error: 'Sin clave todavía' }; continue; }
+    try { salida[id] = { modelos: await listarModelos(id, k) }; }
+    catch (e) { salida[id] = { error: e.message }; }
   }
   return salida;
 }
