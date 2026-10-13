@@ -257,8 +257,6 @@ body[data-theme="dark"] #wa{
 .wa-steps li{display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;font-weight:500;color:var(--wa-text);background:var(--wa-well);border:1px solid var(--wa-line);border-radius:12px;padding:10px}
 .wa-steps li span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wa-step-n{width:20px;height:20px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--wa-btn);color:var(--wa-on-btn);font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
-.wa-qr-hint{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:128px;flex:none;padding:12px;border:1px dashed var(--wa-line2);border-radius:12px;background:var(--wa-well);text-align:center;font-size:10px;font-weight:500;color:var(--wa-soft)}
-.wa-qr-hint svg{width:32px;height:32px;color:var(--wa-icon)}
 .wa-add-form{position:relative;margin-top:24px;padding-top:20px;border-top:1px solid var(--wa-divide);display:flex;align-items:center;gap:12px}
 .wa-input{position:relative;flex:1;min-width:0;display:block}
 .wa-input svg{position:absolute;left:14px;top:50%;width:16px;height:16px;transform:translateY(-50%);color:var(--wa-icon);stroke-width:2;pointer-events:none}
@@ -431,7 +429,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
 @media (min-width:1024px){
   .wa-add,.wa-num-head{padding:28px}
 }
-@media (max-width:1023px){ .wa-qr-hint{display:none} }
 @media (max-width:1023px){
   .wa-num-head{flex-direction:column;align-items:flex-start}
   .wa-actions{flex:initial;align-self:stretch;flex-wrap:wrap;justify-content:flex-start}
@@ -606,7 +603,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
           </ol>
           <button type="button" class="wa-ayuda" data-manual aria-haspopup="dialog"><svg aria-hidden="true"><use href="#i-book"/></svg>¿Primera vez? Lee el manual de uso</button>
         </div>
-        <div class="wa-qr-hint" aria-hidden="true"><svg><use href="#i-qr"/></svg><span>QR dinámico</span></div>
       </div>
       <form class="wa-add-form" id="wa-form">
         <label class="wa-input">
