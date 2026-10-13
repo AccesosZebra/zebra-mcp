@@ -42,7 +42,9 @@ form{text-align:left}
 /* Abajo, el acceso del equipo Zebra: solo con Google. */
 .staff{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
 .staff .eyebrow{margin-bottom:14px}
-.gbtn{display:flex;justify-content:center;min-height:44px}
+/* El iframe de Google es de esquema claro: si el contenedor hereda "dark", el navegador lo pinta
+   con fondo blanco opaco. Con el mismo esquema que el iframe, su fondo queda transparente. */
+.gbtn{display:flex;justify-content:center;min-height:44px;color-scheme:light}
 .gbtn:empty{min-height:0}
 .hint{margin:14px 0 0;font-size:12px;letter-spacing:.04em;color:var(--muted)}
 .hint b{color:var(--text);font-weight:600}
