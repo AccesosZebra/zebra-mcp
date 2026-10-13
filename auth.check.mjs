@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 process.env.AUTH_SESSION_SECRET = 'x'.repeat(40);
 delete process.env.AUTH_ALLOWED_DOMAIN;
 delete process.env.APP_DATABASE_URL;
-const { signSession, verifySession, isEmailAllowed, allowedDomains, requireAdmin, requireSession } = await import('./auth.mjs');
+const { signSession, verifySession, isEmailAllowed, allowedDomains, requireAdmin, requireSession, verificarIdToken } = await import('./auth.mjs');
 
 const token = signSession('Ana@ZebraDigital.marketing', 0);
 assert.equal(verifySession(token, 1000)?.email, 'ana@zebradigital.marketing');
@@ -59,5 +59,16 @@ const cookie = `zebra_chat_session=${encodeURIComponent(signSession('luis@ccc.mx
 const r2 = res(); let entro = false;
 await requireSession({ headers: { cookie }, originalUrl: '/api/chat' }, r2, () => { entro = true; });
 assert.equal(entro, false); assert.equal(r2.code, 401);
+
+// ID token de Google: se acepta solo si es para nuestro client_id, de Google, vigente y verificado.
+process.env.GOOGLE_CLIENT_ID = 'nuestro.apps.googleusercontent.com';
+const google = (claims, ok = true) => async () => ({ ok, json: async () => claims });
+const bueno = { aud: 'nuestro.apps.googleusercontent.com', iss: 'https://accounts.google.com', exp: String(Math.floor(Date.now() / 1000) + 600), email: 'Ana@ZebraDigital.marketing', email_verified: 'true', hd: 'zebradigital.marketing' };
+assert.deepEqual(await verificarIdToken('t', google(bueno)), { email: 'ana@zebradigital.marketing', hd: 'zebradigital.marketing', nombre: null });
+await assert.rejects(verificarIdToken('t', google(bueno, false)), /inválido/, 'Google lo rechaza');
+await assert.rejects(verificarIdToken('t', google({ ...bueno, aud: 'otra.apps.googleusercontent.com' })), /otra aplicación/);
+await assert.rejects(verificarIdToken('t', google({ ...bueno, iss: 'evil.com' })), /no es de Google/);
+await assert.rejects(verificarIdToken('t', google({ ...bueno, exp: '1' })), /venció/);
+await assert.rejects(verificarIdToken('t', google({ ...bueno, email_verified: 'false' })), /no verificó/);
 
 console.log('auth OK');

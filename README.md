@@ -139,6 +139,11 @@ Dos puertas, como en Zebra Reports:
 - 5 intentos fallidos por correo en 15 minutos y se frena. Un solo mensaje para "no existe" y
   "contraseña incorrecta".
 - Sin `APP_DATABASE_URL` no hay acceso con contraseña: la página de login solo muestra Google.
+- El botón de Google es el de Identity Services ("Acceder como…"): el navegador recibe un ID token y
+  `POST /auth/google` lo verifica con `tokeninfo` (audiencia, emisor, vigencia, correo verificado).
+  **Cada dominio tiene que estar en "Orígenes de JavaScript autorizados"** del cliente OAuth, además
+  de `<dominio>/auth/callback` en las URI de redirección. Si el botón no se pinta, la página ofrece
+  el flujo con redirección (`/auth/google`) como respaldo.
 
 ## WhatsApp
 

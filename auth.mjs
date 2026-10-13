@@ -93,6 +93,22 @@ async function exchangeCode(req, code) {
   };
 }
 
+/**
+ * Verifica un ID token de Google con su endpoint tokeninfo (que comprueba la firma) y además lo que
+ * le toca a quien lo recibe: que sea para NUESTRO client_id, de Google, vigente y con correo
+ * verificado. Sin dependencias; para un login de equipo, el viaje extra a Google no pesa.
+ */
+export async function verificarIdToken(token, pedir = fetch) {
+  const res = await pedir(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+  if (!res.ok) throw new Error('token inválido');
+  const c = await res.json();
+  if (c.aud !== process.env.GOOGLE_CLIENT_ID) throw new Error('el token es de otra aplicación');
+  if (!['accounts.google.com', 'https://accounts.google.com'].includes(c.iss)) throw new Error('el token no es de Google');
+  if (!(Number(c.exp) * 1000 > Date.now())) throw new Error('el token venció');
+  if (!(c.email_verified === true || c.email_verified === 'true')) throw new Error('Google no verificó este correo');
+  return { email: String(c.email).toLowerCase(), hd: c.hd ?? null, nombre: c.name ?? null };
+}
+
 export async function requireSession(req, res, next) {
   const session = verifySession(readCookie(req, SESSION_COOKIE));
   // Un cliente se revalida contra la base: desactivarlo o resetearle la contraseña lo saca en ≤ 60 s.
@@ -150,8 +166,28 @@ export function mountAuth(app) {
     res.redirect('/');
   });
 
-  // Lo que la página de login necesita saber para pintarse: sin secretos.
-  app.get('/auth/config', (_req, res) => res.json({ dominios: allowedDomains(), contrasena: hayUsuarios() }));
+  // Lo que la página de login necesita saber para pintarse. El client_id de Google es público.
+  app.get('/auth/config', (_req, res) => res.json({
+    clientId: process.env.GOOGLE_CLIENT_ID, dominios: allowedDomains(), contrasena: hayUsuarios(),
+  }));
+
+  // El botón "Acceder como…" de Google (Identity Services) entrega un ID token al navegador; aquí se
+  // verifica con Google antes de abrir sesión. El flujo con redirección de arriba sigue de respaldo.
+  app.post('/auth/google', async (req, res) => {
+    const { credential } = req.body ?? {};
+    if (typeof credential !== 'string' || credential.length > 4096) return res.status(400).json({ error: 'Falta la credencial de Google.' });
+    let c;
+    try { c = await verificarIdToken(credential); } catch (e) {
+      return res.status(401).json({ error: `No se pudo verificar la sesión de Google: ${e.message}` });
+    }
+    const hdMismatch = c.hd != null && !allowedDomains().includes(String(c.hd).toLowerCase());
+    if (!isEmailAllowed(c.email) || hdMismatch) {
+      return res.status(403).json({ error: `Esa cuenta no tiene acceso. Solo cuentas ${allowedDomains().map((d) => '@' + d).join(' o ')}.` });
+    }
+    console.log(JSON.stringify({ login: c.email, via: 'google' }));
+    res.cookie(SESSION_COOKIE, signSession(c.email, Date.now(), { rol: 'admin' }), cookieOpts(req, SESSION_TTL_SECONDS * 1000));
+    res.json({ ok: true });
+  });
 
   // La puerta del cliente. Un solo mensaje para "no existe" y "clave mala": no se confirma quién existe.
   app.post('/auth/password', async (req, res) => {
