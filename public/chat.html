@@ -200,16 +200,7 @@ body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.
 .rp-marco iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 .rp-vacio{margin:auto;max-width:44ch;text-align:center;color:var(--muted);font-size:14px;line-height:1.6;padding:40px 16px}
 .rp-vacio strong{display:block;color:var(--fg);font-size:16px;margin-bottom:6px}
-/* Ajustes: la lista de reportes */
-.rp-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1.1fr) auto;gap:10px;align-items:end}
-.rp-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.rp-form :is(input,select){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
-.rp-form :is(input,select):focus{outline:none;border-color:var(--accent)}
-.rp-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.rp-aviso{margin:0;font-size:13px;line-height:1.5;padding:10px 12px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,#f59e0b 45%,transparent);background:color-mix(in srgb,#f59e0b 8%,transparent);color:var(--fg)}
-.rp-url{font-family:var(--font-mono);font-size:11px;color:var(--muted);overflow-wrap:anywhere}
-@media (max-width:900px){ .rp-form{grid-template-columns:1fr 1fr} }
-@media (max-width:560px){ .rp-form{grid-template-columns:1fr} #reporte .rp-marco{min-height:420px} }
+@media (max-width:560px){ #reporte .rp-marco{min-height:420px} }
 
 /* ── Admin: usuarios con contraseña ─────────────────────────────────────── */
 #admin > *{flex-shrink:0}
@@ -688,19 +679,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     </div>
     <div class="aj-proveedores" id="aj-proveedores"></div>
 
-    <div class="ad-card" id="rp-ajustes">
-      <h2>Reportes</h2>
-      <p class="aj-nota">Páginas que se ven en la pestaña Reporte. <strong>Incrustar</strong> sirve para cualquier página que lo permita. <strong>Servir desde el panel</strong> es para apps de esta misma VPS (por ejemplo <code>http://postgres_reportes:3000/</code>): quedan detrás del login del panel y pueden dejar de ser públicas.</p>
-      <form class="rp-form" id="rp-form">
-        <label>Nombre<input type="text" id="rp-nombre" maxlength="60" required autocomplete="off" placeholder="p. ej. Embudo diario"></label>
-        <label>URL<input type="url" id="rp-url" required autocomplete="off" placeholder="https://…"></label>
-        <label>Cómo se muestra<select id="rp-modo"><option value="incrustar">Incrustar la página</option><option value="interno">Servir desde el panel</option></select></label>
-        <button type="submit" class="btn" id="rp-crear">Añadir</button>
-      </form>
-      <p class="rp-aviso" id="rp-aviso" role="status" hidden></p>
-      <p class="form-error" id="rp-error" hidden></p>
-      <div id="rp-lista"></div>
-    </div>
   </section>
 
   <section id="reporte" hidden>
@@ -1494,7 +1472,6 @@ async function cargarAjustes() {
     const cont = $('aj-proveedores');
     cont.textContent = '';
     for (const p of d.proveedores) cont.append(tarjetaProveedor(p, d));
-    cargarReportesAjustes();
   } catch (e) { ajError(e.message); }
 }
 
@@ -1630,10 +1607,7 @@ async function cargarReporte() {
     if (!reportes.length) {
       $('rp-abrir').hidden = true;
       marco.textContent = '';
-      marco.append(h('div', { class: 'rp-vacio' }, h('strong', {}, 'Todavía no hay reportes'),
-        document.body.classList.contains('es-cliente')
-          ? 'Cuando el equipo de Zebra configure uno, aparecerá aquí.'
-          : 'Añade uno en Ajustes → Reportes: una página para incrustar o una app de esta VPS.'));
+      marco.append(h('div', { class: 'rp-vacio' }, h('strong', {}, 'Todavía no hay reportes'), 'Cuando el equipo de Zebra configure uno, aparecerá aquí.'));
       return;
     }
     if (!reportes.some((x) => x.id === reporteActual)) reporteActual = reportes[0].id;
@@ -1665,46 +1639,6 @@ function mostrarReporte(x) {
   $('rp-abrir').href = x.src;
   $('rp-abrir').hidden = false;
 }
-
-// Ajustes → Reportes (solo administradores)
-const rpError = (m) => { $('rp-error').textContent = m; $('rp-error').hidden = !m; };
-async function cargarReportesAjustes() {
-  rpError('');
-  try {
-    const { reportes } = await waFetch('/api/reportes/admin');
-    const cont = $('rp-lista');
-    cont.textContent = '';
-    if (!reportes.length) { cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay reportes.')); return; }
-    cont.append(h('ul', { class: 'ad-lista' }, reportes.map((x) => {
-      const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Quitar'), 'Confirmar', async () => {
-        try { await waFetch(`/api/reportes/${encodeURIComponent(x.id)}`, { method: 'DELETE' }); cargarReportesAjustes(); }
-        catch (e) { rpError(e.message); }
-      });
-      return h('li', {},
-        h('div', { class: 'ad-quien' }, h('strong', {}, x.nombre), h('span', { class: 'rp-url' }, x.url)),
-        h('div', { class: 'ad-acc' }, h('span', { class: 'ad-estado' }, x.modo === 'interno' ? 'Servido' : 'Incrustado'), quitar));
-    })));
-  } catch (e) { rpError(e.message); }
-}
-
-$('rp-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  rpError('');
-  $('rp-aviso').hidden = true;
-  const btn = $('rp-crear');
-  btn.disabled = true; btn.textContent = 'Probando…';
-  try {
-    const { aviso } = await waFetch('/api/reportes', enviarJson({ nombre: $('rp-nombre').value, url: $('rp-url').value, modo: $('rp-modo').value }));
-    $('rp-form').reset();
-    if (aviso) { $('rp-aviso').textContent = `Guardado, pero ojo: ${aviso}`; $('rp-aviso').hidden = false; }
-    cargarReportesAjustes();
-  } catch (err) { rpError(err.message); }
-  finally { btn.disabled = false; btn.textContent = 'Añadir'; }
-});
-$('rp-url').addEventListener('input', () => {
-  // Una dirección sin punto en el nombre (postgres_reportes:3000) solo existe dentro de la VPS.
-  try { if (!new URL($('rp-url').value).hostname.includes('.')) $('rp-modo').value = 'interno'; } catch {}
-});
 
 // ── Admin: usuarios con contraseña ─────────────────────────────────────────
 const adError = (m) => { $('ad-error').textContent = m; $('ad-error').hidden = !m; };

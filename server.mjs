@@ -140,9 +140,8 @@ if (faltan.length) {
   mountAjustes(app, soloAdmin); // la pantalla "Ajustes" del panel
   const { mountAdmin } = await import('./admin.mjs');
   mountAdmin(app, soloAdmin); // la pestaña "Admin": usuarios con contraseña
-  const { cargarReportes, mountReportes } = await import('./reportes.mjs');
-  await cargarReportes();
-  mountReportes(app, requireSession, soloAdmin); // la pestaña "Reporte": páginas incrustadas o servidas
+  const { mountReportes } = await import('./reportes.mjs');
+  mountReportes(app, requireSession); // la pestaña "Reporte": páginas fijas, incrustadas o servidas
 
   app.get('/favicon.ico', (_req, res) => res.sendFile(page('favicon.ico')));
   // Logos de los proveedores. Lista cerrada de archivos: nada que venga del navegador toca el disco.
