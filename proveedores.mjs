@@ -238,13 +238,20 @@ export async function pedirOpenAI(messages, canal = 'web', cliente = null, model
     }),
   });
   const datos = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(datos?.error?.message ?? `OpenAI respondió ${res.status}`);
+  if (!res.ok) throw errorOpenAI(res, datos);
 
   const salida = Array.isArray(datos.output) ? datos.output : [];
   const herramientas = salida
     .filter((o) => o.type === 'mcp_call')
     .map((o) => ({ name: o.name, input: parseArgs(o.arguments), error: Boolean(o.error), preview: String(o.output ?? o.error ?? '').slice(0, 400) }));
   return { texto: textoOpenAI(datos), herramientas, usage: datos.usage ?? null };
+}
+
+function errorOpenAI(res, datos) {
+  const e = new Error(datos?.error?.message ?? `OpenAI respondió ${res.status}`);
+  e.status = res.status;
+  e.code = datos?.error?.code ?? datos?.error?.type ?? null;
+  return e;
 }
 
 const textoOpenAI = (datos) => (datos.output_text ?? (Array.isArray(datos.output) ? datos.output : [])
@@ -268,7 +275,7 @@ export async function completar(instrucciones, texto) {
       body: JSON.stringify({ model: modelo, instructions: instrucciones, input: texto }),
     });
     const datos = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(datos?.error?.message ?? `OpenAI respondió ${res.status}`);
+    if (!res.ok) throw errorOpenAI(res, datos);
     return textoOpenAI(datos);
   }
   const msg = await anthropic().messages.create({
@@ -312,3 +319,41 @@ export async function modelosDisponibles() {
   }
   return salida;
 }
+
+// ── Por qué no contesta ─────────────────────────────────────────────────────
+// Cuando el proveedor falla por la cuenta (sin clave, sin saldo, clave mala, límite), volver a
+// preguntar no sirve: se dice la causa exacta. El último fallo queda en memoria para la franja del
+// panel, y se borra en cuanto una respuesta sale bien. Nada de notificaciones: solo se ve al mirar.
+// ponytail: en memoria del proceso; un despliegue lo limpia, y la siguiente pregunta lo vuelve a llenar.
+
+/** { codigo, texto } si la causa es de la cuenta del proveedor; null si es otra cosa. */
+export function causaDeFallo(e, proveedor = activo().proveedor) {
+  const nombre = PROVEEDORES[proveedor]?.nombre ?? 'el proveedor de IA';
+  const m = String(e?.message ?? '');
+  const code = String(e?.code ?? e?.error?.error?.type ?? '');
+  if (/^Falta la clave/i.test(m)) {
+    return { codigo: 'sin-clave', texto: `No puedo contestar: falta configurar la clave de API de ${nombre} en Ajustes del panel.` };
+  }
+  if (/credit balance|insufficient_quota|exceeded your current quota|billing/i.test(`${m} ${code}`)) {
+    return { codigo: 'sin-saldo', texto: `No puedo contestar: la cuenta de ${nombre} se quedó sin saldo (tokens). Hay que recargarla para que vuelva a responder.` };
+  }
+  if (e?.status === 401 || /invalid x-api-key|incorrect api key|invalid_api_key|authentication/i.test(`${m} ${code}`)) {
+    return { codigo: 'clave-invalida', texto: `No puedo contestar: la clave de API de ${nombre} no es válida o fue revocada. Hay que cambiarla en Ajustes del panel.` };
+  }
+  if (e?.status === 429 || /rate.?limit/i.test(`${m} ${code}`)) {
+    return { codigo: 'limite', texto: `No puedo contestar ahora: se alcanzó el límite de uso por minuto de ${nombre}. Pregúntame de nuevo en un minuto.` };
+  }
+  return null;
+}
+
+let ultimoFallo = null; // { codigo, texto, proveedor, desde, ultimo, veces, canal }
+
+export function registrarFallo(causa, canal) {
+  if (!causa) return;
+  const ahora = new Date().toISOString();
+  ultimoFallo = ultimoFallo?.codigo === causa.codigo
+    ? { ...ultimoFallo, texto: causa.texto, ultimo: ahora, veces: ultimoFallo.veces + 1, canal }
+    : { ...causa, proveedor: activo().proveedor, desde: ahora, ultimo: ahora, veces: 1, canal };
+}
+export const registrarExito = () => { ultimoFallo = null; };
+export const falloActual = () => ultimoFallo;

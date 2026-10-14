@@ -1,6 +1,7 @@
 // La pantalla "Integración WA" del panel: los números del bot, su QR y en qué grupos contesta cada
 // uno, y borrarlos. Las conexiones viven en este mismo proceso (whatsapp.mjs): aquí solo se exponen al panel.
 import { agregarNumero, borrarNumero, grupos, numeros, ponerGrupo, quitarGrupo } from './db.mjs';
+import { falloActual } from './proveedores.mjs';
 import { conectar, desvincular, estado, gruposDelTelefono } from './whatsapp.mjs';
 
 // El nombre de un número NUEVO lo escribe una persona y acaba dentro de una URL: se valida estricto.
@@ -33,7 +34,7 @@ export function mountWaAdmin(app, requireSession) {
       const { estado: e, numero } = estado(n.instancia);
       salida.push({ ...n, estado: e, numero, grupos: [...await grupos(n.instancia)].map(([jid, cliente]) => ({ jid, cliente })) });
     }
-    res.json({ numeros: salida });
+    res.json({ numeros: salida, fallo: falloActual() });
   });
 
   app.post('/api/wa/numeros', requireSession, async (req, res) => {

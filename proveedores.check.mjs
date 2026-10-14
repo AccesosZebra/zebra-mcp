@@ -6,7 +6,7 @@ process.env.MCP_AUTH_TOKEN = 'token-de-prueba';
 process.env.AUTH_SESSION_SECRET = 'secreto-de-prueba-'.padEnd(64, 'x');
 delete process.env.APP_DATABASE_URL; // sin base del dashboard: manda el entorno y guardar tiene que avisar
 
-const { activo, guardar, validar, system, PROVEEDORES, cifrar, descifrar, clave, estadoClave, guardarClave } = await import('./proveedores.mjs');
+const { activo, guardar, validar, system, PROVEEDORES, cifrar, descifrar, clave, estadoClave, guardarClave, causaDeFallo, registrarFallo, registrarExito, falloActual } = await import('./proveedores.mjs');
 
 // Por defecto, Anthropic con su modelo. Un proveedor inventado no debe romper nada.
 delete process.env.AI_PROVIDER; delete process.env.AI_MODEL;
@@ -91,5 +91,32 @@ assert.equal(clave('inventado'), null);
 await assert.rejects(guardarClave('anthropic', 'corta'), /no parece una clave/);
 await assert.rejects(guardarClave('anthropic', 'sk-ant con espacios dentro de la clave'), /no parece una clave/);
 await assert.rejects(guardarClave('inventado', k), /no existe/);
+
+// ── Por qué no contesta: cada error real de la cuenta, con su causa exacta ──
+const err = (message, extra = {}) => Object.assign(new Error(message), extra);
+const causa = (e, p = 'anthropic') => causaDeFallo(e, p)?.codigo ?? null;
+assert.equal(causa(err('Falta la clave de Anthropic: pégala en Ajustes.')), 'sin-clave');
+assert.equal(causa(err('400 {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API."}}', { status: 400 })), 'sin-saldo');
+assert.equal(causa(err('You exceeded your current quota, please check your plan and billing details.', { status: 429, code: 'insufficient_quota' }), 'openai'), 'sin-saldo', 'la cuota agotada de OpenAI es 429 pero es saldo, no límite');
+assert.equal(causa(err('401 invalid x-api-key', { status: 401 })), 'clave-invalida');
+assert.equal(causa(err('Incorrect API key provided: sk-…', { status: 401, code: 'invalid_api_key' }), 'openai'), 'clave-invalida');
+assert.equal(causa(err('429 rate_limit_error', { status: 429 })), 'limite');
+assert.equal(causa(err('fetch failed')), null, 'un corte de red no es culpa de la cuenta');
+assert.equal(causa(err('500 overloaded', { status: 500 })), null);
+assert.match(causaDeFallo(err('Your credit balance is too low'), 'anthropic').texto, /cuenta de Anthropic se quedó sin saldo/);
+assert.match(causaDeFallo(err('insufficient_quota'), 'openai').texto, /cuenta de OpenAI/);
+
+// La franja: acumula mientras la causa es la misma, cambia si cambia, y se borra al contestar bien.
+registrarExito();
+assert.equal(falloActual(), null);
+registrarFallo(causaDeFallo(err('Your credit balance is too low')), 'whatsapp');
+registrarFallo(causaDeFallo(err('Your credit balance is too low')), 'chat');
+assert.deepEqual([falloActual().codigo, falloActual().veces, falloActual().canal], ['sin-saldo', 2, 'chat']);
+registrarFallo(causaDeFallo(err('401 invalid x-api-key', { status: 401 })), 'whatsapp');
+assert.deepEqual([falloActual().codigo, falloActual().veces], ['clave-invalida', 1], 'otra causa empieza de cero');
+registrarFallo(null, 'whatsapp');
+assert.equal(falloActual().codigo, 'clave-invalida', 'un fallo que no es de la cuenta no borra el aviso');
+registrarExito();
+assert.equal(falloActual(), null, 'contestar bien lo borra');
 
 console.log('proveedores OK');

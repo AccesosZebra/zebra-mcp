@@ -179,6 +179,13 @@ body.nav-collapsed .sb-session{flex-direction:column;gap:6px;padding:6px 0}
 /* Fuera del chat, lo del chat no se ve: una regla para todas las vistas, no una por vista. */
 body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.disclaimer,#error){display:none}
 
+/* Franja "el bot no está pudiendo contestar": pasiva, solo se ve al entrar, se va sola. */
+.fallo-ia{flex-shrink:0;max-width:900px;display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-card);border:1px solid color-mix(in srgb,var(--danger) 45%,transparent);background:color-mix(in srgb,var(--danger) 8%,transparent);color:var(--fg);font-size:13px;line-height:1.5}
+.fallo-ia svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--danger);stroke-width:2}
+.fallo-ia strong{display:block;font-weight:600}
+.fallo-ia span{color:var(--muted)}
+#wa .fallo-ia{max-width:none;border-radius:12px}
+
 /* ── Reporte: páginas de otros sistemas dentro del panel ────────────────── */
 #reporte{gap:10px;padding:16px 6px 12px}
 #reporte > *{flex-shrink:0}
@@ -710,6 +717,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <p class="disclaimer">Revisa las cifras importantes antes de compartirlas.</p>
 
   <section id="ajustes" hidden>
+    <div class="fallo-ia" id="aj-fallo" role="status" hidden></div>
     <div class="aj-top">
       <p class="section-label">Quién contesta</p>
       <p class="aj-activo" id="aj-activo">Consultando…</p>
@@ -819,6 +827,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   </dialog>
 
   <section id="wa" hidden>
+    <div class="fallo-ia" id="wa-fallo" role="status" hidden></div>
     <p class="wa-alert" id="wa-error" role="alert" hidden></p>
 
     <div class="wa-add">
@@ -1254,10 +1263,24 @@ function iniciales(texto) {
 }
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 
+// La franja del último fallo de la IA: qué pasa, desde cuándo y cuántas preguntas quedaron sin respuesta.
+function pintarFallo(id, f) {
+  const el = $(id);
+  el.textContent = '';
+  el.hidden = !f;
+  if (!f) return;
+  const hora = (iso) => new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  el.append(icono('i-alert'), h('div', {},
+    h('strong', {}, f.texto),
+    h('span', {}, `${plural(f.veces, 'pregunta', 'preguntas')} sin respuesta desde ${hora(f.desde)} (la última, ${hora(f.ultimo)}, por ${f.canal === 'whatsapp' ? 'WhatsApp' : 'el chat'}). Esto desaparece solo cuando vuelve a contestar bien.`)));
+}
+
 async function cargarNumeros() {
   waError('');
   try {
-    ultimos = (await waFetch('/api/wa/numeros')).numeros ?? [];
+    const d = await waFetch('/api/wa/numeros');
+    ultimos = d.numeros ?? [];
+    pintarFallo('wa-fallo', d.fallo);
     pintarNumeros();
   } catch (e) { waError(e.message); }
 }
@@ -1530,6 +1553,7 @@ async function cargarAjustes() {
   ajError('');
   try {
     const d = await waFetch('/api/settings');
+    pintarFallo('aj-fallo', d.fallo);
     // Solo contesta alguien si su proveedor tiene una clave que funciona y un modelo elegido.
     const activo = d.proveedores.find((p) => p.id === d.activo.proveedor);
     const listo = activo?.clave.hay && activo.clave.legible && d.modelos?.[activo.id]?.modelos?.length && d.activo.modelo;

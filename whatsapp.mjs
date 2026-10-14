@@ -7,6 +7,7 @@ import pino from 'pino';
 import QRCode from 'qrcode';
 
 import { textoDeTurno } from './chat.mjs';
+import { causaDeFallo, registrarExito, registrarFallo } from './proveedores.mjs';
 import { borrarSesion, conSesion, estadoAuth, grupos as gruposDe } from './db.mjs';
 
 const TTL_MS = 30 * 60 * 1000; // media hora en silencio cierra la conversación
@@ -85,10 +86,15 @@ async function responder({ instancia, jid, cliente, pregunta }) {
     else c.messages.push({ role: 'assistant', content: texto });
     console.log(JSON.stringify({ wa: jid, instancia, cliente, ms: Date.now() - t0, stop: r.stop, model: r.modelo, in: r.usage?.input_tokens ?? 0, out: r.usage?.output_tokens ?? 0 }));
     await enviar(instancia, jid, texto);
+    registrarExito();
   } catch (e) {
     console.error('wa:', e?.status ?? '', e?.message);
     c.messages.pop(); // la pregunta que falló no ensucia el hilo
-    await enviar(instancia, jid, 'Se me cayó la consulta. Vuelve a preguntarme en un momento.');
+    // Si es la cuenta del proveedor (sin clave, sin saldo…), volver a preguntar no sirve: se dice la
+    // causa exacta. Solo responde a quien preguntó; no se avisa a nadie más.
+    const causa = causaDeFallo(e);
+    registrarFallo(causa, 'whatsapp');
+    await enviar(instancia, jid, causa?.texto ?? 'Se me cayó la consulta. Vuelve a preguntarme en un momento.');
   }
 }
 

@@ -181,6 +181,12 @@ en grupos propios, el riesgo es bajo.
 4. Si se corta la red, reconecta solo, con espera creciente hasta 1 min. Si lo desvinculan desde el
    teléfono, olvida las llaves y queda "Sin vincular" hasta escanear otra vez.
 
+Si la IA no puede contestar por la cuenta del proveedor (falta la clave, sin saldo o cuota agotada,
+clave inválida, límite por minuto), el bot no dice "vuelve a preguntar": responde en el grupo con la
+causa exacta (`causaDeFallo` en `proveedores.mjs`). No avisa a nadie más. El último fallo se ve como
+franja en Ajustes e Integración WA, con cuántas preguntas quedaron sin respuesta, y desaparece solo
+con la siguiente respuesta buena.
+
 El historial vive en memoria, por grupo, con media hora de vida y un máximo de 12 mensajes.
 El prompt cambia para este canal: sin tablas ni encabezados, que en WhatsApp no se ven.
 

@@ -3,7 +3,7 @@
 // usa lo elegido. Las claves entran por aquí pero nunca salen: solo de dónde vienen y cómo terminan.
 import { hayBase } from './db.mjs';
 import { GUIA_GENERICA, LIMITES, aplicarPermisos, borrador, conteos, contextoActual, guardarContexto, hayAdmin, nombreLector } from './guia.mjs';
-import { PROVEEDORES, activo, estadoClave, guardar, guardarClave, modelosDisponibles, quitarClave } from './proveedores.mjs';
+import { PROVEEDORES, activo, estadoClave, falloActual, guardar, guardarClave, modelosDisponibles, quitarClave } from './proveedores.mjs';
 
 export function mountAjustes(app, requireSession) {
   app.get('/api/settings', requireSession, async (_req, res) => {
@@ -21,6 +21,7 @@ export function mountAjustes(app, requireSession) {
         clave: estadoClave(id),
       })),
       modelos: await modelosDisponibles(),
+      fallo: falloActual(),
       contexto: { ...(contextoActual() ?? {}), generica: GUIA_GENERICA, limites: LIMITES },
       permisos: { hayAdmin: hayAdmin(), rol: nombreLector(), ve: await conteos().catch((e) => ({ error: e.message })) },
     });

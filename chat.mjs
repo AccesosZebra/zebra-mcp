@@ -1,7 +1,7 @@
 // Backend del chat web: recibe la conversación, se la pasa al proveedor activo (que consulta la
 // base a través del MCP) y devuelve la respuesta en NDJSON, como el Editor de Prompt Studio.
 import { contextoActual } from './guia.mjs';
-import { activo, pedirOpenAI, streamAnthropic } from './proveedores.mjs';
+import { activo, causaDeFallo, pedirOpenAI, registrarExito, registrarFallo, streamAnthropic } from './proveedores.mjs';
 
 const MAX_MENSAJES = 60;
 const MAX_BYTES = 90_000; // por debajo del límite de 100kb de express.json
@@ -30,12 +30,10 @@ const preview = (content) => (typeof content === 'string' ? content : (content ?
   .slice(0, 400);
 
 function errorMessage(e) {
-  const m = e?.message ?? '';
-  if (/credit balance/i.test(m)) return 'La cuenta del proveedor se quedó sin saldo.';
-  if (e?.status === 429) return 'Se alcanzó el límite de uso de la API. Intenta en un momento.';
-  if (e?.status === 401) return 'La clave de API del proveedor no es válida: cámbiala en Ajustes.';
+  const causa = causaDeFallo(e);
+  if (causa) return causa.texto;
   if (e?.status) return `No se pudo obtener la respuesta (${e.status}).`;
-  return m || 'No se pudo obtener la respuesta.';
+  return e?.message || 'No se pudo obtener la respuesta.';
 }
 
 /** Un turno del chat web, con el proveedor que esté activo. */
@@ -99,8 +97,10 @@ export function mountChat(app, requireSession) {
           console.log(JSON.stringify({ chat: req.user.email, ms: Date.now() - t0, stop, model: modelo, in: entrada, out })),
       });
       send({ type: 'done' });
+      registrarExito();
     } catch (e) {
       console.error('chat:', e?.status ?? '', e?.message);
+      registrarFallo(causaDeFallo(e), 'chat');
       send({ type: 'error', message: errorMessage(e) });
     } finally {
       clearInterval(ping);
