@@ -4,7 +4,7 @@
 // - Correo y contraseña, para la gente del cliente: rol "cliente", usuarios creados en Admin. Dentro
 //   de "cliente", la base dice si es "admin" (entra a Ajustes y Admin) o "usuario".
 // La sesión es una cookie firmada con HMAC-SHA256 que dice quién es y con qué rol.
-// En req.user: `zebra` (entró con Google) y `admin` (Zebra, o cliente con rol "admin").
+// En req.user, `admin`: Zebra (Google) o un cliente con rol "admin".
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 
 import { autenticar, cambiarContrasena, frenoLogin, hayUsuarios, sesionVigente } from './usuarios.mjs';
@@ -117,8 +117,7 @@ export async function requireSession(req, res, next) {
   // y un cambio de rol vale en el mismo plazo.
   const cliente = session?.rol === 'cliente' ? await sesionVigente(session.email, session.v) : null;
   if (session && (session.rol !== 'cliente' || cliente)) {
-    const zebra = session.rol === 'admin';
-    req.user = { ...session, zebra, admin: zebra || cliente?.rol === 'admin' };
+    req.user = { ...session, admin: session.rol === 'admin' || cliente?.rol === 'admin' };
     return next();
   }
   if (req.originalUrl.startsWith('/api/')) return res.status(401).json({ error: 'Tu sesión venció. Vuelve a entrar.' });
