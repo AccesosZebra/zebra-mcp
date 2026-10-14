@@ -2,7 +2,6 @@
 // las claves de API. Guardar surte efecto de inmediato, también en WhatsApp: el turno siguiente ya
 // usa lo elegido. Las claves entran por aquí pero nunca salen: solo de dónde vienen y cómo terminan.
 import { hayBase } from './db.mjs';
-import { GUIA_GENERICA, LIMITES, aplicarPermisos, borrador, conteos, contextoActual, guardarContexto, hayAdmin, nombreLector } from './guia.mjs';
 import { PROVEEDORES, activo, estadoClave, falloActual, guardar, guardarClave, modelosDisponibles, quitarClave } from './proveedores.mjs';
 
 export function mountAjustes(app, requireSession) {
@@ -22,43 +21,7 @@ export function mountAjustes(app, requireSession) {
       })),
       modelos: await modelosDisponibles(),
       fallo: falloActual(),
-      contexto: { ...(contextoActual() ?? {}), generica: GUIA_GENERICA, limites: LIMITES },
-      permisos: { hayAdmin: hayAdmin(), rol: nombreLector(), ve: await conteos().catch((e) => ({ error: e.message })) },
     });
-  });
-
-  // Quién es el negocio y cómo es su base. Vale desde la pregunta siguiente, sin reiniciar.
-  app.put('/api/settings/contexto', requireSession, async (req, res) => {
-    try {
-      const guardado = await guardarContexto(req.body ?? {}, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'contexto', nombre: guardado.nombre, guia: guardado.guia.length }));
-      res.json({ contexto: guardado });
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
-  });
-
-  // Recorre la base y el modelo redacta una guía. No guarda nada: se revisa en el panel.
-  app.post('/api/settings/guia/borrador', requireSession, async (req, res) => {
-    const t0 = Date.now();
-    try {
-      const texto = await borrador();
-      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'borrador de guía', ms: Date.now() - t0, largo: texto.length }));
-      res.json({ borrador: texto });
-    } catch (e) {
-      console.error('borrador de guía:', e.message);
-      res.status(502).json({ error: e.message });
-    }
-  });
-
-  app.post('/api/settings/permisos', requireSession, async (req, res) => {
-    try {
-      const r = await aplicarPermisos();
-      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'permisos', ...r }));
-      res.json({ ...r, ve: await conteos() });
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
   });
 
   app.post('/api/settings', requireSession, async (req, res) => {

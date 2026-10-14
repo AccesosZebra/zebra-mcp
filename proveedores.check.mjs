@@ -50,8 +50,8 @@ assert.equal(activo().proveedor, 'anthropic');
 
 // ── El prompt es el mismo para todos, y cambia solo por canal y cliente ─────
 const web = system('web');
-// Sin contexto guardado no sabe de qué negocio es: nada de Zebra escrito en el código.
-assert.match(web, /analista de datos de este negocio/);
+// Rama cancun: el negocio va fijo en el código (guia.mjs).
+assert.match(web, /analista de datos de Cancun Country Club, Desarrollo residencial de lujo/);
 assert.doesNotMatch(web, /Zebra, una agencia/);
 assert.doesNotMatch(web, /WhatsApp/);
 

@@ -33,8 +33,8 @@ async function registrar(tool, detalle, fn) {
   }
 }
 
-// La guía de la base ya no vive aquí: cada instancia la edita en Ajustes (guia.mjs). Se lee en cada
-// petición, así que un cambio vale desde la pregunta siguiente.
+// La guía de la base vive en guia.mjs (en la rama cancun, fija en el código). Se lee en cada
+// petición.
 
 function crearServidor() {
   const server = new McpServer({ name: 'zebra-db', version: '1.0.0' });
@@ -117,20 +117,6 @@ if (faltan.length) {
     if (await aplicarEsquema()) console.log('Base del dashboard: esquema aplicado');
   } catch (e) {
     console.error('No pude aplicar el esquema de la base del dashboard:', e.message);
-  }
-
-  // Qué negocio es y cómo es su base. En la de Zebra se siembra la guía de siempre, una vez.
-  const { aplicarPermisos, cargarContexto, hayAdmin, sembrarZebra } = await import('./guia.mjs');
-  await cargarContexto();
-  try {
-    if (await sembrarZebra()) console.log('Contexto: sembrada la guía de Zebra');
-  } catch (e) {
-    console.error('No pude revisar si había que sembrar la guía:', e.message);
-  }
-  // Con conexión de administrador, el lector ve también las vistas creadas desde el último arranque.
-  if (hayAdmin()) {
-    try { console.log(`Permisos de lectura: ${JSON.stringify(await aplicarPermisos())}`); }
-    catch (e) { console.error('No pude aplicar los permisos de lectura:', e.message); }
   }
 
   // El bot de WhatsApp vive aquí mismo y guarda su sesión en esa base: sin ella no hay dónde

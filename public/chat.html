@@ -255,44 +255,6 @@ body.es-cliente .sb-clave{display:inline-block}
 .aj-activo{margin:6px 0 2px;font-size:18px;font-weight:600}
 .aj-nota{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
 .aj-nota code{font-family:var(--font-mono);font-size:12px;padding:1px 5px;border-radius:5px;background:color-mix(in srgb,var(--fg) 8%,transparent);overflow-wrap:anywhere}
-.aj-base{flex-shrink:0;max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);transition:border-color .18s var(--ease),box-shadow .18s var(--ease)}
-.aj-base:not([open]):hover{border-color:var(--border2)}
-.aj-base[open]{box-shadow:var(--shadow-lg)}
-/* La tarjeta plegada es un resumen que se lee de un vistazo; el detalle, al abrirla. */
-.aj-base-sum{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-radius:var(--r-card)}
-.aj-base-sum::-webkit-details-marker{display:none}
-.aj-base-sum:focus-visible{outline:none;box-shadow:0 0 0 1px var(--accent)}
-.aj-base-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
-.aj-base-tit{font-size:15px;font-weight:600;letter-spacing:-.01em}
-.aj-base-res{font-size:13px;color:var(--muted);line-height:1.45}
-.aj-base-res .es-falta{color:var(--danger)}
-.aj-base-ver{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
-.aj-base-ver svg{width:16px;height:16px;transform:rotate(-90deg);transition:transform .2s var(--ease)}
-.aj-base[open] .aj-base-ver svg{transform:rotate(90deg)}
-.aj-base[open] .aj-base-sum{border-bottom:1px solid var(--border);border-radius:var(--r-card) var(--r-card) 0 0}
-.aj-base-body{display:flex;flex-direction:column;gap:16px;padding:18px 20px 20px}
-.aj-campos{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:12px}
-.aj-campo{display:flex;flex-direction:column;gap:6px;min-width:0}
-.aj-campo > span,.aj-guia-head label{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.aj-guia-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.aj-cuenta{font-family:var(--font-mono);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
-.aj-cuenta.es-tope{color:var(--danger)}
-.aj-base input[type="text"],.aj-base textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:inherit;font-size:14px;color:var(--fg);transition:border-color .15s var(--ease)}
-.aj-base textarea{font-family:var(--font-mono);font-size:12.5px;line-height:1.6;resize:vertical;min-height:220px;tab-size:2}
-.aj-base input::placeholder,.aj-base textarea::placeholder{color:var(--faint);font-family:'Inter',system-ui,sans-serif}
-.aj-base input:focus,.aj-base textarea:focus{outline:none;border-color:var(--accent)}
-.aj-aviso{margin:0;font-size:13px;line-height:1.5;padding:10px 12px;border-radius:var(--r-control);border:1px dashed var(--border2);color:var(--fg);background:color-mix(in srgb,var(--fg) 4%,transparent)}
-.aj-acciones{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.aj-guardar{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.aj-base .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
-.aj-base .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
-.aj-estado{font-size:13px;color:var(--muted)}
-.aj-estado.es-pendiente{color:var(--fg)}
-.aj-base .form-error{margin:0}
-.aj-permisos{padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
-.aj-permisos h3{margin:0;font-size:14px;font-weight:600}
-@media (max-width:700px){ .aj-campos{grid-template-columns:1fr} .aj-base-sum,.aj-base-body{padding-left:16px;padding-right:16px} .aj-ver-txt{display:none} }
-@media (prefers-reduced-motion:reduce){ .aj-base-ver svg{transition:none} }
 .aj-proveedores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-width:900px}
 .aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:18px 20px;display:flex;flex-direction:column;gap:16px}
 .aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
@@ -725,41 +687,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
       <p class="form-error" id="aj-error" hidden></p>
     </div>
     <div class="aj-proveedores" id="aj-proveedores"></div>
-
-    <details class="aj-base" id="aj-base">
-      <summary class="aj-base-sum">
-        <span class="aj-base-txt">
-          <span class="aj-base-tit">La base de este negocio</span>
-          <span class="aj-base-res" id="aj-resumen">Consultando…</span>
-        </span>
-        <span class="aj-base-ver" aria-hidden="true"><span class="aj-ver-txt">Ver detalle</span><svg><use href="#i-chevron"/></svg></span>
-      </summary>
-    <form class="aj-base-body" id="aj-contexto">
-      <p class="aj-nota">Lo que el bot sabe antes de consultar: quién eres y qué hay en la base de métricas. Cada instancia tiene la suya y vale desde la pregunta siguiente.</p>
-      <div class="aj-campos">
-        <label class="aj-campo"><span>Nombre del negocio</span><input type="text" id="aj-nombre" maxlength="60" autocomplete="off" placeholder="p. ej. Sofía Residencial"></label>
-        <label class="aj-campo"><span>A qué se dedica</span><input type="text" id="aj-giro" maxlength="120" autocomplete="off" placeholder="p. ej. una desarrolladora inmobiliaria"></label>
-      </div>
-      <div class="aj-campo">
-        <div class="aj-guia-head"><label for="aj-guia">Guía de la base</label><span class="aj-cuenta" id="aj-cuenta" aria-live="polite"></span></div>
-        <p class="aj-aviso" id="aj-aviso" hidden>Sin guía: el bot explora la base en cada pregunta, más lento y con más riesgo de equivocarse de tabla. Genera un borrador y revísalo.</p>
-        <textarea id="aj-guia" rows="16" spellcheck="false" placeholder="Qué esquemas y tablas hay, qué significa cada métrica y dónde está, y las trampas (fechas como texto, moneda…)."></textarea>
-        <p class="aj-nota">La leen las herramientas del bot antes de cada consulta. El borrador lo escribe el modelo que está en uso a partir de lo que ve en la base; revísalo antes de guardar.</p>
-      </div>
-      <div class="aj-acciones">
-        <button type="button" class="btn" id="aj-borrador">Generar borrador con IA</button>
-        <button type="submit" class="btn aj-guardar" id="aj-guardar">Guardar</button>
-        <span class="aj-estado" id="aj-estado" role="status"></span>
-      </div>
-      <p class="form-error" id="aj-guia-error" hidden></p>
-
-      <div class="aj-permisos">
-        <h3>Permisos de lectura</h3>
-        <p class="aj-nota" id="aj-ve">Consultando…</p>
-        <div class="aj-acciones" id="aj-permisos-acc"></div>
-      </div>
-    </form>
-    </details>
 
     <div class="ad-card" id="rp-ajustes">
       <h2>Reportes</h2>
@@ -1567,138 +1494,9 @@ async function cargarAjustes() {
     const cont = $('aj-proveedores');
     cont.textContent = '';
     for (const p of d.proveedores) cont.append(tarjetaProveedor(p, d));
-    pintarBase(d);
     cargarReportesAjustes();
   } catch (e) { ajError(e.message); }
 }
-
-// ── La base de este negocio: nombre, guía y permisos ────────────────────────
-let guiaGuardada = null; // lo último guardado, para saber si hay cambios pendientes
-const campoGuia = $('aj-guia');
-
-function estadoGuia(texto = '', clase = '') { const e = $('aj-estado'); e.textContent = texto; e.className = `aj-estado ${clase}`; }
-function guiaError(m) { $('aj-guia-error').textContent = m; $('aj-guia-error').hidden = !m; }
-
-function contarGuia() {
-  const n = campoGuia.value.length, tope = Number(campoGuia.maxLength) || 20000;
-  $('aj-cuenta').textContent = `${n.toLocaleString('es')} / ${tope.toLocaleString('es')}`;
-  $('aj-cuenta').classList.toggle('es-tope', n >= tope);
-  $('aj-aviso').hidden = Boolean(campoGuia.value.trim());
-  const actual = { nombre: $('aj-nombre').value.trim(), giro: $('aj-giro').value.trim(), guia: campoGuia.value.trim() };
-  const pendiente = guiaGuardada && JSON.stringify(actual) !== JSON.stringify(guiaGuardada);
-  if (pendiente) estadoGuia('Cambios sin guardar', 'es-pendiente');
-  else if ($('aj-estado').classList.contains('es-pendiente')) estadoGuia('');
-}
-
-let ajustesVistos = null; // lo último que llegó de /api/settings, para repintar el resumen al guardar
-function pintarBase(d) {
-  ajustesVistos = d;
-  const c = d.contexto ?? {};
-  $('aj-nombre').maxLength = c.limites?.nombre ?? 60;
-  $('aj-giro').maxLength = c.limites?.giro ?? 120;
-  campoGuia.maxLength = c.limites?.guia ?? 20000;
-  // Si alguien está a medio editar, recargar los ajustes no le borra lo escrito.
-  if (!$('aj-estado').classList.contains('es-pendiente')) {
-    $('aj-nombre').value = c.nombre ?? '';
-    $('aj-giro').value = c.giro ?? '';
-    campoGuia.value = c.guia ?? '';
-    guiaGuardada = { nombre: c.nombre ?? '', giro: c.giro ?? '', guia: c.guia ?? '' };
-    estadoGuia(c.actualizado
-      ? `Guardada ${new Date(c.actualizado).toLocaleDateString('es', { day: 'numeric', month: 'short' })}${c.por === 'semilla' ? ' · guía original de Zebra' : c.por ? ` · ${c.por}` : ''}`
-      : '');
-  }
-  contarGuia();
-  pintarResumen(d);
-  const sinBase = !d.hayBase;
-  for (const id of ['aj-nombre', 'aj-giro', 'aj-guia', 'aj-guardar', 'aj-borrador']) $(id).disabled = sinBase;
-  if (sinBase) estadoGuia('Para guardar hace falta la base del dashboard (APP_DATABASE_URL).');
-  pintarPermisos(d.permisos ?? {});
-}
-
-// Lo que se lee con la tarjeta cerrada: quién es, de dónde viene la guía y cuánto ve el bot.
-function pintarResumen(d) {
-  const c = d.contexto ?? {}, ve = d.permisos?.ve ?? {};
-  const res = $('aj-resumen');
-  res.textContent = '';
-  const quien = c.nombre ? (c.giro ? `${c.nombre}, ${c.giro}` : c.nombre) : 'Sin nombre de negocio';
-  const guia = c.guia
-    ? `Guía de ${(c.guia.length).toLocaleString('es')} caracteres${c.por === 'semilla' ? ' (la original de Zebra)' : ''}`
-    : h('span', { class: 'es-falta' }, 'Sin guía: el bot explora la base en cada pregunta');
-  const vista = ve.error ? null : `ve ${plural(ve.vistas ?? 0, 'vista', 'vistas')} en ${plural(ve.esquemas ?? 0, 'esquema', 'esquemas')}`;
-  res.append(quien, ' · ', guia, vista ? ` · ${vista}` : '');
-}
-
-// Abierta por edición a medias o un borrador sin guardar: que no se pierda de vista.
-$('aj-base').addEventListener('toggle', () => {
-  $('aj-base').querySelector('.aj-ver-txt').textContent = $('aj-base').open ? 'Ocultar' : 'Ver detalle';
-});
-
-function pintarPermisos(p) {
-  const ve = p.ve ?? {};
-  $('aj-ve').textContent = ve.error
-    ? `No pude consultar qué ve el bot: ${ve.error}`
-    : `El bot ve ${plural(ve.vistas ?? 0, 'vista', 'vistas')} y ${plural(ve.tablas ?? 0, 'tabla', 'tablas')} en ${plural(ve.esquemas ?? 0, 'esquema', 'esquemas')}, con el rol ${p.rol ?? 'de lectura'}.`;
-  const acc = $('aj-permisos-acc');
-  acc.textContent = '';
-  if (p.hayAdmin) {
-    const btn = h('button', { type: 'button', class: 'btn' }, 'Actualizar permisos');
-    btn.addEventListener('click', async () => {
-      btn.disabled = true; btn.textContent = 'Aplicando…';
-      try {
-        const r = await waFetch('/api/settings/permisos', { method: 'POST' });
-        pintarPermisos({ ...p, ve: r.ve });
-        $('aj-permisos-acc').append(h('span', { class: 'aj-estado' }, 'Listo: el bot ya ve las vistas nuevas.'));
-      } catch (e) { guiaError(e.message); btn.disabled = false; btn.textContent = 'Actualizar permisos'; }
-    });
-    acc.append(btn, h('span', { class: 'aj-nota' }, 'Úsalo cuando se creen vistas nuevas en la base. También se aplica solo al arrancar.'));
-  } else {
-    acc.append(h('p', { class: 'aj-nota' }, 'Cuando se crean vistas nuevas hay que darle permiso al bot. Para hacerlo aquí con un botón, configura ',
-      h('code', {}, 'METRICAS_ADMIN_URL'), ' (una conexión de administrador). Mientras tanto, a mano: ',
-      h('code', {}, 'psql "<conexión de administrador>" -f grants.sql'), '.'));
-  }
-}
-
-for (const id of ['aj-nombre', 'aj-giro', 'aj-guia']) $(id).addEventListener('input', contarGuia);
-
-$('aj-contexto').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  guiaError('');
-  const btn = $('aj-guardar');
-  btn.disabled = true; estadoGuia('Guardando…');
-  try {
-    const datos = { nombre: $('aj-nombre').value, giro: $('aj-giro').value, guia: campoGuia.value };
-    const { contexto } = await waFetch('/api/settings/contexto', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-    guiaGuardada = { nombre: contexto.nombre, giro: contexto.giro, guia: contexto.guia };
-    estadoGuia('Guardada. Vale desde la pregunta siguiente.');
-    if (ajustesVistos) pintarResumen({ ...ajustesVistos, contexto: { ...ajustesVistos.contexto, ...contexto } });
-    contarGuia();
-    if (contexto.nombre) { VISTAS.chat.titulo = `Pregúntale a la base de datos de ${contexto.nombre}`; }
-  } catch (err) { guiaError(err.message); estadoGuia('Cambios sin guardar', 'es-pendiente'); }
-  finally { btn.disabled = false; }
-});
-
-// El borrador reemplaza lo escrito: si ya hay texto, el primer clic avisa y el segundo genera.
-$('aj-borrador').addEventListener('click', async () => {
-  const btn = $('aj-borrador');
-  if (campoGuia.value.trim() && btn.dataset.confirmar !== '1') {
-    btn.dataset.confirmar = '1'; btn.textContent = 'Confirmar: reemplaza el texto';
-    setTimeout(() => { if (btn.dataset.confirmar === '1') { btn.dataset.confirmar = ''; btn.textContent = 'Generar borrador con IA'; } }, 6000);
-    return;
-  }
-  btn.dataset.confirmar = '';
-  guiaError('');
-  btn.disabled = true; btn.textContent = 'Leyendo la base y redactando…';
-  estadoGuia('Puede tardar hasta un minuto.');
-  try {
-    const { borrador } = await waFetch('/api/settings/guia/borrador', { method: 'POST' });
-    campoGuia.value = borrador;
-    contarGuia();
-    estadoGuia('Borrador listo: revísalo y guarda.', 'es-pendiente');
-    $('aj-base').open = true;
-    campoGuia.focus(); campoGuia.setSelectionRange(0, 0); campoGuia.scrollTop = 0;
-  } catch (err) { guiaError(err.message); estadoGuia(''); contarGuia(); }
-  finally { btn.disabled = false; btn.textContent = 'Generar borrador con IA'; }
-});
 
 // Cada tarjeta muestra UN siguiente paso según su estado: sin clave no hay modelos que elegir, así
 // que primero la clave; con clave, el modelo. Quién contesta lo dice la cabecera de la pantalla.

@@ -259,34 +259,6 @@ const textoOpenAI = (datos) => (datos.output_text ?? (Array.isArray(datos.output
   .flatMap((o) => (o.content ?? []).filter((c) => c.type === 'output_text').map((c) => c.text))
   .join('') ?? '').trim();
 
-/**
- * Una sola llamada al proveedor activo, sin herramientas: para tareas de redacción del panel, como
- * el borrador de la guía de la base. Devuelve el texto.
- */
-export async function completar(instrucciones, texto) {
-  const { proveedor, modelo } = activo();
-  if (!modelo) throw new Error('Primero elige un modelo en Ajustes.');
-  if (proveedor === 'openai') {
-    const k = clave('openai');
-    if (!k) throw new Error('Falta la clave de OpenAI: pégala en Ajustes.');
-    const res = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${k}` },
-      body: JSON.stringify({ model: modelo, instructions: instrucciones, input: texto }),
-    });
-    const datos = await res.json().catch(() => ({}));
-    if (!res.ok) throw errorOpenAI(res, datos);
-    return textoOpenAI(datos);
-  }
-  const msg = await anthropic().messages.create({
-    model: modelo,
-    max_tokens: 4_000,
-    system: instrucciones,
-    messages: [{ role: 'user', content: texto }],
-  });
-  return msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-}
-
 const parseArgs = (a) => { try { return typeof a === 'string' ? JSON.parse(a) : (a ?? {}); } catch { return {}; } };
 
 // ── Modelos disponibles, preguntándole a cada proveedor ──────────────────────
