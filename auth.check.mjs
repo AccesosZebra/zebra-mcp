@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 process.env.AUTH_SESSION_SECRET = 'x'.repeat(40);
 delete process.env.AUTH_ALLOWED_DOMAIN;
 delete process.env.APP_DATABASE_URL;
-const { signSession, verifySession, isEmailAllowed, allowedDomains, requireAdmin, requireSession, verificarIdToken } = await import('./auth.mjs');
+const { signSession, verifySession, isEmailAllowed, allowedDomains, requireAdmin, requireSession, requireZebra, verificarIdToken } = await import('./auth.mjs');
 
 const token = signSession('Ana@ZebraDigital.marketing', 0);
 assert.equal(verifySession(token, 1000)?.email, 'ana@zebradigital.marketing');
@@ -46,13 +46,23 @@ assert.equal(isEmailAllowed('dir@ccc.mx'), true);
 assert.equal(isEmailAllowed('dir@notccc.mx'), false);
 delete process.env.AUTH_ALLOWED_DOMAIN;
 
-// requireAdmin: el cliente recibe 403; el admin pasa.
+// requireAdmin deja pasar a Zebra y al cliente con rol admin; requireZebra, solo a Zebra.
 const res = () => ({ code: 0, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
-let paso = false;
-const r1 = res(); requireAdmin({ user: { rol: 'cliente' } }, r1, () => { paso = true; });
-assert.equal(paso, false); assert.equal(r1.code, 403);
-requireAdmin({ user: { rol: 'admin' } }, res(), () => { paso = true; });
-assert.equal(paso, true);
+const pasa = (mw, user) => { let ok = false; const r = res(); mw({ user }, r, () => { ok = true; }); return ok || r.code; };
+const zebra = { rol: 'admin', zebra: true, admin: true };
+const clienteAdmin = { rol: 'cliente', zebra: false, admin: true };
+const clienteUsuario = { rol: 'cliente', zebra: false, admin: false };
+assert.equal(pasa(requireAdmin, zebra), true);
+assert.equal(pasa(requireAdmin, clienteAdmin), true, 'el admin del cliente administra usuarios');
+assert.equal(pasa(requireAdmin, clienteUsuario), 403);
+assert.equal(pasa(requireZebra, zebra), true);
+assert.equal(pasa(requireZebra, clienteAdmin), 403, 'la IA es solo de Zebra');
+assert.equal(pasa(requireZebra, clienteUsuario), 403);
+
+// requireSession: con Google, req.user dice que es Zebra y administrador.
+const conGoogle = { headers: { cookie: `zebra_chat_session=${encodeURIComponent(signSession('ana@zebradigital.marketing', Date.now()))}` }, originalUrl: '/api/me' };
+await requireSession(conGoogle, res(), () => {});
+assert.deepEqual([conGoogle.user.zebra, conGoogle.user.admin], [true, true]);
 
 // requireSession: una cookie de cliente sin base que la respalde no entra (revocación).
 const cookie = `zebra_chat_session=${encodeURIComponent(signSession('luis@ccc.mx', Date.now(), { rol: 'cliente', v: 0 }))}`;

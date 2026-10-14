@@ -73,7 +73,7 @@ function turno({ messages, canal = 'web', cliente = null, send, onFinal }) {
 
 export function mountChat(app, requireSession) {
   // La barra lateral muestra quién está dentro.
-  app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email, rol: req.user.rol, negocio: contextoActual()?.nombre || null }));
+  app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email, rol: req.user.rol, admin: req.user.admin, zebra: req.user.zebra, negocio: contextoActual()?.nombre || null }));
 
   app.post('/api/chat', requireSession, async (req, res) => {
     const { messages } = req.body ?? {};

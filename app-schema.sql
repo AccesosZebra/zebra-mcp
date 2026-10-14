@@ -54,3 +54,7 @@ create table if not exists usuarios (
   creado timestamptz not null default now(),
   por    text                                       -- correo del administrador que lo creó
 );
+
+-- Qué puede hacer: "admin" crea y administra usuarios; "usuario" solo usa el panel. El equipo de
+-- Zebra (Google) no vive aquí: es administrador siempre y el único que ve la configuración de IA.
+alter table usuarios add column if not exists rol text not null default 'usuario' check (rol in ('admin', 'usuario'));

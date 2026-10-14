@@ -206,10 +206,10 @@ body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.
 #admin > *{flex-shrink:0}
 .ad-card{max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px 22px;display:flex;flex-direction:column;gap:14px}
 .ad-card h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
-.ad-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:10px;align-items:end}
+.ad-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) auto;gap:10px;align-items:end}
 .ad-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.ad-form input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
-.ad-form input:focus{outline:none;border-color:var(--accent)}
+.ad-form :is(input,select){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
+.ad-form :is(input,select):focus{outline:none;border-color:var(--accent)}
 .ad-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent);justify-content:center}
 .ad-temporal{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,#10b981 45%,transparent);background:color-mix(in srgb,#10b981 8%,transparent)}
 .ad-temporal p{margin:0;font-size:13px;line-height:1.5;color:var(--fg)}
@@ -227,6 +227,7 @@ body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.
 .ad-acc .btn{padding:6px 10px;font-size:12px}
 .ad-acc .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
 .ad-vacio{margin:0;padding:18px;text-align:center;font-size:13px;color:var(--muted);border:1px dashed var(--border2);border-radius:var(--r-card)}
+@media (max-width:900px){ .ad-form{grid-template-columns:1fr 1fr} }
 @media (max-width:700px){ .ad-form{grid-template-columns:1fr} .ad-card{padding:16px} }
 
 /* Cambiar contraseña (solo usuarios del cliente) */
@@ -602,7 +603,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     <button class="app-tab active" data-view="chat" title="Data Chat"><svg><use href="#i-chat"/></svg><span>Data Chat</span></button>
     <button class="app-tab" data-view="wa" title="Integración WA"><svg><use href="#i-wa"/></svg><span>Integración WA</span></button>
     <div class="sb-group" data-solo-admin>Sistema</div>
-    <button class="app-tab" data-view="ajustes" data-solo-admin title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
+    <button class="app-tab" data-view="ajustes" data-solo-zebra title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
     <button class="app-tab" data-view="admin" data-solo-admin title="Admin"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
   </nav>
 
@@ -699,10 +700,11 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
 
     <div class="ad-card">
       <h2>Añadir un usuario del cliente</h2>
-      <p class="aj-nota">Entra con su correo y una contraseña. Ve el Data Chat y la Integración WA; no ve Ajustes ni esta pestaña.</p>
+      <p class="aj-nota">Entra con su correo y una contraseña. Un <strong>usuario</strong> ve el Reporte, el Data Chat y la Integración WA. Un <strong>administrador</strong>, además, crea usuarios y les da su rol en esta pestaña.</p>
       <form class="ad-form" id="ad-form">
         <label>Correo<input type="email" id="ad-email" required autocomplete="off" placeholder="nombre@cliente.com"></label>
         <label>Nombre<input type="text" id="ad-nombre" maxlength="80" autocomplete="off" placeholder="Opcional"></label>
+        <label>Rol<select id="ad-rol"><option value="usuario">Usuario</option><option value="admin">Administrador</option></select></label>
         <button type="submit" class="btn" id="ad-crear">Crear usuario</button>
       </form>
       <div class="ad-temporal" id="ad-temporal" hidden role="status">
@@ -875,12 +877,11 @@ $('theme-btn').addEventListener('click', () => setTheme(document.body.dataset.th
   setNav(window.innerWidth < 900 ? true : nav === '1');
   setTheme(theme === 'light' ? 'light' : 'dark');
 })();
-fetch('/api/me').then((r) => r.json()).then(({ email, negocio, rol }) => {
-  // Un usuario del cliente no ve Ajustes ni Admin (el servidor tampoco se los deja usar).
-  if (rol === 'cliente') {
-    document.body.classList.add('es-cliente');
-    document.querySelectorAll('[data-solo-admin]').forEach((b) => b.remove());
-  }
+fetch('/api/me').then((r) => r.json()).then(({ email, negocio, rol, admin, zebra }) => {
+  // Ajustes (IA) es solo de Zebra; Admin, de cualquier administrador. El servidor tampoco deja usarlos.
+  if (rol === 'cliente') document.body.classList.add('es-cliente');
+  if (!zebra) document.querySelectorAll('[data-solo-zebra]').forEach((b) => b.remove());
+  if (!admin) document.querySelectorAll('[data-solo-admin]').forEach((b) => b.remove());
   // El título lleva el nombre del negocio de esta instancia, si ya se dijo en Ajustes.
   if (negocio) {
     VISTAS.chat.titulo = `Pregúntale a la base de datos de ${negocio}`;
@@ -1668,11 +1669,12 @@ async function cargarUsuarios() {
       cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay usuarios con contraseña.'));
       return;
     }
-    cont.append(h('ul', { class: 'ad-lista' }, d.usuarios.map(filaUsuario)));
+    cont.append(h('ul', { class: 'ad-lista' }, d.usuarios.map((u) => filaUsuario(u, d.yo))));
   } catch (e) { adError(e.message); }
 }
 
-function filaUsuario(u) {
+// A uno mismo solo se le puede resetear la contraseña: el servidor no deja quitarse el rol ni el acceso.
+function filaUsuario(u, yo) {
   const ruta = `/api/usuarios/${encodeURIComponent(u.email)}`;
   const patch = (body) => waFetch(ruta, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const accion = (fn) => async () => { adError(''); try { await fn(); } catch (e) { adError(e.message); } };
@@ -1684,10 +1686,18 @@ function filaUsuario(u) {
   const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Borrar'), 'Confirmar: se borra',
     accion(async () => { await waFetch(ruta, { method: 'DELETE' }); cargarUsuarios(); }));
 
+  const esAdmin = u.rol === 'admin';
+  const rol = h('button', { type: 'button', class: 'btn' }, esAdmin ? 'Quitar administrador' : 'Hacer administrador');
+  rol.addEventListener('click', accion(async () => { await patch({ rol: esAdmin ? 'usuario' : 'admin' }); cargarUsuarios(); }));
+  const propio = u.email === yo;
+
   const alta = new Date(u.creado).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
   return h('li', {},
     h('div', { class: 'ad-quien' }, h('strong', {}, u.nombre || u.email), h('span', {}, `${u.nombre ? u.email + ' · ' : ''}alta ${alta}${u.por ? ` por ${u.por}` : ''}`)),
-    h('div', { class: 'ad-acc' }, h('span', { class: `ad-estado${u.activo ? ' es-activo' : ''}` }, u.activo ? 'Activo' : 'Desactivado'), reset, estado, quitar));
+    h('div', { class: 'ad-acc' },
+      h('span', { class: 'ad-estado' }, esAdmin ? 'Administrador' : 'Usuario'),
+      h('span', { class: `ad-estado${u.activo ? ' es-activo' : ''}` }, u.activo ? 'Activo' : 'Desactivado'),
+      ...(propio ? [reset] : [rol, reset, estado, quitar])));
 }
 
 $('ad-form').addEventListener('submit', async (e) => {
@@ -1696,9 +1706,9 @@ $('ad-form').addEventListener('submit', async (e) => {
   const btn = $('ad-crear'), email = $('ad-email').value.trim();
   btn.disabled = true; btn.textContent = 'Creando…';
   try {
-    const { temporal } = await waFetch('/api/usuarios', enviarJson({ email, nombre: $('ad-nombre').value }));
+    const { temporal } = await waFetch('/api/usuarios', enviarJson({ email, nombre: $('ad-nombre').value, rol: $('ad-rol').value }));
     mostrarTemporal(email.toLowerCase(), temporal, 'crear');
-    $('ad-email').value = ''; $('ad-nombre').value = '';
+    $('ad-email').value = ''; $('ad-nombre').value = ''; $('ad-rol').value = 'usuario';
     cargarUsuarios();
   } catch (err) { adError(err.message); }
   finally { btn.disabled = false; btn.textContent = 'Crear usuario'; }

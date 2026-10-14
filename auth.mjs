@@ -1,8 +1,10 @@
 // Login del panel, con dos puertas (el modelo de Zebra Reports):
 // - Google, para el equipo: entran como administradores los correos verificados de los dominios
 //   de AUTH_ALLOWED_DOMAIN (lista separada por comas). Port de lib/auth/* de Prompt Studio.
-// - Correo y contraseña, para la gente del cliente: rol "cliente", usuarios creados en Admin.
+// - Correo y contraseña, para la gente del cliente: rol "cliente", usuarios creados en Admin. Dentro
+//   de "cliente", la base dice si es "admin" (administra usuarios) o "usuario".
 // La sesión es una cookie firmada con HMAC-SHA256 que dice quién es y con qué rol.
+// En req.user: `zebra` (entró con Google) y `admin` (Zebra, o cliente con rol "admin").
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 
 import { autenticar, cambiarContrasena, frenoLogin, hayUsuarios, sesionVigente } from './usuarios.mjs';
@@ -111,20 +113,28 @@ export async function verificarIdToken(token, pedir = fetch) {
 
 export async function requireSession(req, res, next) {
   const session = verifySession(readCookie(req, SESSION_COOKIE));
-  // Un cliente se revalida contra la base: desactivarlo o resetearle la contraseña lo saca en ≤ 60 s.
-  const vigente = session && (session.rol !== 'cliente' || await sesionVigente(session.email, session.v));
-  if (vigente) {
-    req.user = session;
+  // Un cliente se revalida contra la base: desactivarlo o resetearle la contraseña lo saca en ≤ 60 s,
+  // y un cambio de rol vale en el mismo plazo.
+  const cliente = session?.rol === 'cliente' ? await sesionVigente(session.email, session.v) : null;
+  if (session && (session.rol !== 'cliente' || cliente)) {
+    const zebra = session.rol === 'admin';
+    req.user = { ...session, zebra, admin: zebra || cliente?.rol === 'admin' };
     return next();
   }
   if (req.originalUrl.startsWith('/api/')) return res.status(401).json({ error: 'Tu sesión venció. Vuelve a entrar.' });
   res.redirect('/login');
 }
 
-/** Solo el equipo (Google). Va siempre después de requireSession. */
+/** Administradores: Zebra o un cliente con rol "admin". Va siempre después de requireSession. */
 export function requireAdmin(req, res, next) {
-  if (req.user?.rol === 'admin') return next();
+  if (req.user?.admin) return next();
   res.status(403).json({ error: 'Esta sección es solo para administradores.' });
+}
+
+/** Solo el equipo de Zebra (Google): la configuración de IA. Va siempre después de requireSession. */
+export function requireZebra(req, res, next) {
+  if (req.user?.zebra) return next();
+  res.status(403).json({ error: 'Esta sección es solo para el equipo de Zebra.' });
 }
 
 export function mountAuth(app) {
