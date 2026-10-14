@@ -39,6 +39,7 @@ Luego, en el panel: **Integración WA → Añadir número → escanear el QR →
 | `auth.mjs` | Login con Google (equipo, admin) y con contraseña (cliente), cookie firmada con rol |
 | `usuarios.mjs` | Usuarios con contraseña: scrypt, freno de intentos y revocación de sesiones |
 | `admin.mjs` | La pestaña Admin: crear, resetear, activar y borrar usuarios |
+| `reportes.mjs` | La pestaña Reporte: páginas incrustadas o servidas desde el panel (proxy interno) |
 | `public/chat.html` | La interfaz: barra lateral, conversación, tablas y consultas |
 | `public/login.html` | Pantalla de acceso |
 | `grants.sql` | Permisos del rol de lectura. Sin nombres fijos; re-ejecutable |
@@ -144,6 +145,22 @@ Dos puertas, como en Zebra Reports:
   **Cada dominio tiene que estar en "Orígenes de JavaScript autorizados"** del cliente OAuth, además
   de `<dominio>/auth/callback` en las URI de redirección. Si el botón no se pinta, la página ofrece
   el flujo con redirección (`/auth/google`) como respaldo.
+
+## La pestaña "Reporte"
+
+Páginas de otros sistemas dentro del panel. Se configuran en **Ajustes → Reportes** (solo
+administradores) y las ven todos, también los usuarios del cliente. Dos modos:
+
+| Modo | Cómo | Para qué | Límite |
+|---|---|---|---|
+| Incrustar | iframe con la URL (solo `https://`) | Cualquier página que lo permita (Looker Studio, etc.) | Si la página manda `X-Frame-Options` o `frame-ancestors`, se ve en blanco: al guardarla, el panel avisa. Un login propio dentro del iframe suele fallar. |
+| Servir desde el panel | El servidor la pide por la red interna y la sirve en `/reportes/<id>/` | Apps de la misma VPS, p. ej. `http://postgres_reportes:3000/` | Pensado para páginas sencillas; las rutas absolutas (`/algo`) no se reescriben. |
+
+Lo servido desde el panel queda detrás del login y aislado: la respuesta lleva
+`Content-Security-Policy: sandbox` sin `allow-same-origin`, así que corre sus scripts pero no ve la
+cookie ni la API del panel; a la app interna no le llegan cookies, sesión ni IP del usuario; y solo
+se puede pedir lo que cuelga de la URL configurada. Con eso, esa app puede dejar de tener dominio
+público.
 
 ## WhatsApp
 

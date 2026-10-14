@@ -3,11 +3,17 @@
 -- Vistas en el esquema "metricas" con el embudo y las llamadas SIN datos personales: nada de
 -- nombres, teléfonos, correos, hashes, links, payload, user agent, URLs, transcripciones, textos
 -- del análisis, chats ni PDFs. Solo crea vistas: no toca ni borra ninguna tabla.
--- Re-ejecutable. Si cambian las tablas de origen, se corre otra vez y luego grants.sql.
+-- Re-ejecutable: rehace el esquema "metricas" entero (ahí solo viven estas vistas), así un cambio
+-- de columnas en el origen no lo traba. Después hay que volver a correr grants.sql.
 --
 --   docker exec -i <contenedor> psql -U postgres -d cancun_country_club < clientes/cancun-country-club.sql
+--
+-- OJO: Postgres no deja borrar una tabla que una vista usa. Quien migre una tabla del embudo (n8n)
+-- tiene que borrar antes este esquema (drop schema metricas cascade) y correr este archivo después.
+-- Si la tabla se renombra en vez de borrarse, la vista sigue a la vieja: correr este archivo otra vez.
 
-create schema if not exists metricas;
+drop schema if exists metricas cascade;
+create schema metricas;
 comment on schema metricas is 'Vistas sin datos personales para el bot de métricas (zebra-mcp).';
 
 -- ── Entrada de leads ────────────────────────────────────────────────────────
@@ -49,9 +55,11 @@ select id, contact_id, opportunity_id, pipeline, etapa, asesor, fuente, campana,
        monto, fecha_evento, created_at
   from cancun_country_club.e05_asistencia;
 
+-- e06 cambió de formato el 14 oct 2026: ahora viene del CRM de mensajería (adset/ad), con unidad,
+-- fracciones y si fue recompra. La tabla anterior quedó como e06_apartado_old, vacía.
 create or replace view metricas.apartado as
-select id, contact_id, opportunity_id, pipeline, etapa, asesor, fuente, campana, conjunto, anuncio,
-       monto, fecha_evento, created_at
+select id, id_postgres, fecha_evento, monto, unidad, fracciones, proyecto, proyecto_cerrado, recompra,
+       campana, adset, ad, atribucion, atendido_por_ia, agendado_por_ia, id_usuario, formulario
   from cancun_country_club.e06_apartado;
 
 create or replace view metricas.cubierto_30 as
