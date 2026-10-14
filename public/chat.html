@@ -262,35 +262,41 @@ body.es-cliente .sb-clave{display:inline-block}
 @media (max-width:700px){ .aj-campos{grid-template-columns:1fr} .aj-base-sum,.aj-base-body{padding-left:16px;padding-right:16px} .aj-ver-txt{display:none} }
 @media (prefers-reduced-motion:reduce){ .aj-base-ver svg{transition:none} }
 .aj-proveedores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-width:900px}
-.aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:18px 20px;display:flex;flex-direction:column;gap:16px}
 .aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
-.aj-head{display:flex;align-items:center;gap:10px}
-.aj-head img{width:38px;height:38px;flex:none;object-fit:contain}
+.aj-head{display:flex;align-items:center;gap:12px}
+.aj-head img{width:36px;height:36px;flex:none;object-fit:contain}
+.aj-head-txt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.aj-sub{font-size:13px;color:var(--muted)}
+.aj-activo.es-falta{color:var(--muted)}
+/* Paso 1 (sin clave) y paso 2 (modelo). */
+.aj-paso,.aj-modelo{display:flex;flex-direction:column;gap:10px}
+.aj-etq{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.aj-modelo-fila,.aj-clave-campos{display:flex;gap:8px;flex-wrap:wrap}
+.aj-modelo-fila select{flex:1 1 180px;min-width:0;width:auto}
+.aj-usar{background:var(--accent);color:var(--on-accent);border-color:var(--accent);white-space:nowrap}
+/* Desactivado = no hay nada que guardar todavía: discreto, no un bloque gris que parece error. */
+.aj-card .aj-usar:disabled{background:transparent;color:var(--muted);border-color:var(--border2);opacity:1}
+.aj-aviso-clave{margin:0;font-size:13px;line-height:1.5;color:var(--danger);padding:10px 12px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);background:color-mix(in srgb,var(--danger) 7%,transparent);overflow-wrap:anywhere}
+.aj-clave-linea{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;padding:9px 12px;border-radius:var(--r-control);background:color-mix(in srgb,var(--fg) 4%,transparent)}
+.aj-clave-txt{flex:1;min-width:0}
+.aj-clave-txt .fin{font-family:var(--font-mono);font-size:12px}
+.aj-clave-txt .de{color:var(--muted)}
+.aj-link{background:none;border:0;padding:2px 4px;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--border2);border-radius:4px}
+.aj-link:hover{text-decoration-color:currentColor}
+.aj-link[data-confirmar="1"]{color:var(--danger);text-decoration-color:currentColor}
 /* El logo de OpenAI es negro: sobre la tarjeta oscura hay que usar su versión blanca. */
 body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/openai-claro.png')}
 .aj-nombre{font-size:15px;font-weight:600}
 .aj-badge{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
 .aj-card select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font-size:13px;color:var(--fg)}
 .aj-card select:disabled{opacity:.5;cursor:not-allowed}
-/* Clave de API de cada proveedor: entra por aquí y nunca vuelve al navegador, solo su final. */
-.aj-clave{margin-top:4px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
-.aj-clave-tit{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.aj-clave-estado{display:flex;align-items:baseline;gap:8px;font-size:13px;line-height:1.6;color:var(--fg)}
-.aj-clave-estado > span:last-child{flex:1;min-width:0}
-.aj-clave-estado .fin{font-family:var(--font-mono);font-size:12px;padding:1px 6px;border-radius:5px;background:color-mix(in srgb,var(--fg) 8%,transparent)}
-.aj-clave-estado .de{color:var(--muted)}
-.aj-clave-estado.es-falta{color:var(--muted)}
-.aj-clave-estado.es-mala{color:var(--danger)}
+.aj-clave{display:flex;flex-direction:column;gap:8px}
 .aj-punto{width:7px;height:7px;flex:none;border-radius:50%;background:#10b981;transform:translateY(-1px)}
-.es-falta .aj-punto{background:var(--faint)}
-.es-mala .aj-punto{background:var(--danger)}
-.aj-clave-form{display:flex;flex-wrap:wrap;gap:8px}
+.aj-clave-form{display:flex;flex-direction:column;gap:6px}
 .aj-clave-form input{flex:1 1 200px;min-width:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:inherit;font-family:var(--font-mono);font-size:12px;color:var(--fg)}
 .aj-clave-form input::placeholder{font-family:'Inter',system-ui,sans-serif;font-size:13px;color:var(--faint)}
 .aj-clave-form input:focus{outline:none;border-color:var(--accent)}
-.aj-clave-acc{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.aj-clave-acc .btn{padding:6px 10px;font-size:12px}
-.aj-clave-acc .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
 .aj-clave-ayuda{font-size:12px;color:var(--muted)}
 .aj-clave-ayuda a{color:var(--fg);text-underline-offset:3px}
 .aj-card .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;border-color:var(--border2)}
@@ -1474,10 +1480,16 @@ async function cargarAjustes() {
   ajError('');
   try {
     const d = await waFetch('/api/settings');
-    $('aj-activo').textContent = `${d.activo.proveedor} · ${d.activo.modelo ?? 'sin modelo definido'}`;
-    $('aj-donde').textContent = d.hayBase
-      ? 'El cambio aplica al instante, también en WhatsApp. Queda guardado en la base del dashboard.'
-      : 'Falta APP_DATABASE_URL: mientras tanto mandan las variables de entorno y aquí no se puede guardar.';
+    // Solo contesta alguien si su proveedor tiene una clave que funciona y un modelo elegido.
+    const activo = d.proveedores.find((p) => p.id === d.activo.proveedor);
+    const listo = activo?.clave.hay && activo.clave.legible && d.modelos?.[activo.id]?.modelos?.length && d.activo.modelo;
+    $('aj-activo').textContent = listo ? `${activo.nombre} · ${d.activo.modelo}` : 'Nadie contesta todavía';
+    $('aj-activo').classList.toggle('es-falta', !listo);
+    $('aj-donde').textContent = !d.hayBase
+      ? 'Falta APP_DATABASE_URL: mientras tanto mandan las variables de entorno y aquí no se puede guardar.'
+      : !listo
+        ? 'Pega la clave de API de un proveedor y elige su modelo. Desde ese momento contesta en el chat y en WhatsApp.'
+        : 'Contesta en el chat y en WhatsApp. Los cambios valen desde la pregunta siguiente.';
     const cont = $('aj-proveedores');
     cont.textContent = '';
     for (const p of d.proveedores) cont.append(tarjetaProveedor(p, d));
@@ -1613,32 +1625,44 @@ $('aj-borrador').addEventListener('click', async () => {
   finally { btn.disabled = false; btn.textContent = 'Generar borrador con IA'; }
 });
 
+// Cada tarjeta muestra UN siguiente paso según su estado: sin clave no hay modelos que elegir, así
+// que primero la clave; con clave, el modelo. Quién contesta lo dice la cabecera de la pantalla.
 function tarjetaProveedor(p, d) {
   const info = d.modelos?.[p.id] ?? {};
-  const enUso = p.id === d.activo.proveedor;
+  const k = p.clave;
+  const lista = k.hay && k.legible && info.modelos?.length ? info.modelos : null;
+  const enUso = p.id === d.activo.proveedor && Boolean(lista);
   const card = h('div', { class: `aj-card${enUso ? ' is-activo' : ''}` });
 
-  const img = h('img', { src: p.logo, alt: p.nombre, width: 38, height: 38 });
+  const img = h('img', { src: p.logo, alt: '', width: 36, height: 36 });
   img.dataset.logo = p.id; // la hoja de estilos cambia el de OpenAI según el tema
-  const head = h('div', { class: 'aj-head' }, img, h('span', { class: 'aj-nombre' }, p.nombre),
-    enUso ? h('span', { class: 'aj-badge' }, 'En uso') : null);
+  card.append(h('div', { class: 'aj-head' }, img,
+    h('div', { class: 'aj-head-txt' }, h('span', { class: 'aj-nombre' }, p.nombre), h('span', { class: 'aj-sub' }, p.nota)),
+    enUso ? h('span', { class: 'aj-badge' }, 'En uso') : null));
 
-  const sel = h('select', { 'aria-label': `Modelo de ${p.nombre}` });
-  sel.disabled = !info.modelos?.length;
-  if (info.error) {
-    sel.append(new Option(p.clave.hay ? info.error : 'Pega una clave para ver sus modelos', ''));
-  } else {
-    sel.append(new Option('Elige un modelo…', ''));
-    for (const m of info.modelos ?? []) {
-      const op = new Option(m, m);
-      if (enUso && m === d.activo.modelo) op.selected = true;
-      sel.append(op);
-    }
+  if (!lista) {
+    // Paso 1: la clave. Si hay una pero no sirve, se dice por qué.
+    let aviso = null;
+    if (!k.legible) aviso = 'La clave guardada no se puede leer (cambió el secreto del servidor). Pégala de nuevo.';
+    else if (k.hay) aviso = `${p.nombre} no aceptó la clave que termina en ${k.fin}: ${info.error ?? 'no devolvió modelos'}.`;
+    card.append(pasoClave(p, d.hayBase, aviso));
+    return card;
   }
 
-  const usar = h('button', { type: 'button', class: 'btn', disabled: sel.disabled }, 'Usar este modelo');
+  // Paso 2: el modelo. La clave queda en una línea, con sus acciones a mano.
+  card.append(lineaClave(p, d.hayBase));
+  const sel = h('select', { id: `aj-modelo-${p.id}` });
+  sel.append(new Option('Elige un modelo…', ''));
+  for (const m of lista) {
+    const op = new Option(m, m);
+    if (enUso && m === d.activo.modelo) op.selected = true;
+    sel.append(op);
+  }
+  const usar = h('button', { type: 'button', class: 'btn aj-usar' }, enUso ? 'Cambiar modelo' : `Usar ${p.nombre}`);
+  const actualizar = () => { usar.disabled = !sel.value || (enUso && sel.value === d.activo.modelo); };
+  sel.addEventListener('change', actualizar);
+  actualizar();
   usar.addEventListener('click', async () => {
-    if (!sel.value) return ajError('Elige un modelo primero.');
     ajError('');
     usar.disabled = true; usar.textContent = 'Guardando…';
     try {
@@ -1646,42 +1670,61 @@ function tarjetaProveedor(p, d) {
       cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
     } catch (e) {
       ajError(e.message);
-      usar.disabled = false; usar.textContent = 'Usar este modelo';
+      usar.textContent = enUso ? 'Cambiar modelo' : `Usar ${p.nombre}`; actualizar();
     }
   });
-
-  card.append(head, h('p', { class: 'aj-nota' }, p.nota), sel, usar, bloqueClave(p, d.hayBase));
+  card.append(h('div', { class: 'aj-modelo' },
+    h('label', { class: 'aj-etq', htmlFor: `aj-modelo-${p.id}` }, 'Modelo'),
+    h('div', { class: 'aj-modelo-fila' }, sel, usar),
+    enUso ? h('p', { class: 'aj-nota' }, 'Contesta en el chat y en WhatsApp. El cambio vale desde la pregunta siguiente.') : null));
   return card;
 }
 
-// La clave de un proveedor: de dónde viene, cómo termina, y el campo para pegar una nueva.
-function bloqueClave(p, hayBase) {
-  const k = p.clave;
-  const caja = h('div', { class: 'aj-clave' }, h('span', { class: 'aj-clave-tit' }, 'Clave de API'));
-
-  let estado;
-  if (!k.legible) {
-    estado = h('p', { class: 'aj-clave-estado es-mala' }, h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
-      h('span', {}, 'No se puede leer la clave guardada. Vuelve a pegarla.'));
-  } else if (k.hay) {
-    estado = h('p', { class: 'aj-clave-estado' }, h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
-      h('span', {}, 'Termina en ', h('span', { class: 'fin' }, k.fin), ' ',
-        h('span', { class: 'de' }, k.origen === 'panel' ? '· guardada aquí' : `· viene de la variable ${p.env}`)));
-  } else {
-    estado = h('p', { class: 'aj-clave-estado es-falta' }, h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
-      h('span', {}, 'Sin clave: este proveedor no puede contestar.'));
-  }
-  caja.append(estado);
-
+// Sin clave: el campo, el botón y de dónde sacarla. Nada más.
+function pasoClave(p, hayBase, aviso) {
+  const caja = h('div', { class: 'aj-paso' });
+  if (aviso) caja.append(h('p', { class: 'aj-aviso-clave', role: 'alert' }, aviso));
+  else caja.append(h('p', { class: 'aj-nota' }, `Para usar ${p.nombre}, pega tu clave de API. Con ella aparecen sus modelos.`));
   if (!hayBase) {
-    caja.append(h('p', { class: 'aj-clave-ayuda' }, 'Para guardar claves aquí hace falta la base del dashboard (APP_DATABASE_URL).'));
+    caja.append(h('p', { class: 'aj-nota' }, 'Para guardar claves hace falta la base del dashboard (APP_DATABASE_URL).'));
     return caja;
   }
+  caja.append(formClave(p),
+    h('p', { class: 'aj-clave-ayuda' }, 'Se consigue en ', h('a', { href: p.consola, target: '_blank', rel: 'noopener noreferrer' }, new URL(p.consola).host),
+      '. Se prueba antes de guardarla y se guarda cifrada.'));
+  return caja;
+}
 
+// Con clave: una línea que dice de dónde viene, y Cambiar/Quitar sin ocupar más.
+function lineaClave(p, hayBase) {
+  const k = p.clave;
+  const fila = h('div', { class: 'aj-clave-linea' },
+    h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
+    h('span', { class: 'aj-clave-txt' }, 'Clave ', h('span', { class: 'fin' }, `…${k.fin}`),
+      h('span', { class: 'de' }, k.origen === 'panel' ? ' · guardada aquí' : ` · de la variable ${p.env}`)));
+  const caja = h('div', { class: 'aj-clave' }, fila);
+  if (!hayBase) return caja;
+  const form = formClave(p);
+  form.hidden = true;
+  const cambiar = h('button', { type: 'button', class: 'aj-link' }, 'Cambiar');
+  cambiar.addEventListener('click', () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector('input').focus(); });
+  fila.append(cambiar);
+  if (k.origen === 'panel') {
+    fila.append(conConfirmacion(h('button', { type: 'button', class: 'aj-link' }, 'Quitar'), 'Confirmar: dejará de contestar',
+      async () => {
+        try { await waFetch(`/api/settings/clave/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); cargarAjustes(); }
+        catch (err) { ajError(err.message); }
+      }));
+  }
+  caja.append(form);
+  return caja;
+}
+
+function formClave(p) {
   const error = h('p', { class: 'aj-clave-error', role: 'alert', hidden: true });
-  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: `Pega la clave de ${p.nombre}`, 'aria-label': `Clave de API de ${p.nombre}` });
-  const guardarBtn = h('button', { type: 'submit', class: 'btn' }, 'Guardar clave');
-  const form = h('form', { class: 'aj-clave-form' }, campo, guardarBtn);
+  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: `Clave de ${p.nombre}`, 'aria-label': `Clave de API de ${p.nombre}` });
+  const guardarBtn = h('button', { type: 'submit', class: 'btn aj-usar' }, 'Guardar clave');
+  const form = h('form', { class: 'aj-clave-form' }, h('div', { class: 'aj-clave-campos' }, campo, guardarBtn), error);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     error.hidden = true;
@@ -1690,35 +1733,13 @@ function bloqueClave(p, hayBase) {
     try {
       await waFetch('/api/settings/clave', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proveedor: p.id, clave: campo.value }) });
       campo.value = '';
-      cargarAjustes(); // con la clave nueva, el selector ya trae sus modelos
+      cargarAjustes(); // con la clave nueva, la tarjeta pasa al paso del modelo
     } catch (err) {
       error.textContent = err.message; error.hidden = false;
       guardarBtn.disabled = false; guardarBtn.textContent = 'Guardar clave';
     }
   });
-
-  // Con una clave que funciona, el campo queda detrás de "Cambiar": que no parezca que falta algo.
-  const plegado = k.hay && k.legible;
-  form.hidden = plegado;
-  const acciones = h('div', { class: 'aj-clave-acc' });
-  if (plegado) {
-    const cambiar = h('button', { type: 'button', class: 'btn' }, 'Cambiar clave');
-    cambiar.addEventListener('click', () => { form.hidden = false; cambiar.hidden = true; campo.focus(); });
-    acciones.append(cambiar);
-  }
-  if (k.origen === 'panel') {
-    acciones.append(conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Quitar clave'),
-      'Confirmar: se borra la clave',
-      async () => {
-        try { await waFetch(`/api/settings/clave/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); cargarAjustes(); }
-        catch (err) { error.textContent = err.message; error.hidden = false; }
-      }));
-  }
-
-  caja.append(form, acciones, error,
-    h('p', { class: 'aj-clave-ayuda' }, 'Se saca en ', h('a', { href: p.consola, target: '_blank', rel: 'noopener noreferrer' }, new URL(p.consola).host),
-      '. Se prueba antes de guardarla y se guarda cifrada.'));
-  return caja;
+  return form;
 }
 
 // ── Admin: usuarios con contraseña ─────────────────────────────────────────
