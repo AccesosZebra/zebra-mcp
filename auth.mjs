@@ -2,7 +2,7 @@
 // - Google, para el equipo: entran como administradores los correos verificados de los dominios
 //   de AUTH_ALLOWED_DOMAIN (lista separada por comas). Port de lib/auth/* de Prompt Studio.
 // - Correo y contraseña, para la gente del cliente: rol "cliente", usuarios creados en Admin. Dentro
-//   de "cliente", la base dice si es "admin" (administra usuarios) o "usuario".
+//   de "cliente", la base dice si es "admin" (entra a Ajustes y Admin) o "usuario".
 // La sesión es una cookie firmada con HMAC-SHA256 que dice quién es y con qué rol.
 // En req.user: `zebra` (entró con Google) y `admin` (Zebra, o cliente con rol "admin").
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
@@ -129,12 +129,6 @@ export async function requireSession(req, res, next) {
 export function requireAdmin(req, res, next) {
   if (req.user?.admin) return next();
   res.status(403).json({ error: 'Esta sección es solo para administradores.' });
-}
-
-/** Solo el equipo de Zebra (Google): la configuración de IA. Va siempre después de requireSession. */
-export function requireZebra(req, res, next) {
-  if (req.user?.zebra) return next();
-  res.status(403).json({ error: 'Esta sección es solo para el equipo de Zebra.' });
 }
 
 export function mountAuth(app) {

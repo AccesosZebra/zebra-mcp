@@ -603,7 +603,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     <button class="app-tab active" data-view="chat" title="Data Chat"><svg><use href="#i-chat"/></svg><span>Data Chat</span></button>
     <button class="app-tab" data-view="wa" title="Integración WA"><svg><use href="#i-wa"/></svg><span>Integración WA</span></button>
     <div class="sb-group" data-solo-admin>Sistema</div>
-    <button class="app-tab" data-view="ajustes" data-solo-zebra title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
+    <button class="app-tab" data-view="ajustes" data-solo-admin title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
     <button class="app-tab" data-view="admin" data-solo-admin title="Admin"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
   </nav>
 
@@ -700,7 +700,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
 
     <div class="ad-card">
       <h2>Añadir un usuario del cliente</h2>
-      <p class="aj-nota">Entra con su correo y una contraseña. Un <strong>usuario</strong> ve el Reporte, el Data Chat y la Integración WA. Un <strong>administrador</strong>, además, crea usuarios y les da su rol en esta pestaña.</p>
+      <p class="aj-nota">Entra con su correo y una contraseña. Un <strong>usuario</strong> ve el Reporte, el Data Chat y la Integración WA. Un <strong>administrador</strong>, además, entra a Ajustes (la IA) y crea usuarios aquí.</p>
       <form class="ad-form" id="ad-form">
         <label>Correo<input type="email" id="ad-email" required autocomplete="off" placeholder="nombre@cliente.com"></label>
         <label>Nombre<input type="text" id="ad-nombre" maxlength="80" autocomplete="off" placeholder="Opcional"></label>
@@ -877,10 +877,9 @@ $('theme-btn').addEventListener('click', () => setTheme(document.body.dataset.th
   setNav(window.innerWidth < 900 ? true : nav === '1');
   setTheme(theme === 'light' ? 'light' : 'dark');
 })();
-fetch('/api/me').then((r) => r.json()).then(({ email, negocio, rol, admin, zebra }) => {
-  // Ajustes (IA) es solo de Zebra; Admin, de cualquier administrador. El servidor tampoco deja usarlos.
+fetch('/api/me').then((r) => r.json()).then(({ email, negocio, rol, admin }) => {
+  // Ajustes y Admin, solo para administradores (Zebra o del cliente). El servidor tampoco deja usarlos.
   if (rol === 'cliente') document.body.classList.add('es-cliente');
-  if (!zebra) document.querySelectorAll('[data-solo-zebra]').forEach((b) => b.remove());
   if (!admin) document.querySelectorAll('[data-solo-admin]').forEach((b) => b.remove());
   // El título lleva el nombre del negocio de esta instancia, si ya se dijo en Ajustes.
   if (negocio) {

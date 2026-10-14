@@ -1,5 +1,5 @@
 // La pestaña "Admin": los usuarios con contraseña (la gente del cliente). La usan Zebra y los
-// usuarios del cliente con rol "admin". Las contraseñas temporales se devuelven una sola vez, al
+// usuarios del cliente con rol "admin", igual que Ajustes. Las contraseñas temporales se devuelven una sola vez, al
 // crear o resetear; nunca se guardan ni van al log.
 import { allowedDomains } from './auth.mjs';
 import { activar, borrar, cambiarRol, crear, hayUsuarios, listar, resetear, ROLES } from './usuarios.mjs';
