@@ -50,7 +50,7 @@ export async function guardarAjuste(clave, valor, por = null) {
 /** Los números configurados, del más viejo al más nuevo. */
 export async function numeros() {
   if (!hayBase) return [];
-  const { rows } = await db().query('select instancia, etiqueta, creado, vencida, api_fin, api_creada from wa_numeros order by creado');
+  const { rows } = await db().query('select instancia, etiqueta, creado, vencida, api_fin, api_creada, n8n_pausa, n8n_pausa_motivo from wa_numeros order by creado');
   return rows;
 }
 
@@ -89,7 +89,7 @@ export async function quitarClaveApi(instancia) {
 /** El número con esa instancia y su hash, para validar la clave que manda n8n. */
 export async function claveApiDe(instancia) {
   if (!hayBase) return null;
-  const { rows } = await db().query('select instancia, etiqueta, api_hash from wa_numeros where instancia = $1', [instancia]);
+  const { rows } = await db().query('select instancia, etiqueta, api_hash, n8n_pausa, n8n_pausa_motivo from wa_numeros where instancia = $1', [instancia]);
   return rows[0] ?? null;
 }
 
@@ -98,6 +98,17 @@ export async function numeroPorClave(hash) {
   if (!hayBase) return null;
   const { rows } = await db().query('select instancia, etiqueta from wa_numeros where api_hash = $1', [hash]);
   return rows[0] ?? null;
+}
+
+/** Kill switch de n8n: pausa los envíos de un número (o los reanuda). */
+export async function pausarN8n(instancia, motivo) {
+  exigirBase();
+  await db().query('update wa_numeros set n8n_pausa = now(), n8n_pausa_motivo = $2 where instancia = $1 and n8n_pausa is null', [instancia, motivo]);
+}
+
+export async function reanudarN8n(instancia) {
+  exigirBase();
+  await db().query('update wa_numeros set n8n_pausa = null, n8n_pausa_motivo = null where instancia = $1', [instancia]);
 }
 
 /** Anota (o borra, con null) cuándo WhatsApp cerró la sesión de un número por su cuenta. */

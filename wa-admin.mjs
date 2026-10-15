@@ -2,7 +2,7 @@
 // uno, y borrarlos. Las conexiones viven en este mismo proceso (whatsapp.mjs): aquí solo se exponen al panel.
 import { randomBytes } from 'node:crypto';
 
-import { agregarNumero, borrarNumero, grupos, gruposVinculados, numeros, ponerClaveApi, ponerGrupo, quitarClaveApi, quitarGrupo } from './db.mjs';
+import { agregarNumero, borrarNumero, grupos, gruposVinculados, numeros, ponerClaveApi, ponerGrupo, quitarClaveApi, quitarGrupo, reanudarN8n } from './db.mjs';
 import { hashClave } from './n8n.mjs';
 import { falloActual } from './proveedores.mjs';
 import { conectar, desvincular, estado, gruposDelTelefono } from './whatsapp.mjs';
@@ -93,6 +93,13 @@ export function mountWaAdmin(app, requireSession) {
   app.delete('/api/wa/numeros/:instancia/apikey', requireSession, conNumero(async (req, res, instancia) => {
     await quitarClaveApi(instancia);
     log(req, 'revocar clave n8n', { instancia });
+    res.json({ ok: true });
+  }));
+
+  // Kill switch: los envíos de n8n se pausan solos si WhatsApp rechaza; se reanudan a mano.
+  app.post('/api/wa/numeros/:instancia/reanudar', requireSession, conNumero(async (req, res, instancia) => {
+    await reanudarN8n(instancia);
+    log(req, 'reanudar n8n', { instancia });
     res.json({ ok: true });
   }));
 

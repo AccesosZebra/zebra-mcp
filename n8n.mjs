@@ -13,11 +13,10 @@ import express from 'express';
 
 import { claveApiDe, numeroPorClave } from './db.mjs';
 import { Freno } from './usuarios.mjs';
-import { estado, socketConectado } from './whatsapp.mjs';
+import { colaDe, datosDeGrupo, estado, socketConectado } from './whatsapp.mjs';
 
 export const PREFIJO = '/evo';
 export const MAX_MEDIO = 20 * 1024 * 1024; // lo que acepta WhatsApp para un documento ronda los 100 MB; aquí basta con 20
-const MAX_DELAY_MS = 20_000;
 
 // ── La clave ────────────────────────────────────────────────────────────────
 export const hashClave = (clave) => createHash('sha256').update(String(clave)).digest('hex');
@@ -158,13 +157,15 @@ const frenoClaves = new Freno({ maximo: 20, ventanaMs: 15 * 60 * 1000 });
 const instanciaDe = (texto) => String(texto ?? '').trim().toLowerCase();
 
 /**
- * Monta /evo. `socketDe` se inyecta en las pruebas para no abrir un WhatsApp de verdad.
- * El parser de JSON de /evo (con su límite de 20 MB) lo pone server.mjs, antes que el general.
+ * Monta /evo. El socket, la cola y los datos de grupo se inyectan en las pruebas para no abrir un
+ * WhatsApp de verdad. El parser de JSON de /evo (con su límite) lo pone server.mjs, antes que el
+ * general.
  */
-export function mountN8n(app, { socketDe = socketConectado } = {}) {
+export function mountN8n(app, { socketDe = socketConectado, colaPara = colaDe, grupoDe = datosDeGrupo } = {}) {
   const r = express.Router();
   const responder = (res, e) => {
-    const status = e instanceof ErrorApi ? e.status : 500;
+    // ErrorApi de aquí, o ErrorRitmo de la cola (los topes): llevan su código y un mensaje para n8n.
+    const status = e instanceof ErrorApi || e?.esApi ? e.status : 500;
     if (status === 500) console.error('n8n:', e?.message);
     res.status(status).json(cuerpoError(status, status === 500 ? 'No se pudo enviar el mensaje. Intenta de nuevo en un momento.' : e.message));
   };
@@ -198,19 +199,19 @@ export function mountN8n(app, { socketDe = socketConectado } = {}) {
     const instancia = instanciaDe(req.params.instancia);
     let jid;
     try {
-      await autenticar(req, instancia);
+      const numero = await autenticar(req, instancia);
+      if (numero.n8n_pausa) {
+        throw new ErrorApi(423, `Los envíos de n8n de este número están en pausa porque WhatsApp empezó a rechazar mensajes (${numero.n8n_pausa_motivo ?? 'sin detalle'}). Revisa el panel y reanúdalos.`);
+      }
       const sock = socketDe(instancia);
-      if (!sock) throw new ErrorApi(409, 'Ese número no está conectado (o su sesión de WhatsApp venció): vuelve a vincularlo en el panel.');
+      const cola = sock && colaPara(instancia);
+      if (!sock || !cola) throw new ErrorApi(409, 'Ese número no está conectado (o su sesión de WhatsApp venció): vuelve a vincularlo en el panel.');
       const pedido = await armar(req.body ?? {}, sock, instancia);
       jid = pedido.jid;
       if (req.body?.quoted) console.log(JSON.stringify({ n8n: instancia, tipo, quoted: 'ignorado' }));
-      const delay = Math.min(Math.max(Number(req.body?.delay) || 0, 0), MAX_DELAY_MS);
-      if (delay) {
-        await sock.sendPresenceUpdate('composing', jid).catch(() => {});
-        await new Promise((ok) => setTimeout(ok, delay));
-      }
-      const msg = await sock.sendMessage(jid, pedido.contenido);
-      console.log(JSON.stringify({ n8n: instancia, tipo, destino: jid.endsWith('@g.us') ? 'grupo' : 'numero', ok: true }));
+      // Sale por la cola del número: espaciado, con "escribiendo…" y dentro de los topes (ritmo.mjs).
+      const { msg, esperaMs } = await cola.enviar({ jid, contenido: pedido.contenido, origen: 'n8n', delay: req.body?.delay });
+      console.log(JSON.stringify({ n8n: instancia, tipo, destino: jid.endsWith('@g.us') ? 'grupo' : 'numero', ok: true, espera_ms: esperaMs }));
       res.status(201).json(msg);
     } catch (e) {
       console.log(JSON.stringify({ n8n: instancia, tipo, destino: jid ? (jid.endsWith('@g.us') ? 'grupo' : 'numero') : null, ok: false, status: e.status ?? 500 }));
@@ -222,7 +223,7 @@ export function mountN8n(app, { socketDe = socketConectado } = {}) {
     const contenido = contenidoTexto(body);
     const jid = await resolver(sock, instancia, body.number);
     if (body.mentionsEveryOne === true && jid.endsWith('@g.us')) {
-      contenido.mentions = (await sock.groupMetadata(jid)).participants.map((p) => p.id);
+      contenido.mentions = ((await grupoDe(instancia, jid))?.participants ?? []).map((p) => p.id);
     }
     return { jid, contenido };
   }));

@@ -8,7 +8,8 @@ import QRCode from 'qrcode';
 
 import { textoDeTurno } from './chat.mjs';
 import { causaDeFallo, registrarExito, registrarFallo } from './proveedores.mjs';
-import { borrarSesion, conSesion, estadoAuth, grupos as gruposDe, marcarVencida } from './db.mjs';
+import { borrarSesion, conSesion, estadoAuth, grupos as gruposDe, marcarVencida, pausarN8n } from './db.mjs';
+import { Cola, Memoria, esRechazo } from './ritmo.mjs';
 
 const TTL_MS = 30 * 60 * 1000; // media hora en silencio cierra la conversación
 const MAX_MENSAJES = 12;       // y nunca se arrastran más de 12
@@ -63,28 +64,37 @@ function historial(clave, ahora = Date.now()) {
   return c;
 }
 
+// La respuesta del bot sale por la cola del número, con prioridad: espaciada y con "escribiendo…".
 async function enviar(instancia, destino, texto) {
-  const sock = conexiones.get(instancia)?.sock;
   try {
-    if (!sock) throw new Error('el número no está conectado');
-    await sock.sendMessage(destino, { text: texto });
+    const cola = colaDe(instancia);
+    if (!cola) throw new Error('el número no está conectado');
+    await cola.enviar({ jid: destino, contenido: { text: texto }, origen: 'bot' });
   } catch (e) {
     console.error(`wa ${instancia}: no pude enviar:`, e.message);
   }
 }
 
-async function responder({ instancia, jid, cliente, pregunta }) {
+async function responder({ instancia, jid, key, cliente, pregunta }) {
   // Cada número lleva su propio hilo, aunque dos atendieran el mismo grupo.
   const c = historial(`${instancia}:${jid}`);
   c.messages.push({ role: 'user', content: pregunta });
   c.messages = c.messages.slice(-MAX_MENSAJES);
   const t0 = Date.now();
+  // Como una persona: lee la pregunta y "escribe" mientras el modelo piensa. WhatsApp borra el
+  // "escribiendo…" a los ~25 s, así que se renueva cada 8.
+  const sock = conexiones.get(instancia)?.sock;
+  await sock?.readMessages([key]).catch(() => {});
+  const escribir = () => sock?.sendPresenceUpdate('composing', jid).catch(() => {});
+  escribir();
+  const latido = setInterval(escribir, 8_000);
   try {
     const r = await textoDeTurno(c.messages, 'whatsapp', cliente);
     const texto = r.texto || 'No pude responder eso. Pregúntamelo de otra forma.';
     if (r.stop === 'refusal') c.messages.pop();
     else c.messages.push({ role: 'assistant', content: texto });
     console.log(JSON.stringify({ wa: jid, instancia, cliente, ms: Date.now() - t0, stop: r.stop, model: r.modelo, in: r.usage?.input_tokens ?? 0, out: r.usage?.output_tokens ?? 0 }));
+    clearInterval(latido);
     await enviar(instancia, jid, texto);
     registrarExito();
   } catch (e) {
@@ -94,7 +104,10 @@ async function responder({ instancia, jid, cliente, pregunta }) {
     // causa exacta. Solo responde a quien preguntó; no se avisa a nadie más.
     const causa = causaDeFallo(e);
     registrarFallo(causa, 'whatsapp');
+    clearInterval(latido);
     await enviar(instancia, jid, causa?.texto ?? 'Se me cayó la consulta. Vuelve a preguntarme en un momento.');
+  } finally {
+    clearInterval(latido);
   }
 }
 
@@ -102,6 +115,75 @@ async function responder({ instancia, jid, cliente, pregunta }) {
 // ponytail: cada número es un socket de este proceso. Nunca correr dos réplicas del contenedor
 // contra la misma base: WhatsApp acepta una sola conexión por dispositivo y tumba la otra.
 const conexiones = new Map(); // instancia → { sock, estado, qr, intentos }
+
+// Lo que Baileys pide para portarse como un cliente normal, por número y en memoria:
+// - reintentos: cuántas veces pidieron reenviar un mensaje que no pudieron descifrar;
+// - enviados: el contenido de lo que mandamos, para atender esos reenvíos (getMessage);
+// - grupos: los datos de cada grupo, para no consultarlos a WhatsApp en cada envío.
+// ponytail: en memoria; un despliegue los vacía y se vuelven a llenar solos.
+const cachés = new Map(); // instancia → { reintentos, enviados, grupos }
+const cachéDe = (instancia) => {
+  if (!cachés.has(instancia)) {
+    cachés.set(instancia, {
+      reintentos: new Memoria({ ttlMs: 10 * 60_000, max: 5_000 }),
+      enviados: new Memoria({ ttlMs: 6 * 60 * 60_000, max: 1_000 }),
+      grupos: new Memoria({ ttlMs: 5 * 60_000, max: 500 }),
+    });
+  }
+  return cachés.get(instancia);
+};
+
+/** Los datos de un grupo, de la caché o pidiéndolos una vez. Los usa Baileys y "mencionar a todos". */
+export async function datosDeGrupo(instancia, jid) {
+  const { grupos } = cachéDe(instancia);
+  const guardado = grupos.get(jid);
+  if (guardado) return guardado;
+  const sock = conexiones.get(instancia)?.sock;
+  if (!sock) return undefined;
+  const datos = await sock.groupMetadata(jid);
+  grupos.set(jid, datos);
+  return datos;
+}
+
+// La cola de cada número (ritmo.mjs). Se rehace si cambió el socket (una reconexión).
+const colas = new Map(); // instancia → { sock, cola }
+const fallosN8n = new Map(); // instancia → fallos seguidos de n8n
+
+/** La cola del número si está conectado; null si no. */
+export function colaDe(instancia) {
+  const sock = socketConectado(instancia);
+  if (!sock) return null;
+  const actual = colas.get(instancia);
+  if (actual?.sock === sock) return actual.cola;
+  const { enviados } = cachéDe(instancia);
+  const cola = new Cola({
+    sock: {
+      sendPresenceUpdate: (...a) => sock.sendPresenceUpdate(...a),
+      // Lo enviado se recuerda unas horas: si el destinatario no lo pudo descifrar, lo pedirá otra vez.
+      sendMessage: async (jid, contenido) => {
+        const msg = await sock.sendMessage(jid, contenido);
+        if (msg?.key?.id && msg.message) enviados.set(msg.key.id, msg.message);
+        fallosN8n.set(instancia, 0);
+        return msg;
+      },
+    },
+    alFallar: (e, origen) => { if (origen === 'n8n') vigilar(instancia, e); },
+  });
+  colas.set(instancia, { sock, cola });
+  return cola;
+}
+
+// Kill switch: si WhatsApp empieza a rechazar los envíos de n8n (o fallan 3 seguidos), se pausan los
+// de ese número hasta que alguien los reanude en el panel. Las respuestas del bot siguen.
+function vigilar(instancia, e) {
+  const fallos = (fallosN8n.get(instancia) ?? 0) + 1;
+  fallosN8n.set(instancia, fallos);
+  if (!esRechazo(e) && fallos < 3) return;
+  const motivo = esRechazo(e) ? `WhatsApp rechazó un envío (${String(e?.message ?? e).slice(0, 80)})` : '3 envíos seguidos fallaron';
+  fallosN8n.set(instancia, 0);
+  console.log(JSON.stringify({ wa: instancia, n8n_pausa: motivo }));
+  pausarN8n(instancia, motivo).catch((err) => console.error(`wa ${instancia}: no pude pausar n8n:`, err.message));
+}
 const silencio = pino({ level: 'silent' });
 
 // Cierres tras los que reconectar sería pelear: otro proceso tomó la sesión, o WhatsApp la vetó.
@@ -137,7 +219,13 @@ export async function conectar(instancia) {
     browser: ['Zebra Data Chat', 'Chrome', '1.0'],
     markOnlineOnConnect: false, // que el teléfono siga recibiendo notificaciones
     syncFullHistory: false,     // el bot no necesita los chats viejos
+    msgRetryCounterCache: cachéDe(instancia).reintentos,
+    getMessage: async (key) => cachéDe(instancia).enviados.get(key.id),
+    cachedGroupMetadata: (jid) => datosDeGrupo(instancia, jid).catch(() => undefined),
   });
+  // Si cambian los datos de un grupo, la próxima vez se piden de nuevo.
+  sock.ev.on('groups.update', (cambios) => { for (const g of cambios) if (g.id) cachéDe(instancia).grupos.del(g.id); });
+  sock.ev.on('group-participants.update', ({ id }) => cachéDe(instancia).grupos.del(id));
 
   sock.ev.on('creds.update', () => saveCreds().catch((e) => console.error(`wa ${instancia}: no pude guardar la sesión:`, e.message)));
 
@@ -172,8 +260,12 @@ export async function conectar(instancia) {
       return console.log(JSON.stringify({ wa: instancia, cerrado: codigo ?? 'sin código' }));
     }
     // 515 llega justo después de escanear el QR y pide reabrir; lo demás son cortes de red.
-    const espera = codigo === DisconnectReason.restartRequired ? 0 : Math.min(60_000, 2_000 * 2 ** c.intentos++);
-    console.log(JSON.stringify({ wa: instancia, reconecta_en_ms: espera, codigo }));
+    // Tras 8 fallos seguidos (unos 5 min) se baja a un intento cada 5 min: los ciclos rápidos de
+    // conexión y desconexión son una bandera roja para WhatsApp.
+    const lenta = c.intentos >= 8;
+    const espera = codigo === DisconnectReason.restartRequired ? 0 : lenta ? 5 * 60_000 : Math.min(60_000, 2_000 * 2 ** c.intentos);
+    c.intentos++;
+    console.log(JSON.stringify({ wa: instancia, reconecta_en_ms: espera, codigo, ...(lenta ? { reconexion: 'lenta' } : {}) }));
     setTimeout(() => conectar(instancia).catch((e) => console.error(`wa ${instancia}:`, e.message)), espera);
   });
 
@@ -189,7 +281,7 @@ async function atender(instancia, sock, data) {
   const permitidos = await gruposDe(instancia);
   const veredicto = debeResponder({ data, mias: misNombres(sock.user), permitidos });
   if (!veredicto.responder) return console.log(JSON.stringify({ wa: jid, instancia, ignorado: veredicto.motivo }));
-  void responder({ ...veredicto, instancia });
+  void responder({ ...veredicto, instancia, key: data.key });
 }
 
 /** Los grupos donde está el teléfono, para elegirlos en el panel. */

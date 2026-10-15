@@ -28,6 +28,10 @@ alter table wa_numeros add column if not exists vencida timestamptz;
 alter table wa_numeros add column if not exists api_hash text;
 alter table wa_numeros add column if not exists api_fin text;
 alter table wa_numeros add column if not exists api_creada timestamptz;
+-- Kill switch: si WhatsApp empieza a rechazar los envíos de n8n por este número, se pausan aquí
+-- hasta que alguien los reanude en el panel. Las respuestas del bot no se pausan.
+alter table wa_numeros add column if not exists n8n_pausa timestamptz;
+alter table wa_numeros add column if not exists n8n_pausa_motivo text;
 
 -- Los grupos donde contesta, uno por cliente. Antes vivían en WHATSAPP_GROUPS.
 create table if not exists wa_grupos (

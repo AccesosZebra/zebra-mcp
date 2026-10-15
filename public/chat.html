@@ -517,6 +517,9 @@ body[data-theme="dark"] #wa{
 .wa-av-body{display:flex;flex-direction:column;gap:10px;padding-top:10px}
 .wa-av-ayuda{font-size:12px;line-height:1.5;color:var(--wa-soft)}
 .wa-av-ayuda strong{color:var(--wa-ink2)}
+.wa-av-pausa{padding:10px 12px;border-radius:10px;border:1px solid var(--wa-warn-line);background:var(--wa-warn-bg);font-size:12px;line-height:1.5;color:var(--wa-ink2)}
+.wa-av-pausa strong{display:block}
+.wa-av-pausa span{color:var(--wa-text)}
 .wa-av-fila{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
 .wa-av-k{flex:none;width:110px;font-size:12px;font-weight:600;color:var(--wa-soft)}
 .wa-av-v{flex:1 1 200px;min-width:0;font-family:var(--font-mono);font-size:12px;color:var(--wa-ink2);background:var(--wa-chip);padding:7px 10px;border-radius:6px;overflow-wrap:anywhere;user-select:all}
@@ -1296,15 +1299,29 @@ async function cargarNumeros() {
 // WhatsApp cierra la sesión si el teléfono pasa 14 días sin usarse: el bot deja de contestar sin
 // avisar. Se dice en una franja arriba y con un punto en la pestaña, para verlo sin entrar aquí.
 const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short' });
+// La misma franja avisa si los envíos de n8n de un número quedaron en pausa (kill switch).
+const horaCorta = (iso) => new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+async function reanudarN8n(instancia) {
+  waError('');
+  try { await waFetch(ruta(instancia, 'reanudar'), { method: 'POST' }); cargarNumeros(); }
+  catch (e) { waError(e.message); }
+}
+function lineaPausa(n) {
+  return h('p', {},
+    h('strong', {}, `Los envíos de n8n de ${n.etiqueta || n.instancia} están en pausa desde el ${horaCorta(n.n8n_pausa)}.`),
+    h('span', {}, `${n.n8n_pausa_motivo ?? 'WhatsApp rechazó envíos'}. Las respuestas del bot siguen. Revisa qué estaba enviando el flujo antes de reanudar. `),
+    h('button', { type: 'button', class: 'aj-link', on: { click: () => reanudarN8n(n.instancia) } }, 'Reanudar'));
+}
 function pintarVencidas() {
   const vencidas = ultimos.filter((n) => n.estado === 'vencida');
+  const pausados = ultimos.filter((n) => n.n8n_pausa);
   const tab = document.querySelector('.app-tab[data-view="wa"]');
-  if (tab) tab.toggleAttribute('data-aviso', vencidas.length > 0);
+  if (tab) tab.toggleAttribute('data-aviso', vencidas.length + pausados.length > 0);
   const el = $('wa-vencida');
   el.textContent = '';
-  el.hidden = !vencidas.length;
-  if (!vencidas.length) return;
-  el.append(icono('i-alert'), h('div', {}, ...vencidas.map((n) => {
+  el.hidden = !vencidas.length && !pausados.length;
+  if (el.hidden) return;
+  el.append(icono('i-alert'), h('div', {}, ...pausados.map(lineaPausa), ...vencidas.map((n) => {
     const grupos = n.grupos?.length ?? 0;
     const volver = h('button', { type: 'button', class: 'aj-link', on: { click: () => vincular(n.instancia) } }, 'Volver a vincular');
     return h('p', {},
@@ -1441,6 +1458,8 @@ function opcionesAvanzadas(n) {
       icono('i-chevron')),
     h('div', { class: 'wa-av-body' },
       h('p', { class: 'wa-av-ayuda' }, 'En n8n, crea una credencial ', h('strong', {}, 'Evolution API'), ' con el Server Url y la ApiKey. En cada nodo, escribe el Instance Name. Solo envía: texto, imagen, video, documento y reacción.'),
+      h('p', { class: 'wa-av-ayuda' }, 'Para cuidar el número, los envíos salen de uno en uno, espaciados de 3 a 8 s y con «escribiendo…». Máximo 10 por minuto, 150 por hora y 800 al día; si n8n se pasa, recibe un aviso y reintenta después.'),
+      n.n8n_pausa ? h('div', { class: 'wa-av-pausa', role: 'status' }, lineaPausa(n)) : null,
       copiable('Server Url', `${location.origin}/evo`),
       copiable('Instance Name', n.instancia),
       h('div', { class: 'wa-av-fila' }, h('span', { class: 'wa-av-k' }, 'ApiKey'), estadoClave, acciones),
