@@ -140,6 +140,8 @@ assert.equal(causa(err('400 {"type":"error","error":{"type":"not_found_error","m
 assert.equal(causa(err('403 permission_error', { status: 403 })), 'permiso');
 assert.match(causaDeFallo(err('Your credit balance is too low'), 'anthropic').texto, /cuenta de Anthropic se quedó sin saldo/);
 assert.match(causaDeFallo(err('insufficient_quota'), 'openai').texto, /cuenta de OpenAI/);
+// En WhatsApp el aviso llega como mensaje del bot: no dice "no puedo contestar", dice qué le falta.
+assert.match(causaDeFallo(err('insufficient_quota'), 'openai').texto, /^No tengo acceso a los datos: la cuenta de OpenAI se quedó sin saldo/);
 
 // La franja: acumula mientras la causa es la misma, cambia si cambia, y se borra al contestar bien.
 registrarExito();

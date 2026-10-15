@@ -392,23 +392,23 @@ export function causaDeFallo(e, proveedor = activo().proveedor) {
   const m = String(e?.message ?? '');
   const code = String(e?.code ?? e?.error?.error?.type ?? '');
   if (/^Falta la clave/i.test(m)) {
-    return { codigo: 'sin-clave', texto: `No puedo contestar: falta configurar la clave de API de ${nombre} en Ajustes del panel.` };
+    return { codigo: 'sin-clave', texto: `No tengo acceso a los datos: falta configurar la clave de API de ${nombre} en Ajustes del panel.` };
   }
   if (/credit balance|insufficient_quota|exceeded your current quota|billing/i.test(`${m} ${code}`)) {
-    return { codigo: 'sin-saldo', texto: `No puedo contestar: la cuenta de ${nombre} se quedó sin saldo (tokens). Hay que recargarla para que vuelva a responder.` };
+    return { codigo: 'sin-saldo', texto: `No tengo acceso a los datos: la cuenta de ${nombre} se quedó sin saldo (tokens). Hay que recargarla para que vuelva a responder.` };
   }
   if (e?.status === 401 || /invalid x-api-key|incorrect api key|invalid_api_key|authentication/i.test(`${m} ${code}`)) {
-    return { codigo: 'clave-invalida', texto: `No puedo contestar: la clave de API de ${nombre} no es válida o fue revocada. Hay que cambiarla en Ajustes del panel.` };
+    return { codigo: 'clave-invalida', texto: `No tengo acceso a los datos: la clave de API de ${nombre} no es válida o fue revocada. Hay que cambiarla en Ajustes del panel.` };
   }
   if (e?.status === 429 || /rate.?limit/i.test(`${m} ${code}`)) {
-    return { codigo: 'limite', texto: `No puedo contestar ahora: se alcanzó el límite de uso por minuto de ${nombre}. Pregúntame de nuevo en un minuto.` };
+    return { codigo: 'limite', texto: `No tengo acceso a los datos por un momento: se alcanzó el límite de uso por minuto de ${nombre}. Pregúntame de nuevo en un minuto.` };
   }
   // Un modelo retirado o que esa clave no puede usar: OpenAI y Anthropic responden 404 (a veces 400).
   if (e?.status === 404 || /model_not_found|not_found_error|model\b.*(does not exist|not found)/i.test(`${m} ${code}`)) {
-    return { codigo: 'modelo', texto: `No puedo contestar: el modelo «${activo().modelo}» ya no está disponible en ${nombre}. Hay que elegir otro en Ajustes del panel.` };
+    return { codigo: 'modelo', texto: `No tengo acceso a los datos: el modelo «${activo().modelo}» ya no está disponible en ${nombre}. Hay que elegir otro en Ajustes del panel.` };
   }
   if (e?.status === 403 || /permission/i.test(code)) {
-    return { codigo: 'permiso', texto: `No puedo contestar: la clave de ${nombre} no tiene permiso para usar el modelo «${activo().modelo}». Revisa sus permisos o elige otro modelo en Ajustes del panel.` };
+    return { codigo: 'permiso', texto: `No tengo acceso a los datos: la clave de ${nombre} no tiene permiso para usar el modelo «${activo().modelo}». Revisa sus permisos o elige otro modelo en Ajustes del panel.` };
   }
   return null;
 }
