@@ -3,7 +3,7 @@
 // siguiente ya usa lo elegido. Las claves entran por aquí pero nunca salen: solo de dónde vienen y
 // cómo terminan.
 import { hayBase } from './db.mjs';
-import { PROVEEDORES, activo, claves, falloActual, guardar, guardarClave, modelosDisponibles, quitarClave } from './proveedores.mjs';
+import { PROVEEDORES, activo, claves, editarClave, falloActual, guardar, guardarClave, modelosDisponibles, probarClave, quitarClave } from './proveedores.mjs';
 
 export function mountAjustes(app, soloAdmin) {
   app.get('/api/settings', soloAdmin, async (_req, res) => {
@@ -35,6 +35,27 @@ export function mountAjustes(app, soloAdmin) {
       const nueva = await guardarClave({ nombre, proveedor, clave }, req.user.email);
       console.log(JSON.stringify({ ajustes: req.user.email, accion: 'añadir clave', nombre: nueva.nombre, proveedor, fin: nueva.fin }));
       res.json({ clave: nueva });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // Nombre, clave o ambos. Una clave nueva se prueba antes de guardarla.
+  app.patch('/api/settings/clave/:id', soloAdmin, async (req, res) => {
+    const { nombre, clave } = req.body ?? {};
+    try {
+      const editada = await editarClave(req.params.id, { nombre, clave }, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'editar clave', nombre: editada.nombre, clave: Boolean(clave), fin: editada.fin }));
+      res.json({ clave: editada });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // ¿Funciona? Solo pregunta; no cambia nada.
+  app.post('/api/settings/clave/:id/probar', soloAdmin, async (req, res) => {
+    try {
+      res.json(await probarClave(req.params.id));
     } catch (e) {
       res.status(400).json({ error: e.message });
     }

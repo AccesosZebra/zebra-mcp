@@ -292,11 +292,12 @@ body.es-cliente .sb-clave{display:inline-block}
 .aj-link:hover{text-decoration-color:currentColor}
 body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro.png')}
 .aj-nombre{font-size:15px;font-weight:600}
-:is(.aj-card,.aj-otra) :is(select,input){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:400 13px/1.4 'Inter',system-ui,sans-serif;color:var(--fg)}
-:is(.aj-card,.aj-otra) :is(select,input):focus{outline:none;border-color:var(--accent)}
+:is(.aj-card,.aj-otra,.aj-editar) :is(select,input){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:400 13px/1.4 'Inter',system-ui,sans-serif;color:var(--fg)}
+:is(.aj-card,.aj-otra,.aj-editar) :is(select,input):focus{outline:none;border-color:var(--accent)}
 :is(.aj-card,.aj-otra) select:disabled{opacity:.5;cursor:not-allowed}
 .aj-clave-form{display:flex;flex-direction:column;gap:8px}
-.aj-clave-form input[type="password"]{flex:1 1 200px;width:auto;min-width:0;font-family:var(--font-mono);font-size:12px}
+.aj-clave-campos > input[type="password"]{flex:1 1 200px;width:auto;min-width:0}
+.aj-clave-form input[type="password"]{font-family:var(--font-mono);font-size:12px}
 .aj-clave-form input::placeholder{font-family:'Inter',system-ui,sans-serif;font-size:13px;color:var(--faint)}
 .aj-clave-campos{display:flex;gap:8px;flex-wrap:wrap}
 .aj-clave-campos .aj-campo-ia{flex:1 1 180px}
@@ -305,8 +306,17 @@ body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro
 .aj-clave-error{margin:0;font-size:12px;color:var(--danger)}
 /* Las claves que hay: una fila por clave, como la lista de usuarios. */
 .aj-claves{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface)}
-.aj-claves li{display:flex;align-items:center;gap:12px;padding:10px 16px;min-height:56px}
+.aj-claves li{display:flex;flex-direction:column;gap:10px;padding:10px 16px}
+.aj-clave-fila{display:flex;align-items:center;gap:12px;min-height:36px}
 .aj-claves .ad-quien{flex:1}
+.aj-prueba{margin:0 0 2px 32px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.aj-prueba.es-ok{color:#10b981}
+.aj-prueba.es-mal{color:var(--danger)}
+.aj-editar{margin-left:32px;padding-top:4px}
+.aj-editar .aj-campo-clave{flex:2 1 240px}
+.aj-editar-acc{display:flex;justify-content:flex-end;gap:8px}
+.aj-editar-acc .ad-ghost{border-color:transparent;color:var(--muted)}
+.aj-editar-acc .ad-ghost:hover{color:var(--fg);border-color:transparent;transform:none;box-shadow:none}
 .aj-claves .ad-acc{min-width:28px}
 .aj-claves .ad-acc:empty{display:none}
 .aj-claves li + li{border-top:1px solid var(--border)}
@@ -318,7 +328,7 @@ body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro
 .aj-mas:hover{color:var(--fg)}
 .aj-mas svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .aj-otra .aj-clave-form{align-self:stretch;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card)}
-@media (max-width:560px){ .aj-elegir,.aj-elegir.es-una{grid-template-columns:1fr} }
+@media (max-width:560px){ .aj-elegir,.aj-elegir.es-una{grid-template-columns:1fr} .aj-clave-fila{flex-wrap:wrap} .aj-clave-fila .ad-acc{width:100%;justify-content:flex-start;margin-left:20px} .aj-prueba,.aj-editar{margin-left:0} }
 /* ── Integración WA: réplica del mockup de Stitch. Grises fríos (slate) y esmeralda en claro;
    en oscuro, la misma pieza sobre las superficies que el mockup trae en su config (#11151c).
    Los grises de texto chico y el verde de texto suben un tono respecto al mockup: slate-400 y
@@ -1133,11 +1143,25 @@ function pararQr() {
   qrPanel.hidden = true; qrImg.hidden = true; qrImg.removeAttribute('src'); qrEspera.hidden = false;
 }
 
+// Cuando el servidor no explica el error (un proxy caído, una ruta que no existe), se dice qué pasó
+// en palabras, nunca un código solo.
+const SIN_EXPLICAR = {
+  403: 'No tienes permiso para hacer esto.',
+  404: 'El panel no encontró esa función (404). Recarga la página; si sigue, avisa a Zebra.',
+  413: 'Lo que enviaste es demasiado grande.',
+  429: 'Vas muy rápido. Espera unos segundos y vuelve a intentar.',
+};
 async function waFetch(url, opts) {
-  const r = await fetch(url, opts);
+  let r;
+  try { r = await fetch(url, opts); }
+  catch { throw new Error('No hay conexión con el panel. Revisa tu internet y vuelve a intentar.'); }
   if (r.status === 401) { location.href = '/login'; throw new Error('sesión vencida'); }
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error ?? `Error ${r.status}`);
+  if (!r.ok) {
+    throw new Error(d.error ?? SIN_EXPLICAR[r.status] ?? (r.status >= 500
+      ? `El servidor no pudo completar la operación (${r.status}). Intenta de nuevo en un momento.`
+      : `Algo falló (código ${r.status}). Intenta de nuevo.`));
+  }
   return d;
 }
 const enviarJson = (body) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -1574,26 +1598,82 @@ function tarjetaElegir(d, usables) {
   return card;
 }
 
-// Las claves que hay: de quién son, cómo terminan, cuál está en uso, y la papelera.
+// Las claves que hay: de quién son, cómo terminan y cuál está en uso. Cada una se puede probar,
+// editar (nombre o la clave misma) y quitar.
 function listaClaves(d) {
-  return h('ul', { class: 'aj-claves', 'aria-label': 'Claves de API' }, ...d.claves.map((c) => {
-    const quitar = c.origen === 'panel' && d.hayBase && c.id !== d.activo.clave
-      ? conConfirmacion(h('button', { type: 'button', class: 'btn ad-icono es-peligro', title: 'Quitar clave', 'aria-label': `Quitar la clave ${c.nombre}` },
-        icono('i-trash'), h('span', { 'data-etq': '' })), '¿Quitar?', async () => {
-        ajError('');
-        try { await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'DELETE' }); cargarAjustes(); }
-        catch (err) { ajError(err.message); }
-      })
-      : null;
-    const estado = !c.legible ? h('span', { class: 'ad-estado es-error' }, 'Ilegible')
-      : c.id === d.activo.clave ? h('span', { class: 'ad-estado es-activo' }, 'En uso') : null;
-    return h('li', {},
+  return h('ul', { class: 'aj-claves', 'aria-label': 'Claves de API' }, ...d.claves.map((c) => filaClave(d, c)));
+}
+
+function filaClave(d, c) {
+  const sub = h('span', {}, `${DE(d, c).nombre} · …${c.fin}${c.origen === 'entorno' ? ' · variable de entorno' : ''}`);
+  const resultado = h('p', { class: 'aj-prueba', role: 'status', hidden: true });
+  const avisar = (texto, ok) => { resultado.textContent = texto; resultado.className = `aj-prueba ${ok ? 'es-ok' : 'es-mal'}`; resultado.hidden = false; };
+
+  const probar = h('button', { type: 'button', class: 'btn ad-ghost' }, 'Probar');
+  probar.addEventListener('click', async () => {
+    probar.disabled = true; probar.textContent = 'Probando…'; resultado.hidden = true;
+    try {
+      const { modelos } = await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}/probar`, { method: 'POST' });
+      avisar(`Funciona: ${DE(d, c).nombre} respondió con ${plural(modelos, 'modelo disponible', 'modelos disponibles')}.`, true);
+    } catch (err) { avisar(err.message, false); }
+    finally { probar.disabled = false; probar.textContent = 'Probar'; }
+  });
+
+  const delPanel = c.origen === 'panel' && d.hayBase;
+  const form = delPanel ? formEditar(d, c) : null;
+  const editar = delPanel ? h('button', { type: 'button', class: 'btn', 'aria-expanded': 'false' }, 'Editar') : null;
+  editar?.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    editar.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) form.querySelector('input').focus();
+  });
+  const quitar = delPanel && c.id !== d.activo.clave
+    ? conConfirmacion(h('button', { type: 'button', class: 'btn ad-icono es-peligro', title: 'Quitar clave', 'aria-label': `Quitar la clave ${c.nombre}` },
+      icono('i-trash'), h('span', { 'data-etq': '' })), '¿Quitar?', async () => {
+      ajError('');
+      try { await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'DELETE' }); cargarAjustes(); }
+      catch (err) { ajError(err.message); }
+    })
+    : null;
+  const estado = !c.legible ? h('span', { class: 'ad-estado es-error' }, 'Ilegible')
+    : c.id === d.activo.clave ? h('span', { class: 'ad-estado es-activo' }, 'En uso') : null;
+
+  return h('li', {},
+    h('div', { class: 'aj-clave-fila' },
       logo(d, c.proveedor, 20),
-      h('div', { class: 'ad-quien' }, h('strong', {}, c.nombre),
-        h('span', {}, `${DE(d, c).nombre} · …${c.fin}${c.origen === 'entorno' ? ' · variable de entorno' : ''}`)),
-      estado ?? h('span'),
-      h('div', { class: 'ad-acc' }, quitar));
-  }));
+      h('div', { class: 'ad-quien' }, h('strong', {}, c.nombre), sub),
+      estado,
+      h('div', { class: 'ad-acc' }, c.legible ? probar : null, editar, quitar)),
+    resultado, form);
+}
+
+// Editar: el nombre, y la clave solo si se pega una nueva (se prueba antes de guardarla).
+function formEditar(d, c) {
+  const error = h('p', { class: 'aj-clave-error', role: 'alert', hidden: true });
+  const nombre = h('input', { type: 'text', maxLength: 40, autocomplete: 'off', value: c.nombre, 'aria-label': 'Nombre de la clave' });
+  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: 'Pega otra para reemplazarla', 'aria-label': 'Nueva clave de API' });
+  const guardarBtn = h('button', { type: 'submit', class: 'btn aj-usar' }, 'Guardar cambios');
+  const cancelar = h('button', { type: 'button', class: 'btn ad-ghost' }, 'Cancelar');
+  const form = h('form', { class: 'aj-clave-form aj-editar', hidden: true },
+    h('div', { class: 'aj-clave-campos' },
+      h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Nombre'), nombre),
+      h('label', { class: 'aj-campo-ia aj-campo-clave' }, h('span', { class: 'aj-etq' }, 'Clave'), campo)),
+    h('div', { class: 'aj-editar-acc' }, cancelar, guardarBtn), error);
+  cancelar.addEventListener('click', () => { form.hidden = true; nombre.value = c.nombre; campo.value = ''; error.hidden = true; });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    error.hidden = true;
+    guardarBtn.disabled = true; guardarBtn.textContent = campo.value.trim() ? 'Probando la clave…' : 'Guardando…';
+    try {
+      await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombre.value, ...(campo.value.trim() ? { clave: campo.value } : {}) }) });
+      cargarAjustes();
+    } catch (err) {
+      error.textContent = err.message; error.hidden = false;
+      guardarBtn.disabled = false; guardarBtn.textContent = 'Guardar cambios';
+    }
+  });
+  return form;
 }
 
 // El enlace discreto: abre un formulario con nombre, de quién es y la clave.

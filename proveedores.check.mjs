@@ -6,7 +6,7 @@ process.env.MCP_AUTH_TOKEN = 'token-de-prueba';
 process.env.AUTH_SESSION_SECRET = 'secreto-de-prueba-'.padEnd(64, 'x');
 delete process.env.APP_DATABASE_URL; // sin base del dashboard: manda el entorno y guardar tiene que avisar
 
-const { activo, elegirActiva, desdeGuardado, recordar, claves, clave, validar, guardar, guardarClave, quitarClave, system, PROVEEDORES, cifrar, descifrar, causaDeFallo, registrarFallo, registrarExito, falloActual } = await import('./proveedores.mjs');
+const { activo, elegirActiva, desdeGuardado, recordar, claves, clave, validar, guardar, guardarClave, editarClave, probarClave, explicarHttp, quitarClave, system, PROVEEDORES, cifrar, descifrar, causaDeFallo, registrarFallo, registrarExito, falloActual } = await import('./proveedores.mjs');
 
 // ── Cuál contesta ───────────────────────────────────────────────────────────
 const k = (id, proveedor, legible = true) => ({ id, nombre: id, proveedor, legible });
@@ -70,8 +70,29 @@ await assert.rejects(pegar({ nombre: 'x'.repeat(41) }), /Ponle un nombre/);
 await assert.rejects(pegar({ nombre: 'principal' }), /Ya hay una clave con ese nombre/, 'sin distinguir mayúsculas');
 await assert.rejects(pegar({ clave: 'corta' }), /no parece una clave/);
 await assert.rejects(pegar({ clave: 'sk con espacios dentro de la clave larga' }), /no parece una clave/);
+
+// Editar y probar: lo que no necesita red ni base.
+await assert.rejects(editarClave('entorno-openai', { nombre: 'X' }), /variable de entorno/);
+await assert.rejects(editarClave('inventada', { nombre: 'X' }), /no existe/);
+recordar([{ id: 'a1', nombre: 'Principal', proveedor: 'openai', cifrada: cifrar('sk-panel-1234567890-abcd'), fin: 'abcd' },
+  { id: 'a2', nombre: 'Respaldo', proveedor: 'openai', cifrada: 'basura', fin: 'zz99' }]);
+await assert.rejects(editarClave('a1', { nombre: ' Principal ' }), /nada que cambiar/, 'el mismo nombre no es un cambio');
+await assert.rejects(editarClave('a1', {}), /nada que cambiar/);
+await assert.rejects(editarClave('a1', { nombre: 'respaldo' }), /Ya hay una clave con ese nombre/);
+await assert.rejects(editarClave('a1', { clave: 'corta' }), /no parece una clave/);
+await assert.rejects(editarClave('a1', { nombre: 'Nueva' }), /APP_DATABASE_URL/, 'un nombre válido llega hasta guardar');
+await assert.rejects(probarClave('a2'), /no se puede leer/);
+await assert.rejects(probarClave('inventada'), /no existe/);
 recordar([]);
 delete process.env.OPENAI_API_KEY;
+
+// Los códigos del proveedor se explican: nunca un "404" solo.
+assert.match(explicarHttp(401), /^la clave no es válida o fue revocada \(401\)$/);
+assert.match(explicarHttp(404), /modelo retirado/);
+assert.match(explicarHttp(403), /permiso/);
+assert.match(explicarHttp(429), /límite de uso/);
+assert.match(explicarHttp(503), /fallando de su lado.*\(503\)/);
+assert.match(explicarHttp(418), /respondió con un error \(418\)/);
 
 // ── El prompt es el mismo para todos, y cambia solo por canal y cliente ─────
 const web = system('web');
@@ -114,6 +135,9 @@ assert.equal(causa(err('Incorrect API key provided: sk-…', { status: 401, code
 assert.equal(causa(err('429 rate_limit_error', { status: 429 })), 'limite');
 assert.equal(causa(err('fetch failed')), null, 'un corte de red no es culpa de la cuenta');
 assert.equal(causa(err('500 overloaded', { status: 500 })), null);
+assert.equal(causa(err('The model `gpt-4-32k` does not exist or you do not have access to it.', { status: 404, code: 'model_not_found' }), 'openai'), 'modelo', 'un modelo retirado da 404');
+assert.equal(causa(err('400 {"type":"error","error":{"type":"not_found_error","message":"model: claude-3"}}', { status: 400 })), 'modelo');
+assert.equal(causa(err('403 permission_error', { status: 403 })), 'permiso');
 assert.match(causaDeFallo(err('Your credit balance is too low'), 'anthropic').texto, /cuenta de Anthropic se quedó sin saldo/);
 assert.match(causaDeFallo(err('insufficient_quota'), 'openai').texto, /cuenta de OpenAI/);
 

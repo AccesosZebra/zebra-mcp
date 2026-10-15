@@ -90,14 +90,15 @@ export function clave(id) {
   return (p && process.env[PROVEEDORES[p].env]) || null;
 }
 
-/** Prueba la clave contra el proveedor, y solo si responde la guarda. */
-export async function guardarClave({ nombre, proveedor, clave: valor } = {}, por = null) {
-  const p = PROVEEDORES[proveedor];
-  if (!p) throw new Error('Elige de quién es la clave: OpenAI o Claude.');
+function validarNombre(nombre, menos = null) {
   const n = typeof nombre === 'string' ? nombre.trim() : '';
   if (!n || n.length > 40) throw new Error('Ponle un nombre de hasta 40 caracteres, para reconocerla.');
-  if (claves().some((c) => c.nombre.toLowerCase() === n.toLowerCase())) throw new Error('Ya hay una clave con ese nombre.');
-  if (guardadas.length >= MAX_CLAVES) throw new Error(`Caben hasta ${MAX_CLAVES} claves: quita una antes.`);
+  if (claves().some((c) => c.id !== menos && c.nombre.toLowerCase() === n.toLowerCase())) throw new Error('Ya hay una clave con ese nombre.');
+  return n;
+}
+
+/** La clave limpia, probada contra su proveedor. Si no responde, dice por qué en cristiano. */
+async function probada(proveedor, valor) {
   const limpia = typeof valor === 'string' ? valor.trim() : '';
   if (limpia.length < 20 || limpia.length > 300 || /\s/.test(limpia)) {
     throw new Error('Eso no parece una clave de API: pégala completa, sin espacios.');
@@ -105,23 +106,65 @@ export async function guardarClave({ nombre, proveedor, clave: valor } = {}, por
   try {
     await listarModelos(proveedor, limpia);
   } catch (e) {
-    throw new Error(`${p.nombre} no aceptó la clave: ${e.message}`);
+    throw new Error(`${PROVEEDORES[proveedor].nombre} no aceptó la clave: ${e.message}.`);
   }
-  const nueva = { id: randomBytes(6).toString('base64url'), nombre: n, proveedor, cifrada: cifrar(limpia), fin: limpia.slice(-4), por, cuando: new Date().toISOString() };
-  const lista = [...guardadas, nueva];
+  return limpia;
+}
+
+const delPanel = (id) => {
+  if (Object.keys(PROVEEDORES).some((x) => ENTORNO(x) === id)) throw new Error('Esa viene de una variable de entorno: se cambia en EasyPanel.');
+  const g = guardadas.find((x) => x.id === id);
+  if (!g) throw new Error('Esa clave no existe.');
+  return g;
+};
+
+async function guardarLista(lista, por) {
   await guardarAjuste('claves-ia', lista, por);
   recordar(lista);
+}
+
+/** Prueba la clave contra el proveedor, y solo si responde la guarda. */
+export async function guardarClave({ nombre, proveedor, clave: valor } = {}, por = null) {
+  if (!PROVEEDORES[proveedor]) throw new Error('Elige de quién es la clave: OpenAI o Claude.');
+  const n = validarNombre(nombre);
+  if (guardadas.length >= MAX_CLAVES) throw new Error(`Caben hasta ${MAX_CLAVES} claves: quita una antes.`);
+  const limpia = await probada(proveedor, valor);
+  const nueva = { id: randomBytes(6).toString('base64url'), nombre: n, proveedor, cifrada: cifrar(limpia), fin: limpia.slice(-4), por, cuando: new Date().toISOString() };
+  await guardarLista([...guardadas, nueva], por);
   return claves().find((c) => c.id === nueva.id);
+}
+
+/** Cambia el nombre, la clave o ambos. Una clave nueva se prueba antes; el proveedor no cambia. */
+export async function editarClave(id, { nombre, clave: valor } = {}, por = null) {
+  const g = delPanel(id);
+  const cambios = {};
+  if (nombre !== undefined && String(nombre).trim() !== g.nombre) cambios.nombre = validarNombre(nombre, id);
+  if (typeof valor === 'string' && valor.trim()) {
+    const limpia = await probada(g.proveedor, valor);
+    Object.assign(cambios, { cifrada: cifrar(limpia), fin: limpia.slice(-4), por, cuando: new Date().toISOString() });
+  }
+  if (!Object.keys(cambios).length) throw new Error('No hay nada que cambiar.');
+  await guardarLista(guardadas.map((x) => (x.id === id ? { ...x, ...cambios } : x)), por);
+  return claves().find((c) => c.id === id);
+}
+
+/** ¿Funciona? Le pide la lista de modelos al proveedor con esa clave. No guarda nada. */
+export async function probarClave(id) {
+  const c = claves().find((x) => x.id === id);
+  if (!c) throw new Error('Esa clave no existe.');
+  if (!c.legible) throw new Error(`La clave "${c.nombre}" no se puede leer (cambió el secreto del servidor): edítala y pégala de nuevo.`);
+  try {
+    return { modelos: (await listarModelos(c.proveedor, clave(id))).length };
+  } catch (e) {
+    throw new Error(`${PROVEEDORES[c.proveedor].nombre} no aceptó la clave: ${e.message}.`);
+  }
 }
 
 /** Quita una del panel. La que está en uso no, mientras haya otra a la que pasarse. */
 export async function quitarClave(id, por = null) {
-  if (Object.keys(PROVEEDORES).some((x) => ENTORNO(x) === id)) throw new Error('Esa viene de una variable de entorno: se quita en EasyPanel.');
-  if (!guardadas.some((g) => g.id === id)) throw new Error('Esa clave no existe.');
+  delPanel(id);
   if (activo().clave === id && claves().filter((c) => c.legible).length > 1) throw new Error('Es la que está en uso: elige otra antes de quitarla.');
-  const lista = guardadas.filter((g) => g.id !== id);
-  await guardarAjuste('claves-ia', lista, por);
-  recordar(lista);
+  await guardarLista(guardadas.filter((g) => g.id !== id), por);
 }
 
 // ── Cuál contesta ───────────────────────────────────────────────────────────
@@ -289,11 +332,30 @@ const textoOpenAI = (datos) => (datos.output_text ?? (Array.isArray(datos.output
 
 const parseArgs = (a) => { try { return typeof a === 'string' ? JSON.parse(a) : (a ?? {}); } catch { return {}; } };
 
+// ── Errores de los proveedores, en cristiano ────────────────────────────────
+// Lo que el proveedor responde viene en inglés y a veces sin texto ("404"). Al panel le llega qué
+// significa y qué hacer; el detalle original va al log del servidor.
+export function explicarHttp(status) {
+  const frase = {
+    400: 'rechazó la petición: algún dato no es válido',
+    401: 'la clave no es válida o fue revocada',
+    403: 'la clave no tiene permiso para esto: revisa sus permisos o los del proyecto en la consola del proveedor',
+    404: 'no existe lo que se pidió: suele ser un modelo retirado o que esta clave no puede usar',
+    429: 'se pasó del límite de uso, o la cuenta no tiene saldo',
+  }[status] ?? (status >= 500 ? 'el servicio está fallando de su lado: intenta en unos minutos' : 'respondió con un error');
+  return `${frase} (${status})`;
+}
+
 // ── Modelos disponibles, preguntándole a cada proveedor ──────────────────────
 async function listar(url, cabeceras, mapear) {
-  const res = await fetch(url, { headers: cabeceras });
+  let res;
+  try { res = await fetch(url, { headers: cabeceras, signal: AbortSignal.timeout(15_000) }); }
+  catch (e) { throw new Error(`no se pudo conectar con el servicio (${e.cause?.code ?? e.name})`); }
   const d = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(d?.error?.message ?? `respondió ${res.status}`);
+  if (!res.ok) {
+    console.error(`modelos ${new URL(url).host}: ${res.status} ${d?.error?.message ?? ''}`);
+    throw Object.assign(new Error(explicarHttp(res.status)), { status: res.status });
+  }
   return mapear(d);
 }
 
@@ -340,6 +402,13 @@ export function causaDeFallo(e, proveedor = activo().proveedor) {
   }
   if (e?.status === 429 || /rate.?limit/i.test(`${m} ${code}`)) {
     return { codigo: 'limite', texto: `No puedo contestar ahora: se alcanzó el límite de uso por minuto de ${nombre}. Pregúntame de nuevo en un minuto.` };
+  }
+  // Un modelo retirado o que esa clave no puede usar: OpenAI y Anthropic responden 404 (a veces 400).
+  if (e?.status === 404 || /model_not_found|not_found_error|model\b.*(does not exist|not found)/i.test(`${m} ${code}`)) {
+    return { codigo: 'modelo', texto: `No puedo contestar: el modelo «${activo().modelo}» ya no está disponible en ${nombre}. Hay que elegir otro en Ajustes del panel.` };
+  }
+  if (e?.status === 403 || /permission/i.test(code)) {
+    return { codigo: 'permiso', texto: `No puedo contestar: la clave de ${nombre} no tiene permiso para usar el modelo «${activo().modelo}». Revisa sus permisos o elige otro modelo en Ajustes del panel.` };
   }
   return null;
 }
