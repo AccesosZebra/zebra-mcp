@@ -175,7 +175,7 @@ body.nav-collapsed .sb-session{flex-direction:column;gap:6px;padding:6px 0}
 .disclaimer{text-align:center;font-size:11px;color:var(--faint);margin:8px 0 0}
 
 /* Pantallas "Integración WA" y "Ajustes" */
-#wa,#ajustes,#admin,#reporte{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
+#wa,#ajustes,#reporte{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
 /* Fuera del chat, lo del chat no se ve: una regla para todas las vistas, no una por vista. */
 body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.disclaimer,#error){display:none}
 
@@ -202,33 +202,62 @@ body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.
 .rp-vacio strong{display:block;color:var(--fg);font-size:16px;margin-bottom:6px}
 @media (max-width:560px){ #reporte .rp-marco{min-height:420px} }
 
-/* ── Admin: usuarios con contraseña ─────────────────────────────────────── */
-#admin > *{flex-shrink:0}
-.ad-card{max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px 22px;display:flex;flex-direction:column;gap:14px}
-.ad-card h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
-.ad-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) auto;gap:10px;align-items:end}
+/* ── Ajustes: dos bloques, IA y Usuarios, en una sola página ─────────────── */
+#ajustes{gap:0}
+#ajustes > *{flex-shrink:0}
+.aj-bloque{display:flex;flex-direction:column;gap:14px;max-width:900px;width:100%}
+.aj-bloque + .aj-bloque{margin-top:36px;padding-top:32px;border-top:1px solid var(--border)}
+.aj-bloque-cab{display:flex;flex-direction:column;gap:4px;margin-bottom:4px}
+.aj-bloque-cab h2{margin:0;display:flex;align-items:baseline;gap:10px;font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
+.ad-cuenta{font-size:13px;font-weight:500;letter-spacing:0;color:var(--muted);font-variant-numeric:tabular-nums}
+.aj-estado-ia{display:flex;flex-direction:column;gap:2px}
+.aj-estado-ia .aj-activo{margin:0;font-size:16px}
+.aj-bloque .form-error{margin:0}
+
+/* Usuarios: alta en una franja, y una fila por persona con columnas estables. */
+.ad-form{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,.8fr) auto;gap:10px 10px;align-items:end;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card)}
 .ad-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .ad-form :is(input,select){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
-.ad-form :is(input,select):focus{outline:none;border-color:var(--accent)}
-.ad-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent);justify-content:center}
+.ad-form :is(input,select):focus,.ad-rol:focus-visible{outline:none;border-color:var(--accent)}
+.ad-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent);justify-content:center;white-space:nowrap}
+.ad-form .btn:disabled{opacity:.6;cursor:progress;transform:none;box-shadow:none}
+.ad-roles{grid-column:1/-1}
+.ad-roles strong{color:var(--fg);font-weight:600}
 .ad-temporal{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,#10b981 45%,transparent);background:color-mix(in srgb,#10b981 8%,transparent)}
 .ad-temporal p{margin:0;font-size:13px;line-height:1.5;color:var(--fg)}
 .ad-clave{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ad-clave code{font-family:var(--font-mono);font-size:16px;font-weight:500;letter-spacing:.06em;padding:6px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border2);user-select:all}
-.ad-lista{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden}
-.ad-lista li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;flex-wrap:wrap}
+.ad-lista{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface);display:grid;grid-template-columns:minmax(0,1fr) 150px max-content max-content;column-gap:16px}
+/* subgrid: las columnas de rol, estado y acciones se alinean entre todas las filas. */
+.ad-lista li{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:center;row-gap:10px;padding:12px 16px}
 .ad-lista li + li{border-top:1px solid var(--border)}
+.ad-lista li.es-inactivo .ad-quien{opacity:.6}
 .ad-quien{display:flex;flex-direction:column;gap:2px;min-width:0}
-.ad-quien strong{font-size:14px;font-weight:600;overflow-wrap:anywhere}
-.ad-quien span{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
-.ad-estado{font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap}
+.ad-quien > *{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-quien strong{font-size:14px;font-weight:600}
+.ad-quien > span{font-size:12px;color:var(--muted)}
+.ad-tu{font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-left:6px;font-weight:500}
+.ad-rol{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:6px 8px;font:500 13px/1.3 'Inter',system-ui,sans-serif;color:var(--fg);cursor:pointer}
+.ad-rol:disabled{opacity:.6;cursor:progress}
+.ad-rol-fijo{font-size:13px;font-weight:500;padding:0 9px}
+.ad-estado{justify-self:start;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap}
 .ad-estado.es-activo{border-color:color-mix(in srgb,#10b981 50%,transparent);color:#10b981}
-.ad-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.ad-acc .btn{padding:6px 10px;font-size:12px}
+.ad-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.ad-acc .btn{padding:6px 10px;font-size:12px;white-space:nowrap}
+.ad-acc .btn:hover{transform:none;box-shadow:none}
+/* Tres pesos: resetear es ghost (sin borde), activar/desactivar lleva contorno, borrar es solo el icono. */
+.ad-acc .ad-ghost{border-color:transparent;color:var(--muted)}
+.ad-acc .ad-ghost:hover{color:var(--fg);border-color:transparent;background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.ad-acc .ad-icono{padding:6px;border-color:transparent;color:var(--muted)}
+.ad-acc .ad-icono svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ad-acc .ad-icono [data-etq]:empty{display:none}
+.ad-acc .btn.es-peligro:hover{color:var(--danger);border-color:transparent;background:color-mix(in srgb,var(--danger) 10%,transparent)}
 .ad-acc .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
-.ad-vacio{margin:0;padding:18px;text-align:center;font-size:13px;color:var(--muted);border:1px dashed var(--border2);border-radius:var(--r-card)}
-@media (max-width:900px){ .ad-form{grid-template-columns:1fr 1fr} }
-@media (max-width:700px){ .ad-form{grid-template-columns:1fr} .ad-card{padding:16px} }
+.ad-acc .ad-ghost[data-confirmar="1"]{border-color:transparent;background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.ad-acc .ad-icono[data-confirmar="1"]{padding:6px 10px;border-color:transparent;background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.ad-vacio{margin:0;padding:18px;text-align:center;font-size:13px;line-height:1.5;color:var(--muted);border:1px dashed var(--border2);border-radius:var(--r-card)}
+@media (max-width:900px){ .ad-form{grid-template-columns:1fr 1fr} .ad-lista{grid-template-columns:minmax(0,1fr) 140px max-content} .ad-acc{grid-column:1/-1;justify-content:flex-start;gap:4px} .ad-acc .ad-ghost{margin-left:-10px} .ad-acc .ad-icono{margin-left:auto} }
+@media (max-width:560px){ .ad-form{grid-template-columns:1fr} .ad-lista{grid-template-columns:minmax(0,1fr) max-content} .ad-quien{grid-column:1/-1} .ad-acc{flex-wrap:nowrap;gap:2px} .ad-acc .btn:not(.ad-icono){padding-inline:8px} .ad-acc .ad-ghost{margin-left:-8px} .aj-bloque + .aj-bloque{margin-top:28px;padding-top:24px} }
 
 /* Cambiar contraseña (solo usuarios del cliente) */
 .sb-clave{display:none}
@@ -573,7 +602,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5l-5 3v-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12Z"/></symbol>
   <symbol id="i-wa" viewBox="0 0 24 24"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></symbol>
   <symbol id="i-settings" viewBox="0 0 24 24"><path d="M10.3 4.3a2 2 0 0 1 3.4 0l.4.7a2 2 0 0 0 2.3 1l.8-.3a2 2 0 0 1 2.4 2.4l-.2.8a2 2 0 0 0 1 2.3l.7.4a2 2 0 0 1 0 3.4l-.7.4a2 2 0 0 0-1 2.3l.2.8a2 2 0 0 1-2.4 2.4l-.8-.2a2 2 0 0 0-2.3 1l-.4.7a2 2 0 0 1-3.4 0l-.4-.7a2 2 0 0 0-2.3-1l-.8.2a2 2 0 0 1-2.4-2.4l.2-.8a2 2 0 0 0-1-2.3l-.7-.4a2 2 0 0 1 0-3.4l.7-.4a2 2 0 0 0 1-2.3l-.2-.8a2 2 0 0 1 2.4-2.4l.8.3a2 2 0 0 0 2.3-1l.4-.7Z"/><circle cx="12" cy="12" r="3"/></symbol>
-  <symbol id="i-admin" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3Z"/><rect x="9.5" y="11" width="5" height="4" rx="1"/><path d="M10.5 11V9.8a1.5 1.5 0 0 1 3 0V11"/></symbol>
   <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.12a7.5 7.5 0 0 1 15 0A17.93 17.93 0 0 1 12 21.75c-2.68 0-5.22-.58-7.5-1.63Z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
@@ -583,6 +611,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
   <symbol id="i-message" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.42-4.03 8-9 8a9.86 9.86 0 0 1-4.26-.95L3 20l1.4-3.72A7.7 7.7 0 0 1 3 12c0-4.42 4.03-8 9-8s9 3.58 9 8Z"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.04A8.97 8.97 0 0 0 6 3.75c-1.05 0-2.06.18-3 .51v14.25A8.99 8.99 0 0 1 6 18c2.3 0 4.4.87 6 2.29m0-14.25a8.97 8.97 0 0 1 6-2.29c1.05 0 2.06.18 3 .51v14.25A8.99 8.99 0 0 0 18 18a8.97 8.97 0 0 0-6 2.29m0-14.25v14.25"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6l12 12"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
 </svg>
@@ -604,7 +633,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     <button class="app-tab" data-view="wa" title="Integración WA"><svg><use href="#i-wa"/></svg><span>Integración WA</span></button>
     <div class="sb-group" data-solo-admin>Sistema</div>
     <button class="app-tab" data-view="ajustes" data-solo-admin title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
-    <button class="app-tab" data-view="admin" data-solo-admin title="Admin"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
   </nav>
 
   <div class="sb-foot">
@@ -671,15 +699,42 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <p class="disclaimer">Revisa las cifras importantes antes de compartirlas.</p>
 
   <section id="ajustes" hidden>
-    <div class="fallo-ia" id="aj-fallo" role="status" hidden></div>
-    <div class="aj-top">
-      <p class="section-label">Quién contesta</p>
-      <p class="aj-activo" id="aj-activo">Consultando…</p>
-      <p class="aj-nota" id="aj-donde">El cambio aplica al instante, también en WhatsApp.</p>
+    <section class="aj-bloque" id="aj-ia" aria-labelledby="aj-ia-tit">
+      <header class="aj-bloque-cab">
+        <h2 id="aj-ia-tit">Inteligencia artificial</h2>
+        <p class="aj-nota">Qué modelo responde en el Data Chat y en WhatsApp.</p>
+      </header>
+      <div class="fallo-ia" id="aj-fallo" role="status" hidden></div>
+      <div class="aj-estado-ia">
+        <p class="aj-activo" id="aj-activo">Consultando…</p>
+        <p class="aj-nota" id="aj-donde">El cambio aplica al instante, también en WhatsApp.</p>
+      </div>
       <p class="form-error" id="aj-error" hidden></p>
-    </div>
-    <div class="aj-proveedores" id="aj-proveedores"></div>
+      <div class="aj-proveedores" id="aj-proveedores"></div>
+    </section>
 
+    <section class="aj-bloque" id="aj-usuarios" aria-labelledby="aj-us-tit">
+      <header class="aj-bloque-cab">
+        <h2 id="aj-us-tit">Usuarios <span class="ad-cuenta" id="ad-cuenta"></span></h2>
+        <p class="aj-nota">Quién entra al panel con correo y contraseña.</p>
+      </header>
+      <p class="form-error" id="ad-error" hidden></p>
+
+      <form class="ad-form" id="ad-form" aria-label="Añadir un usuario">
+        <label>Correo<input type="email" id="ad-email" required autocomplete="off" placeholder="nombre@cliente.com"></label>
+        <label>Nombre<input type="text" id="ad-nombre" maxlength="80" autocomplete="off" placeholder="Opcional"></label>
+        <label>Rol<select id="ad-rol"><option value="usuario">Usuario</option><option value="admin">Administrador</option></select></label>
+        <button type="submit" class="btn" id="ad-crear">Añadir usuario</button>
+        <p class="aj-nota ad-roles">Un <strong>usuario</strong> ve el Reporte, el Data Chat y la Integración WA. Un <strong>administrador</strong>, además, entra a Ajustes.</p>
+      </form>
+      <div class="ad-temporal" id="ad-temporal" hidden role="status">
+        <p id="ad-temporal-txt"></p>
+        <div class="ad-clave"><code id="ad-temporal-clave"></code><button type="button" class="btn" id="ad-copiar">Copiar</button></div>
+        <p class="aj-nota">Se muestra una sola vez. Compártela por un canal privado; la persona puede cambiarla después desde el botón «Clave» de la barra lateral.</p>
+      </div>
+
+      <div id="ad-lista"></div>
+    </section>
   </section>
 
   <section id="reporte" hidden>
@@ -688,36 +743,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
       <a class="rp-abrir" id="rp-abrir" href="#" target="_blank" rel="noopener noreferrer" hidden>Abrir en otra pestaña ↗</a>
     </div>
     <div class="rp-marco" id="rp-marco"></div>
-  </section>
-
-  <section id="admin" hidden>
-    <div class="aj-top">
-      <p class="section-label">Usuarios</p>
-      <p class="aj-activo">Quién entra al panel</p>
-      <p class="aj-nota" id="ad-google">El equipo entra con Google.</p>
-      <p class="form-error" id="ad-error" hidden></p>
-    </div>
-
-    <div class="ad-card">
-      <h2>Añadir un usuario del cliente</h2>
-      <p class="aj-nota">Entra con su correo y una contraseña. Un <strong>usuario</strong> ve el Reporte, el Data Chat y la Integración WA. Un <strong>administrador</strong>, además, entra a Ajustes (la IA) y crea usuarios aquí.</p>
-      <form class="ad-form" id="ad-form">
-        <label>Correo<input type="email" id="ad-email" required autocomplete="off" placeholder="nombre@cliente.com"></label>
-        <label>Nombre<input type="text" id="ad-nombre" maxlength="80" autocomplete="off" placeholder="Opcional"></label>
-        <label>Rol<select id="ad-rol"><option value="usuario">Usuario</option><option value="admin">Administrador</option></select></label>
-        <button type="submit" class="btn" id="ad-crear">Crear usuario</button>
-      </form>
-      <div class="ad-temporal" id="ad-temporal" hidden role="status">
-        <p id="ad-temporal-txt"></p>
-        <div class="ad-clave"><code id="ad-temporal-clave"></code><button type="button" class="btn" id="ad-copiar">Copiar</button></div>
-        <p class="aj-nota">Se muestra una sola vez. Compártela por un canal privado; la persona puede cambiarla después desde el botón «Clave» de la barra lateral.</p>
-      </div>
-    </div>
-
-    <div class="ad-card">
-      <h2>Usuarios con contraseña</h2>
-      <div id="ad-lista"></div>
-    </div>
   </section>
 
   <dialog class="cl-dialog" id="cl-dialog" aria-labelledby="cl-titulo">
@@ -1062,8 +1087,7 @@ resetBtn.addEventListener('click', () => {
 const VISTAS = {
   chat: { pill: 'Data Chat', titulo: 'Pregúntale a la base de datos' },
   wa: { pill: 'Integración WA', titulo: 'Los números que responden por WhatsApp' },
-  ajustes: { pill: 'Ajustes', titulo: 'Qué modelo de IA responde las preguntas' },
-  admin: { pill: 'Admin', titulo: 'Quién puede entrar al panel' },
+  ajustes: { pill: 'Ajustes', titulo: 'La IA que responde y quién entra al panel' },
   reporte: { pill: 'Reporte', titulo: 'Los reportes de este negocio' },
 };
 const pill = document.querySelector('.pill-logo');
@@ -1075,7 +1099,6 @@ function verVista(v) {
   document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
   $('wa').hidden = v !== 'wa';
   $('ajustes').hidden = v !== 'ajustes';
-  $('admin').hidden = v !== 'admin';
   $('reporte').hidden = v !== 'reporte';
   resetBtn.hidden = v !== 'chat' || history.length === 0;
   $('wa-manual-abrir').hidden = v !== 'wa';
@@ -1083,8 +1106,7 @@ function verVista(v) {
   tituloTop.textContent = VISTAS[v].titulo;
   if (v !== 'wa') pararQr();
   if (v === 'wa') cargarNumeros();
-  if (v === 'ajustes') cargarAjustes();
-  if (v === 'admin') cargarUsuarios();
+  if (v === 'ajustes') { cargarAjustes(); cargarUsuarios(); }
   if (v === 'reporte') cargarReporte();
 }
 document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.addEventListener('click', () => verVista(b.dataset.view)));
@@ -1123,15 +1145,16 @@ const ruta = (instancia, cola) => `/api/wa/numeros/${encodeURIComponent(instanci
 
 // Sin diálogo del navegador: el segundo clic confirma, y a los 6 s se olvida.
 function conConfirmacion(btn, aviso, fn) {
-  const original = btn.textContent;
+  const etq = btn.querySelector('[data-etq]') ?? btn; // en un botón de icono, el aviso va junto al icono
+  const original = etq.textContent;
   btn.addEventListener('click', () => {
     if (btn.dataset.confirmar !== '1') {
       btn.dataset.confirmar = '1';
-      btn.textContent = aviso;
-      setTimeout(() => { btn.dataset.confirmar = ''; btn.textContent = original; }, 6000);
+      etq.textContent = aviso;
+      setTimeout(() => { btn.dataset.confirmar = ''; etq.textContent = original; }, 6000);
       return;
     }
-    btn.dataset.confirmar = ''; btn.textContent = original;
+    btn.dataset.confirmar = ''; etq.textContent = original;
     fn();
   });
   return btn;
@@ -1660,12 +1683,12 @@ async function cargarUsuarios() {
   adError('');
   try {
     const d = await waFetch('/api/usuarios');
-    $('ad-google').textContent = `El equipo entra con Google como administrador: ${d.dominios.map((x) => '@' + x).join(', ')}. Los demás, con un usuario de aquí.`;
     if (!d.hayBase) adError('Para crear usuarios hace falta la base del dashboard (APP_DATABASE_URL).');
     const cont = $('ad-lista');
     cont.textContent = '';
+    $('ad-cuenta').textContent = d.usuarios.length ? String(d.usuarios.length) : '';
     if (!d.usuarios.length) {
-      cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay usuarios con contraseña.'));
+      cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay usuarios con contraseña. Añade el primero arriba: verás su contraseña temporal para compartírsela.'));
       return;
     }
     cont.append(h('ul', { class: 'ad-lista' }, d.usuarios.map((u) => filaUsuario(u, d.yo))));
@@ -1673,44 +1696,54 @@ async function cargarUsuarios() {
 }
 
 // A uno mismo solo se le puede resetear la contraseña: el servidor no deja quitarse el rol ni el acceso.
+const ROL = { admin: 'Administrador', usuario: 'Usuario' };
 function filaUsuario(u, yo) {
   const ruta = `/api/usuarios/${encodeURIComponent(u.email)}`;
   const patch = (body) => waFetch(ruta, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const accion = (fn) => async () => { adError(''); try { await fn(); } catch (e) { adError(e.message); } };
+  const propio = u.email === yo;
+  const quien = u.nombre || u.email;
 
-  const reset = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Resetear contraseña'), 'Confirmar: cierra su sesión',
+  let rol;
+  if (propio) rol = h('span', { class: 'ad-rol-fijo' }, ROL[u.rol] ?? u.rol);
+  else {
+    rol = h('select', { class: 'ad-rol', 'aria-label': `Rol de ${quien}` },
+      ...Object.entries(ROL).map(([v, t]) => h('option', { value: v, selected: v === u.rol }, t)));
+    rol.addEventListener('change', accion(async () => {
+      rol.disabled = true;
+      try { await patch({ rol: rol.value }); } finally { cargarUsuarios(); }
+    }));
+  }
+
+  const reset = conConfirmacion(h('button', { type: 'button', class: 'btn ad-ghost' }, 'Resetear contraseña'), 'Confirmar: cierra su sesión',
     accion(async () => { const { temporal } = await patch({ resetear: true }); mostrarTemporal(u.email, temporal, 'reset'); cargarUsuarios(); }));
   const estado = h('button', { type: 'button', class: 'btn' }, u.activo ? 'Desactivar' : 'Activar');
   estado.addEventListener('click', accion(async () => { await patch({ activo: !u.activo }); cargarUsuarios(); }));
-  const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Borrar'), 'Confirmar: se borra',
+  const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn ad-icono es-peligro', title: 'Borrar usuario', 'aria-label': `Borrar a ${quien}` },
+    icono('i-trash'), h('span', { 'data-etq': '' })), '¿Borrar?',
     accion(async () => { await waFetch(ruta, { method: 'DELETE' }); cargarUsuarios(); }));
 
-  const esAdmin = u.rol === 'admin';
-  const rol = h('button', { type: 'button', class: 'btn' }, esAdmin ? 'Quitar administrador' : 'Hacer administrador');
-  rol.addEventListener('click', accion(async () => { await patch({ rol: esAdmin ? 'usuario' : 'admin' }); cargarUsuarios(); }));
-  const propio = u.email === yo;
-
-  const alta = new Date(u.creado).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
-  return h('li', {},
-    h('div', { class: 'ad-quien' }, h('strong', {}, u.nombre || u.email), h('span', {}, `${u.nombre ? u.email + ' · ' : ''}alta ${alta}${u.por ? ` por ${u.por}` : ''}`)),
-    h('div', { class: 'ad-acc' },
-      h('span', { class: 'ad-estado' }, esAdmin ? 'Administrador' : 'Usuario'),
-      h('span', { class: `ad-estado${u.activo ? ' es-activo' : ''}` }, u.activo ? 'Activo' : 'Desactivado'),
-      ...(propio ? [reset] : [rol, reset, estado, quitar])));
+  return h('li', { class: u.activo ? '' : 'es-inactivo' },
+    h('div', { class: 'ad-quien', title: u.email },
+      h('strong', {}, quien, propio ? h('span', { class: 'ad-tu' }, 'tú') : ''),
+      u.nombre ? h('span', {}, u.email) : ''),
+    rol,
+    h('span', { class: `ad-estado${u.activo ? ' es-activo' : ''}` }, u.activo ? 'Activo' : 'Desactivado'),
+    h('div', { class: 'ad-acc' }, ...(propio ? [reset] : [reset, estado, quitar])));
 }
 
 $('ad-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   adError('');
   const btn = $('ad-crear'), email = $('ad-email').value.trim();
-  btn.disabled = true; btn.textContent = 'Creando…';
+  btn.disabled = true; btn.textContent = 'Añadiendo…';
   try {
     const { temporal } = await waFetch('/api/usuarios', enviarJson({ email, nombre: $('ad-nombre').value, rol: $('ad-rol').value }));
     mostrarTemporal(email.toLowerCase(), temporal, 'crear');
     $('ad-email').value = ''; $('ad-nombre').value = ''; $('ad-rol').value = 'usuario';
     cargarUsuarios();
   } catch (err) { adError(err.message); }
-  finally { btn.disabled = false; btn.textContent = 'Crear usuario'; }
+  finally { btn.disabled = false; btn.textContent = 'Añadir usuario'; }
 });
 
 // ── Cambiar contraseña (usuarios del cliente) ──────────────────────────────

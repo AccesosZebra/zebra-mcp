@@ -139,7 +139,7 @@ if (faltan.length) {
   console.log(`Contesta: ${JSON.stringify(await cargar())}`); // lo guardado manda desde el primer turno
   mountAjustes(app, soloAdmin); // la pantalla "Ajustes" del panel
   const { mountAdmin } = await import('./admin.mjs');
-  mountAdmin(app, soloAdmin); // la pestaña "Admin": usuarios con contraseña
+  mountAdmin(app, soloAdmin); // Ajustes → Usuarios: usuarios con contraseña
   const { mountReportes } = await import('./reportes.mjs');
   mountReportes(app, requireSession); // la pestaña "Reporte": páginas fijas, incrustadas o servidas
 

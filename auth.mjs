@@ -1,8 +1,8 @@
 // Login del panel, con dos puertas (el modelo de Zebra Reports):
 // - Google, para el equipo: entran como administradores los correos verificados de los dominios
 //   de AUTH_ALLOWED_DOMAIN (lista separada por comas). Port de lib/auth/* de Prompt Studio.
-// - Correo y contraseña, para la gente del cliente: rol "cliente", usuarios creados en Admin. Dentro
-//   de "cliente", la base dice si es "admin" (entra a Ajustes y Admin) o "usuario".
+// - Correo y contraseña, para la gente del cliente: rol "cliente", usuarios creados en Ajustes. Dentro
+//   de "cliente", la base dice si es "admin" (entra a Ajustes) o "usuario".
 // La sesión es una cookie firmada con HMAC-SHA256 que dice quién es y con qué rol.
 // En req.user, `admin`: Zebra (Google) o un cliente con rol "admin".
 import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';

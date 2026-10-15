@@ -1,6 +1,7 @@
 // Usuarios con contraseña: la gente del cliente, que no tiene cuenta de Google del equipo. Los crea
-// un administrador (Zebra, o un usuario del cliente con rol "admin") en la pestaña Admin. Port de src/auth/{password,users,rateLimit}.ts de Zebra
-// Reports, al estilo de este repo: scrypt de la stdlib, sin dependencias.
+// un administrador (Zebra, o un usuario del cliente con rol "admin") en Ajustes → Usuarios. Port de
+// src/auth/{password,users,rateLimit}.ts de Zebra Reports, al estilo de este repo: scrypt de la
+// stdlib, sin dependencias.
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 import { consulta, hayBase } from './db.mjs';

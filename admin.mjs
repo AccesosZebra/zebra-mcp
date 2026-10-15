@@ -1,8 +1,7 @@
-// La pestaña "Admin": los usuarios con contraseña (la gente del cliente). La usan Zebra y los
-// usuarios del cliente con rol "admin", igual que Ajustes. Las contraseñas temporales se devuelven una sola vez, al
+// El bloque "Usuarios" de Ajustes: los usuarios con contraseña (la gente del cliente). Lo usan Zebra
+// y los usuarios del cliente con rol "admin". Las contraseñas temporales se devuelven una sola vez, al
 // crear o resetear; nunca se guardan ni van al log.
-import { allowedDomains } from './auth.mjs';
-import { activar, borrar, cambiarRol, crear, hayUsuarios, listar, resetear, ROLES } from './usuarios.mjs';
+import { activar, borrar, cambiarRol, crear, hayUsuarios, listar, resetear } from './usuarios.mjs';
 
 // Nadie se quita a sí mismo el rol, el acceso o la cuenta: así siempre queda un administrador que
 // pueda deshacerlo. Si aun así se pierde, Zebra entra con Google y lo arregla.
@@ -18,7 +17,7 @@ export function mountAdmin(app, soloAdmin) {
   };
 
   app.get('/api/usuarios', soloAdmin, async (req, res) => {
-    res.json({ usuarios: hayUsuarios() ? await listar() : [], dominios: allowedDomains(), hayBase: hayUsuarios(), roles: ROLES, yo: req.user.email });
+    res.json({ usuarios: hayUsuarios() ? await listar() : [], hayBase: hayUsuarios(), yo: req.user.email });
   });
 
   app.post('/api/usuarios', soloAdmin, enBase(async (req, res) => {

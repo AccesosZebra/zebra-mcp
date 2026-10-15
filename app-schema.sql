@@ -44,7 +44,7 @@ create table if not exists wa_sesion (
 );
 
 -- Usuarios con contraseña: la gente del cliente, que no entra con Google. Los crea un
--- administrador en la pestaña Admin. Nunca se guarda la contraseña, solo su hash scrypt.
+-- administrador en Ajustes → Usuarios. Nunca se guarda la contraseña, solo su hash scrypt.
 create table if not exists usuarios (
   email  text primary key,                          -- siempre en minúsculas
   nombre text not null default '',
@@ -55,6 +55,6 @@ create table if not exists usuarios (
   por    text                                       -- correo del administrador que lo creó
 );
 
--- Qué puede hacer: "admin" entra a Ajustes y Admin (IA y usuarios); "usuario" solo usa el panel.
+-- Qué puede hacer: "admin" entra a Ajustes (IA y usuarios); "usuario" solo usa el panel.
 -- El equipo de Zebra (Google) no vive aquí: es administrador siempre.
 alter table usuarios add column if not exists rol text not null default 'usuario' check (rol in ('admin', 'usuario'));
