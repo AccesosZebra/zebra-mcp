@@ -454,6 +454,10 @@ body[data-theme="dark"] #wa{
 .wa-sec-head h4{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--wa-soft)}
 .wa-sec-head p{margin-top:2px;font-size:12px;color:var(--wa-soft)}
 .wa-count{font-size:12px;font-weight:500;color:var(--wa-soft)}
+.wa-sec-tools{display:flex;align-items:center;gap:12px}
+#wa .wa-buscar{width:200px;padding:6px 10px;font:500 12px/1.5 'Inter',system-ui,sans-serif;color:var(--wa-ink);background:var(--wa-well);border:1px solid var(--wa-line3);border-radius:8px;caret-color:var(--wa-ok-icon)}
+#wa .wa-buscar::placeholder{color:var(--wa-soft)}
+#wa .wa-buscar:focus{outline:none;background:var(--wa-card);border-color:transparent;box-shadow:0 0 0 2px var(--wa-ring)}
 .wa-count strong{color:var(--wa-ink);font-weight:700}
 .wa-rows{list-style:none;padding:0;background:var(--wa-card);border:1px solid var(--wa-line2);border-radius:12px;box-shadow:var(--wa-sh-x);overflow:hidden}
 .wa-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;transition:background .15s var(--ease)}
@@ -584,6 +588,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   .wa-row-name p,.wa-num-title h3{white-space:normal;overflow-wrap:anywhere}
   .wa-row-act{justify-content:flex-end;flex-wrap:wrap}
   #wa .wa-row-act input{flex:1;width:auto;min-width:0}
+  .wa-sec-tools{width:100%} #wa .wa-buscar{flex:1;width:auto;min-width:0}
   .wa-qr{grid-template-columns:1fr;justify-items:center;text-align:left}
   .wa-qr-frame{width:min(232px,100%);height:auto;aspect-ratio:1}
 }
@@ -1367,8 +1372,25 @@ async function cargarTelefono(instancia, cont) {
     }
     cont.lastChild.remove();
     if (!lista.length) return cont.append(h('p', { class: 'wa-empty' }, 'Este teléfono no está en ningún grupo todavía.'));
-    cabeza.append(h('span', { class: 'wa-count' }, h('strong', {}, String(lista.length)), lista.length === 1 ? ' grupo' : ' grupos'));
-    cont.append(h('ul', { class: 'wa-rows' }, lista.map((g) => filaTelefono(instancia, g))));
+    // Búsqueda por nombre (o por jid), sin acentos ni mayúsculas: filtra las filas que ya están pintadas.
+    const sinAcentos = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const filas = lista.map((g) => ({ el: filaTelefono(instancia, g), texto: sinAcentos(`${g.nombre ?? ''} ${g.jid}`) }));
+    const cuenta = h('span', { class: 'wa-count' });
+    const vacio = h('p', { class: 'wa-empty', hidden: true }, 'Ningún grupo coincide con la búsqueda.');
+    const buscar = h('input', { type: 'search', class: 'wa-buscar', placeholder: 'Buscar grupo', autocomplete: 'off', 'aria-label': 'Buscar en los grupos del teléfono' });
+    const filtrar = () => {
+      const q = sinAcentos(buscar.value.trim());
+      let n = 0;
+      for (const f of filas) { f.el.hidden = Boolean(q) && !f.texto.includes(q); if (!f.el.hidden) n++; }
+      cuenta.replaceChildren(...(q ? [h('strong', {}, `${n} de ${lista.length}`)] : [h('strong', {}, String(lista.length))]), lista.length === 1 ? ' grupo' : ' grupos');
+      vacio.hidden = n > 0;
+      ul.hidden = n === 0;
+    };
+    const ul = h('ul', { class: 'wa-rows' }, filas.map((f) => f.el));
+    buscar.addEventListener('input', filtrar);
+    cabeza.append(h('div', { class: 'wa-sec-tools' }, buscar, cuenta));
+    cont.append(ul, vacio);
+    filtrar();
   } catch (e) {
     cont.lastChild.textContent = `No pude traer los grupos: ${e.message}`;
   }
