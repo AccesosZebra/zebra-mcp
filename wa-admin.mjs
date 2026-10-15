@@ -13,6 +13,12 @@ const existe = async (n) => typeof n === 'string' && (await numeros()).some((x) 
 // Grupos nuevos: "120363…@g.us". Los creados antes de 2021: "<teléfono del creador>-<segundos>@g.us".
 export const jidValido = (j) => typeof j === 'string' && /^\d{5,}(-\d+)?@g\.us$/.test(j);
 
+/**
+ * Lo que ve el panel: si no hay conexión y WhatsApp había cerrado la sesión, "vencida" (hay que
+ * volver a escanear); si no, el estado de la conexión tal cual.
+ */
+export const estadoPanel = (vivo, vencida) => (vivo === 'desconectado' && vencida ? 'vencida' : vivo);
+
 export function mountWaAdmin(app, requireSession) {
   const log = (req, accion, extra = {}) => console.log(JSON.stringify({ wa_admin: req.user.email, accion, ...extra }));
 
@@ -32,7 +38,7 @@ export function mountWaAdmin(app, requireSession) {
     const salida = [];
     for (const n of await numeros()) {
       const { estado: e, numero } = estado(n.instancia);
-      salida.push({ ...n, estado: e, numero, grupos: await gruposVinculados(n.instancia) });
+      salida.push({ ...n, estado: estadoPanel(e, n.vencida), numero, grupos: await gruposVinculados(n.instancia) });
     }
     res.json({ numeros: salida, fallo: falloActual() });
   });

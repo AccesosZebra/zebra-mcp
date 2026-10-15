@@ -8,7 +8,7 @@ import QRCode from 'qrcode';
 
 import { textoDeTurno } from './chat.mjs';
 import { causaDeFallo, registrarExito, registrarFallo } from './proveedores.mjs';
-import { borrarSesion, conSesion, estadoAuth, grupos as gruposDe } from './db.mjs';
+import { borrarSesion, conSesion, estadoAuth, grupos as gruposDe, marcarVencida } from './db.mjs';
 
 const TTL_MS = 30 * 60 * 1000; // media hora en silencio cierra la conversación
 const MAX_MENSAJES = 12;       // y nunca se arrastran más de 12
@@ -150,16 +150,20 @@ export async function conectar(instancia) {
     if (connection === 'open') {
       Object.assign(c, { estado: 'conectado', qr: null, intentos: 0 });
       console.log(JSON.stringify({ wa: instancia, conectado: numero(sock.user?.id) }));
+      marcarVencida(instancia, null).catch((e) => console.error(`wa ${instancia}:`, e.message));
     }
     if (connection !== 'close') return;
 
     const codigo = lastDisconnect?.error?.output?.statusCode;
     c.estado = 'desconectado';
     c.qr = null;
-    if (codigo === DisconnectReason.loggedOut) {
-      // Lo desvincularon desde el teléfono: las llaves ya no valen, se olvidan.
+    if (codigo === DisconnectReason.loggedOut && !c.desvinculando) {
+      // WhatsApp cerró la sesión: el teléfono pasó más de 14 días sin usarse, o lo desvincularon
+      // desde el teléfono. Las llaves ya no valen, se olvidan, y queda anotado para que el panel
+      // diga "sesión vencida" y pida volver a escanear. Los grupos se quedan.
       await borrarSesion(instancia).catch((e) => console.error(`wa ${instancia}:`, e.message));
-      return console.log(JSON.stringify({ wa: instancia, desvinculado: 'desde el teléfono' }));
+      await marcarVencida(instancia, new Date()).catch((e) => console.error(`wa ${instancia}:`, e.message));
+      return console.log(JSON.stringify({ wa: instancia, vencida: 'WhatsApp cerró la sesión' }));
     }
     // Sin vincular y sin escanear a tiempo: el QR caducó. Se espera a que lo pidan otra vez desde
     // el panel, en vez de generar códigos para siempre.

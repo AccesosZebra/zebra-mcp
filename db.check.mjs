@@ -21,6 +21,7 @@ assert.equal(await db.aplicarEsquema(), false, 'sin base no hay esquema que apli
 await assert.rejects(db.guardarAjuste('ia', { proveedor: 'anthropic' }), /APP_DATABASE_URL/);
 await assert.rejects(db.agregarNumero({ instancia: 'zebra-bot' }), /APP_DATABASE_URL/);
 await assert.rejects(db.ponerGrupo({ jid: '120363412885434823@g.us', instancia: 'zebra-bot' }), /APP_DATABASE_URL/);
+await assert.rejects(db.marcarVencida('zebra-bot', new Date()), /APP_DATABASE_URL/);
 await assert.rejects(db.quitarGrupo('120363412885434823@g.us'), /APP_DATABASE_URL/);
 await assert.rejects(db.estadoAuth('zebra-bot'), /APP_DATABASE_URL/);
 await assert.rejects(db.borrarSesion('zebra-bot'), /APP_DATABASE_URL/);

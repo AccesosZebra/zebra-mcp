@@ -20,6 +20,9 @@ create table if not exists wa_numeros (
   creado    timestamptz not null default now(),
   por       text
 );
+-- Cuándo WhatsApp cerró la sesión por su cuenta (14 días sin usar el teléfono, o lo desvincularon
+-- desde el teléfono). Null mientras está vinculado o si nunca lo estuvo.
+alter table wa_numeros add column if not exists vencida timestamptz;
 
 -- Los grupos donde contesta, uno por cliente. Antes vivían en WHATSAPP_GROUPS.
 create table if not exists wa_grupos (

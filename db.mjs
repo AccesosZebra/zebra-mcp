@@ -50,7 +50,7 @@ export async function guardarAjuste(clave, valor, por = null) {
 /** Los números configurados, del más viejo al más nuevo. */
 export async function numeros() {
   if (!hayBase) return [];
-  const { rows } = await db().query('select instancia, etiqueta, creado from wa_numeros order by creado');
+  const { rows } = await db().query('select instancia, etiqueta, creado, vencida from wa_numeros order by creado');
   return rows;
 }
 
@@ -70,6 +70,12 @@ export async function agregarNumero({ instancia, etiqueta = null, por = null }) 
     `insert into wa_numeros (instancia, etiqueta, por) values ($1, $2, $3)
        on conflict (instancia) do update set etiqueta = excluded.etiqueta`,
     [instancia, etiqueta, por]);
+}
+
+/** Anota (o borra, con null) cuándo WhatsApp cerró la sesión de un número por su cuenta. */
+export async function marcarVencida(instancia, cuando) {
+  exigirBase();
+  await db().query('update wa_numeros set vencida = $2 where instancia = $1', [instancia, cuando]);
 }
 
 /** Los grupos donde contesta un número: jid → cliente. El mismo Map que se usaba con el entorno. */
