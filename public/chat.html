@@ -517,6 +517,9 @@ body[data-theme="dark"] #wa{
 .wa-av-body{display:flex;flex-direction:column;gap:10px;padding-top:10px}
 .wa-av-ayuda{font-size:12px;line-height:1.5;color:var(--wa-soft)}
 .wa-av-ayuda strong{color:var(--wa-ink2)}
+.wa-av-ayuda{position:relative}
+.wa-av-ayuda .wa-info-btn{display:inline-grid;vertical-align:middle;margin-left:2px;width:20px;height:20px}
+.wa-av-ayuda .wa-info-btn svg{width:15px;height:15px}
 .wa-av-pausa{padding:10px 12px;border-radius:10px;border:1px solid var(--wa-warn-line);background:var(--wa-warn-bg);font-size:12px;line-height:1.5;color:var(--wa-ink2)}
 .wa-av-pausa strong{display:block}
 .wa-av-pausa span{color:var(--wa-text)}
@@ -1457,8 +1460,9 @@ function opcionesAvanzadas(n) {
       h('span', {}, 'Opciones avanzadas'), h('span', { class: 'wa-av-sub' }, 'Enviar mensajes desde n8n'),
       icono('i-chevron')),
     h('div', { class: 'wa-av-body' },
-      h('p', { class: 'wa-av-ayuda' }, 'En n8n, crea una credencial ', h('strong', {}, 'Evolution API'), ' con el Server Url y la ApiKey. En cada nodo, escribe el Instance Name. Solo envía: texto, imagen, video, documento y reacción.'),
-      h('p', { class: 'wa-av-ayuda' }, 'Para cuidar el número, los envíos salen de uno en uno, espaciados de 3 a 8 s y con «escribiendo…». Máximo 10 por minuto, 150 por hora y 800 al día; si n8n se pasa, recibe un aviso y reintenta después.'),
+      h('p', { class: 'wa-av-ayuda' }, 'En n8n, crea una credencial ', h('strong', {}, 'Evolution API'), ' con el Server Url y la ApiKey. En cada nodo, escribe el Instance Name. Solo envía: texto, imagen, video, documento y reacción.',
+        ...infoTip(`wa-ritmo-${n.instancia}`, 'Cómo se cuida el número',
+          'Para cuidar el número, los envíos salen de uno en uno, espaciados de 3 a 8 s y con «escribiendo…». Máximo 10 por minuto, 150 por hora y 800 al día; si n8n se pasa, recibe un aviso y reintenta después.')),
       n.n8n_pausa ? h('div', { class: 'wa-av-pausa', role: 'status' }, lineaPausa(n)) : null,
       copiable('Server Url', `${location.origin}/evo`),
       copiable('Instance Name', n.instancia),
@@ -1471,14 +1475,18 @@ function opcionesAvanzadas(n) {
   return det;
 }
 
-// La (i) de la insignia: por qué un número puede quedarse sin vincular. Texto de la ayuda de WhatsApp.
-function infoCatorce(instancia) {
-  const id = `wa-info-${instancia}`;
+// Una (i) con su tooltip (al pasar el ratón o con el foco). El tooltip se ancla al contenedor
+// posicionado más cercano, que pone quien la usa.
+function infoTip(id, etiqueta, texto) {
   return [
-    h('button', { type: 'button', class: 'wa-info-btn', 'aria-label': 'Por qué se desvincula', 'aria-describedby': id }, icono('i-info')),
-    h('span', { class: 'wa-info-tip', role: 'tooltip', id }, 'Tu teléfono no tendrá que permanecer en línea para usar WhatsApp en dispositivos vinculados, pero, si no usas el teléfono durante más de 14 días, se desconectarán los dispositivos vinculados.'),
+    h('button', { type: 'button', class: 'wa-info-btn', 'aria-label': etiqueta, 'aria-describedby': id }, icono('i-info')),
+    h('span', { class: 'wa-info-tip', role: 'tooltip', id }, texto),
   ];
 }
+
+// La (i) de la insignia: por qué un número puede quedarse sin vincular. Texto de la ayuda de WhatsApp.
+const infoCatorce = (instancia) => infoTip(`wa-info-${instancia}`, 'Por qué se desvincula',
+  'Tu teléfono no tendrá que permanecer en línea para usar WhatsApp en dispositivos vinculados, pero, si no usas el teléfono durante más de 14 días, se desconectarán los dispositivos vinculados.');
 
 // Dónde contesta este número. Solo ahí, y solo si lo mencionan o responden a un mensaje suyo.
 function bloqueGrupos(n, conectado, grupos) {
