@@ -1,6 +1,9 @@
 // La pantalla "Integración WA" del panel: los números del bot, su QR y en qué grupos contesta cada
 // uno, y borrarlos. Las conexiones viven en este mismo proceso (whatsapp.mjs): aquí solo se exponen al panel.
-import { agregarNumero, borrarNumero, grupos, gruposVinculados, numeros, ponerGrupo, quitarGrupo } from './db.mjs';
+import { randomBytes } from 'node:crypto';
+
+import { agregarNumero, borrarNumero, grupos, gruposVinculados, numeros, ponerClaveApi, ponerGrupo, quitarClaveApi, quitarGrupo } from './db.mjs';
+import { hashClave } from './n8n.mjs';
 import { falloActual } from './proveedores.mjs';
 import { conectar, desvincular, estado, gruposDelTelefono } from './whatsapp.mjs';
 
@@ -75,6 +78,21 @@ export function mountWaAdmin(app, requireSession) {
   app.delete('/api/wa/numeros/:instancia/session', requireSession, conNumero(async (req, res, instancia) => {
     await desvincular(instancia);
     log(req, 'desvincular', { instancia });
+    res.json({ ok: true });
+  }));
+
+  // La clave con la que n8n envía por este número. Se devuelve una sola vez; generar otra invalida
+  // la anterior. En el log va quién y cómo termina, nunca la clave.
+  app.post('/api/wa/numeros/:instancia/apikey', requireSession, conNumero(async (req, res, instancia) => {
+    const clave = `zmcp_${randomBytes(32).toString('base64url')}`;
+    await ponerClaveApi(instancia, hashClave(clave), clave.slice(-4));
+    log(req, 'generar clave n8n', { instancia, fin: clave.slice(-4) });
+    res.json({ clave, fin: clave.slice(-4) });
+  }));
+
+  app.delete('/api/wa/numeros/:instancia/apikey', requireSession, conNumero(async (req, res, instancia) => {
+    await quitarClaveApi(instancia);
+    log(req, 'revocar clave n8n', { instancia });
     res.json({ ok: true });
   }));
 

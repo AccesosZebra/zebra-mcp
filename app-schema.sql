@@ -23,6 +23,11 @@ create table if not exists wa_numeros (
 -- Cuándo WhatsApp cerró la sesión por su cuenta (14 días sin usar el teléfono, o lo desvincularon
 -- desde el teléfono). Null mientras está vinculado o si nunca lo estuvo.
 alter table wa_numeros add column if not exists vencida timestamptz;
+-- La clave con la que n8n envía mensajes por este número (nodo de Evolution). Solo su sha256 y
+-- sus últimos 4: la clave entera se muestra una vez al generarla y no se guarda.
+alter table wa_numeros add column if not exists api_hash text;
+alter table wa_numeros add column if not exists api_fin text;
+alter table wa_numeros add column if not exists api_creada timestamptz;
 
 -- Los grupos donde contesta, uno por cliente. Antes vivían en WHATSAPP_GROUPS.
 create table if not exists wa_grupos (

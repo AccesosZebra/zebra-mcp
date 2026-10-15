@@ -507,6 +507,27 @@ body[data-theme="dark"] #wa{
 .wa-foot-estado svg{width:16px;height:16px;stroke-width:2;color:var(--wa-icon)}
 .wa-foot-estado[data-estado="conectado"] svg{color:var(--wa-ok-dot)}
 .wa-foot-estado[data-estado="esperando"] svg,.wa-foot-estado[data-estado="vencida"] svg{color:var(--wa-warn-dot)}
+.wa-avanzado{margin-top:16px;border-top:1px solid var(--wa-divide);padding-top:12px}
+.wa-av-sum{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0;font-size:12px;font-weight:600;color:var(--wa-ink2);border-radius:6px}
+.wa-av-sum::-webkit-details-marker{display:none}
+.wa-av-sub{font-weight:500;color:var(--wa-soft)}
+.wa-av-sum svg{width:14px;height:14px;margin-left:auto;stroke-width:2;color:var(--wa-icon);transform:rotate(-90deg);transition:transform .2s var(--ease)}
+.wa-avanzado[open] .wa-av-sum svg{transform:rotate(90deg)}
+.wa-av-sum:hover{color:var(--wa-ink)}
+.wa-av-body{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+.wa-av-ayuda{font-size:12px;line-height:1.5;color:var(--wa-soft)}
+.wa-av-ayuda strong{color:var(--wa-ink2)}
+.wa-av-fila{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
+.wa-av-k{flex:none;width:110px;font-size:12px;font-weight:600;color:var(--wa-soft)}
+.wa-av-v{flex:1 1 200px;min-width:0;font-family:var(--font-mono);font-size:12px;color:var(--wa-ink2);background:var(--wa-chip);padding:7px 10px;border-radius:6px;overflow-wrap:anywhere;user-select:all}
+.wa-av-v.es-texto{font-family:inherit;background:none;padding:0;user-select:auto;color:var(--wa-text)}
+.wa-av-acc{display:flex;gap:8px;flex-wrap:wrap}
+.wa-av-fila .wa-btn{height:32px;padding:0 12px}
+.wa-av-nueva{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:10px;border:1px solid var(--wa-ok-line);background:var(--wa-ok-bg)}
+.wa-av-nueva p{font-size:12px;line-height:1.5;color:var(--wa-ink2)}
+.wa-av-v.es-clave{background:var(--wa-card);border:1px solid var(--wa-ok-line);color:var(--wa-ink)}
+@media (max-width:639px){ .wa-av-k{width:100%} }
+@media (prefers-reduced-motion:reduce){ .wa-av-sum svg{transition:none} }
 .wa-link{display:inline-flex;align-items:center;gap:4px;padding:0;background:none;border:0;font-size:12px;font-weight:600;color:var(--wa-ink);text-underline-offset:3px}
 .wa-link:hover{text-decoration:underline}
 .wa-link svg{width:13px;height:13px;stroke-width:2.2}
@@ -1168,6 +1189,8 @@ const qrPanel = $('wa-qr'), qrImg = $('wa-qr-img'), qrEspera = $('wa-qr-espera')
 let vinculando = null;           // de qué número se está mostrando el QR
 let ultimos = [];                // la última lista de números, para repintar sin volver a pedirla
 const abiertos = new Set();      // números con la lista de grupos del teléfono abierta
+const avanzados = new Set();     // números con "Opciones avanzadas" abierto: sobrevive al repintado
+const clavesNuevas = new Map();  // instancia → clave de n8n recién generada (se muestra una sola vez)
 const totalTelefono = new Map(); // cuántos grupos tiene cada teléfono, una vez consultado
 
 function pararQr() {
@@ -1365,8 +1388,68 @@ function tarjetaNumero(n) {
           : n.estado === 'vencida' ? 'Sesión vencida: vuelve a vincular el teléfono para que conteste'
             : 'Sin conexión: vincula el teléfono para que conteste'),
     conectado && !abierto ? h('button', { type: 'button', class: 'wa-link', on: { click: () => alternarTelefono(n.instancia) } }, icono('i-plus'), 'Elegir grupos del teléfono') : null));
+  cuerpo.append(opcionesAvanzadas(n));
 
   return h('section', { class: 'wa-num', 'aria-label': n.etiqueta || n.instancia }, cabecera, cuerpo);
+}
+
+// Opciones avanzadas: lo que hay que pegar en n8n para enviar por este número con el nodo de
+// Evolution API. Colapsado por defecto; la clave se muestra una sola vez, al generarla.
+function opcionesAvanzadas(n) {
+  const det = h('details', { class: 'wa-avanzado', open: avanzados.has(n.instancia) });
+  det.addEventListener('toggle', () => { if (det.open) avanzados.add(n.instancia); else avanzados.delete(n.instancia); });
+
+  const copiable = (etiqueta, valor) => {
+    const btn = h('button', { type: 'button', class: 'wa-btn wa-copiar', 'aria-label': `Copiar ${etiqueta}` }, 'Copiar');
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(valor); btn.textContent = 'Copiado'; }
+      catch { btn.textContent = 'Selecciónalo y copia'; }
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
+    });
+    return h('div', { class: 'wa-av-fila' }, h('span', { class: 'wa-av-k' }, etiqueta), h('code', { class: 'wa-av-v' }, valor), btn);
+  };
+
+  const generar = async () => {
+    waError('');
+    try {
+      const { clave } = await waFetch(`${ruta(n.instancia, 'apikey')}`, { method: 'POST' });
+      clavesNuevas.set(n.instancia, clave);
+      avanzados.add(n.instancia);
+      cargarNumeros();
+    } catch (e) { waError(e.message); }
+  };
+  const nueva = clavesNuevas.get(n.instancia);
+  const tiene = Boolean(n.api_fin);
+  const estadoClave = h('span', { class: 'wa-av-v es-texto' }, tiene
+    ? `Termina en …${n.api_fin} · creada el ${fechaCorta(n.api_creada)}`
+    : 'Sin clave todavía');
+  const acciones = h('div', { class: 'wa-av-acc' });
+  if (!tiene) acciones.append(h('button', { type: 'button', class: 'wa-btn is-dark', on: { click: generar } }, 'Generar clave'));
+  else {
+    acciones.append(
+      conConfirmacion(h('button', { type: 'button', class: 'wa-btn' }, 'Regenerar'), 'Confirmar: la anterior deja de servir', generar),
+      conConfirmacion(h('button', { type: 'button', class: 'wa-btn is-danger' }, 'Revocar'), 'Confirmar: n8n dejará de enviar', async () => {
+        waError('');
+        try { await waFetch(ruta(n.instancia, 'apikey'), { method: 'DELETE' }); clavesNuevas.delete(n.instancia); cargarNumeros(); }
+        catch (e) { waError(e.message); }
+      }));
+  }
+
+  det.append(
+    h('summary', { class: 'wa-av-sum' },
+      h('span', {}, 'Opciones avanzadas'), h('span', { class: 'wa-av-sub' }, 'Enviar mensajes desde n8n'),
+      icono('i-chevron')),
+    h('div', { class: 'wa-av-body' },
+      h('p', { class: 'wa-av-ayuda' }, 'En n8n, crea una credencial ', h('strong', {}, 'Evolution API'), ' con el Server Url y la ApiKey. En cada nodo, escribe el Instance Name. Solo envía: texto, imagen, video, documento y reacción.'),
+      copiable('Server Url', `${location.origin}/evo`),
+      copiable('Instance Name', n.instancia),
+      h('div', { class: 'wa-av-fila' }, h('span', { class: 'wa-av-k' }, 'ApiKey'), estadoClave, acciones),
+      nueva ? h('div', { class: 'wa-av-nueva', role: 'status' },
+        h('p', {}, h('strong', {}, 'Clave nueva. '), 'Se muestra una sola vez: cópiala y pégala en la credencial de n8n.'),
+        h('div', { class: 'wa-av-fila' }, h('code', { class: 'wa-av-v es-clave' }, nueva),
+          copiable('la clave', nueva).lastChild,
+          h('button', { type: 'button', class: 'wa-btn', on: { click: () => { clavesNuevas.delete(n.instancia); pintarNumeros(); } } }, 'Listo'))) : null));
+  return det;
 }
 
 // La (i) de la insignia: por qué un número puede quedarse sin vincular. Texto de la ayuda de WhatsApp.

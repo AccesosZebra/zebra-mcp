@@ -3,7 +3,7 @@ import pg from 'pg';
 import * as z from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
+import express from 'express';
 
 import { guiaActual } from './guia.mjs';
 
@@ -92,7 +92,12 @@ Identificadores con mayúsculas, acentos, ñ o espacios van entre comillas doble
 }
 
 // Sin validación de Host: todo /mcp exige el token, así que un rebinding de DNS no obtiene nada.
-const app = createMcpExpressApp({ host: '0.0.0.0' });
+// Lo mismo que createMcpExpressApp({ host: '0.0.0.0' }) (que no valida el Host), salvo el límite del
+// JSON: 100 kb para todo como antes, y más para /evo, donde n8n manda archivos en base64 (20 MB
+// de archivo son ~27 MB en base64). El primero que parsea gana; el segundo ve el cuerpo listo y pasa.
+const app = express();
+app.use('/evo', express.json({ limit: '28mb' }));
+app.use(express.json());
 const esperado = Buffer.from(`Bearer ${MCP_AUTH_TOKEN}`);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -132,6 +137,8 @@ if (faltan.length) {
       console.error('No pude reconectar WhatsApp:', e.message);
     }
     mountWaAdmin(app, requireSession); // la pantalla "Integración WA" del panel
+    const { mountN8n } = await import('./n8n.mjs');
+    mountN8n(app); // /evo: n8n envía mensajes con el nodo de Evolution API
   }
 
   const { mountAjustes } = await import('./ajustes.mjs');

@@ -200,6 +200,12 @@ export async function gruposDelTelefono(instancia) {
     .map((g) => ({ jid: g.id, nombre: g.subject, miembros: g.participants?.length ?? g.size ?? null }));
 }
 
+/** El socket de un número si está conectado; null si no. Lo usa la API para n8n (n8n.mjs). */
+export function socketConectado(instancia) {
+  const c = conexiones.get(instancia);
+  return c?.estado === 'conectado' ? c.sock : null;
+}
+
 /** Desvincula el teléfono y olvida sus llaves. El número y sus grupos se quedan. */
 export async function desvincular(instancia) {
   const c = conexiones.get(instancia);

@@ -50,7 +50,7 @@ export async function guardarAjuste(clave, valor, por = null) {
 /** Los números configurados, del más viejo al más nuevo. */
 export async function numeros() {
   if (!hayBase) return [];
-  const { rows } = await db().query('select instancia, etiqueta, creado, vencida from wa_numeros order by creado');
+  const { rows } = await db().query('select instancia, etiqueta, creado, vencida, api_fin, api_creada from wa_numeros order by creado');
   return rows;
 }
 
@@ -70,6 +70,34 @@ export async function agregarNumero({ instancia, etiqueta = null, por = null }) 
     `insert into wa_numeros (instancia, etiqueta, por) values ($1, $2, $3)
        on conflict (instancia) do update set etiqueta = excluded.etiqueta`,
     [instancia, etiqueta, por]);
+}
+
+// ── La clave de n8n de cada número ──────────────────────────────────────────
+/** Guarda (o reemplaza) la clave de un número: solo su hash y sus últimos 4. */
+export async function ponerClaveApi(instancia, hash, fin) {
+  exigirBase();
+  const { rowCount } = await db().query(
+    'update wa_numeros set api_hash = $2, api_fin = $3, api_creada = now() where instancia = $1', [instancia, hash, fin]);
+  return rowCount > 0;
+}
+
+export async function quitarClaveApi(instancia) {
+  exigirBase();
+  await db().query('update wa_numeros set api_hash = null, api_fin = null, api_creada = null where instancia = $1', [instancia]);
+}
+
+/** El número con esa instancia y su hash, para validar la clave que manda n8n. */
+export async function claveApiDe(instancia) {
+  if (!hayBase) return null;
+  const { rows } = await db().query('select instancia, etiqueta, api_hash from wa_numeros where instancia = $1', [instancia]);
+  return rows[0] ?? null;
+}
+
+/** El número dueño de una clave: n8n la prueba con /instance/fetchInstances, que no dice cuál. */
+export async function numeroPorClave(hash) {
+  if (!hayBase) return null;
+  const { rows } = await db().query('select instancia, etiqueta from wa_numeros where api_hash = $1', [hash]);
+  return rows[0] ?? null;
 }
 
 /** Anota (o borra, con null) cuándo WhatsApp cerró la sesión de un número por su cuenta. */
