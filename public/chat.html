@@ -823,7 +823,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
       <header class="wa-manual-head">
         <div>
           <h2 id="wa-manual-titulo">Cómo usar el bot de WhatsApp</h2>
-          <p>El bot responde preguntas sobre las métricas de un cliente dentro de un grupo de WhatsApp. Solo contesta en los grupos que actives aquí, y solo cuando lo etiquetan.</p>
+          <p>El bot responde preguntas sobre las métricas dentro de un grupo de WhatsApp. Solo contesta en los grupos que actives aquí, y solo cuando lo etiquetan.</p>
         </div>
         <button type="button" class="wa-cerrar" data-cerrar aria-label="Cerrar el manual"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
       </header>
@@ -836,8 +836,8 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
             <p>Cuando su tarjeta diga <strong>Conectado</strong>, está listo. Usa un número dedicado al bot, no uno personal.</p>
           </li>
           <li>
-            <h3>Crea un grupo para el cliente</h3>
-            <p>En WhatsApp, desde cualquier teléfono, crea un grupo nuevo con las personas que van a hacer preguntas. Un grupo por cliente: el bot da por hecho que todo lo que se pregunta ahí es de ese cliente.</p>
+            <h3>Crea un grupo</h3>
+            <p>En WhatsApp, desde cualquier teléfono, crea un grupo nuevo con las personas que van a hacer preguntas. Puede haber varios, por ejemplo uno por equipo.</p>
           </li>
           <li>
             <h3>Añade el número del bot al grupo</h3>
@@ -846,7 +846,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
           </li>
           <li>
             <h3>Activa el grupo aquí</h3>
-            <p>En la tarjeta del número, pulsa <strong>Ver grupos del teléfono</strong>. Busca el grupo, escribe el nombre del cliente tal como aparece en los reportes (por ejemplo, Sofía) y pulsa <strong>Atender aquí</strong>.</p>
+            <p>En la tarjeta del número, pulsa <strong>Ver grupos del teléfono</strong>. Busca el grupo por su nombre y pulsa <strong>Atender aquí</strong>.</p>
             <p>Pasará a <strong>Grupos vinculados a este número</strong> con la etiqueta <strong>Escuchando</strong>.</p>
           </li>
           <li>
@@ -1338,10 +1338,10 @@ function bloqueGrupos(n, conectado, grupos) {
     });
     return h('li', { class: 'wa-row' },
       h('div', { class: 'wa-row-id' },
-        h('span', { class: 'wa-initials', 'aria-hidden': 'true' }, iniciales(g.cliente)),
+        h('span', { class: 'wa-initials', 'aria-hidden': 'true' }, iniciales(g.nombre || g.cliente)),
         h('div', { class: 'wa-row-txt' },
           h('div', { class: 'wa-row-name' },
-            h('p', { class: g.cliente ? '' : 'is-vacio' }, g.cliente || 'Sin cliente asignado'),
+            h('p', { class: g.nombre || g.cliente ? '' : 'is-vacio', title: g.nombre || g.cliente || '' }, g.nombre || g.cliente || 'Grupo sin nombre'),
             conectado ? h('span', { class: 'wa-tag' }, 'Escuchando') : h('span', { class: 'wa-tag is-warn' }, 'Sin conexión')),
           h('p', { class: 'wa-row-jid' }, g.jid))),
       h('div', { class: 'wa-row-act' }, quitar));
@@ -1357,7 +1357,7 @@ function alternarTelefono(instancia) {
 // Los grupos donde está ese teléfono, para elegirlos sin copiar identificadores a mano.
 async function cargarTelefono(instancia, cont) {
   const cabeza = h('div', { class: 'wa-sec-head' },
-    h('div', {}, h('h4', {}, 'Grupos del teléfono'), h('p', {}, 'Elige dónde contesta y de qué cliente es cada grupo.')));
+    h('div', {}, h('h4', {}, 'Grupos del teléfono'), h('p', {}, 'Elige en qué grupos contesta el bot.')));
   cont.append(cabeza, h('p', { class: 'wa-empty' }, 'Cargando los grupos del teléfono…'));
   try {
     const lista = ((await waFetch(ruta(instancia, 'groups'))).grupos ?? [])
@@ -1402,19 +1402,17 @@ function filaTelefono(instancia, g) {
   if (g.activo) {
     accion = h('span', { class: 'wa-tag' }, 'Ya contesta aquí');
   } else {
-    const cliente = h('input', { type: 'text', maxLength: 80, placeholder: 'Cliente', autocomplete: 'off', 'aria-label': `Cliente del grupo ${nombre}` });
-    const add = h('button', { type: 'button', class: 'wa-atender' }, 'Atender aquí');
+    const add = h('button', { type: 'button', class: 'wa-atender', 'aria-label': `Atender en ${nombre}` }, 'Atender aquí');
     const atender = async () => {
       waError('');
       add.disabled = true; add.textContent = 'Guardando…';
       try {
-        await waFetch('/api/wa/grupos', enviarJson({ jid: g.jid, cliente: cliente.value, instancia }));
+        await waFetch('/api/wa/grupos', enviarJson({ jid: g.jid, nombre: g.nombre, instancia }));
         cargarNumeros(); // la lista del teléfono sigue abierta: se pueden elegir varios seguidos
       } catch (e) { waError(e.message); add.disabled = false; add.textContent = 'Atender aquí'; }
     };
     add.addEventListener('click', atender);
-    cliente.addEventListener('keydown', (e) => { if (e.key === 'Enter') atender(); });
-    accion = [cliente, add];
+    accion = add;
   }
   return h('li', { class: 'wa-row' },
     h('div', { class: 'wa-row-id' },

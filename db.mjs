@@ -79,12 +79,19 @@ export async function grupos(instancia) {
   return new Map(rows.map((r) => [r.jid, r.cliente]));
 }
 
-export async function ponerGrupo({ jid, cliente = null, instancia, por = null }) {
+/** Para el panel: los grupos vinculados con su nombre, del más viejo al más nuevo. */
+export async function gruposVinculados(instancia) {
+  if (!hayBase) return [];
+  const { rows } = await db().query('select jid, nombre, cliente from wa_grupos where instancia = $1 order by creado', [instancia]);
+  return rows;
+}
+
+export async function ponerGrupo({ jid, nombre = null, cliente = null, instancia, por = null }) {
   exigirBase();
   await db().query(
-    `insert into wa_grupos (jid, cliente, instancia, por) values ($1, $2, $3, $4)
-       on conflict (jid) do update set cliente = excluded.cliente, instancia = excluded.instancia, por = excluded.por`,
-    [jid, cliente, instancia, por]);
+    `insert into wa_grupos (jid, nombre, cliente, instancia, por) values ($1, $2, $3, $4, $5)
+       on conflict (jid) do update set nombre = excluded.nombre, cliente = excluded.cliente, instancia = excluded.instancia, por = excluded.por`,
+    [jid, nombre, cliente, instancia, por]);
 }
 
 export async function quitarGrupo(jid) {

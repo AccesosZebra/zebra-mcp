@@ -33,6 +33,8 @@ alter table wa_grupos add column if not exists instancia text references wa_nume
 alter table wa_grupos add column if not exists por text;
 alter table wa_grupos alter column instancia set not null;
 create index if not exists wa_grupos_instancia on wa_grupos (instancia);
+-- El nombre del grupo al vincularlo, para mostrarlo en el panel (WhatsApp no lo da sin conexión).
+alter table wa_grupos add column if not exists nombre text;
 
 -- La sesión de cada número: las llaves del dispositivo vinculado. Sin esto, cada despliegue
 -- obligaría a escanear el QR otra vez. Quien lea esta tabla puede hacerse pasar por el bot.

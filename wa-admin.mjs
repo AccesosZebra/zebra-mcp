@@ -1,6 +1,6 @@
 // La pantalla "Integración WA" del panel: los números del bot, su QR y en qué grupos contesta cada
 // uno, y borrarlos. Las conexiones viven en este mismo proceso (whatsapp.mjs): aquí solo se exponen al panel.
-import { agregarNumero, borrarNumero, grupos, numeros, ponerGrupo, quitarGrupo } from './db.mjs';
+import { agregarNumero, borrarNumero, grupos, gruposVinculados, numeros, ponerGrupo, quitarGrupo } from './db.mjs';
 import { falloActual } from './proveedores.mjs';
 import { conectar, desvincular, estado, gruposDelTelefono } from './whatsapp.mjs';
 
@@ -32,7 +32,7 @@ export function mountWaAdmin(app, requireSession) {
     const salida = [];
     for (const n of await numeros()) {
       const { estado: e, numero } = estado(n.instancia);
-      salida.push({ ...n, estado: e, numero, grupos: [...await grupos(n.instancia)].map(([jid, cliente]) => ({ jid, cliente })) });
+      salida.push({ ...n, estado: e, numero, grupos: await gruposVinculados(n.instancia) });
     }
     res.json({ numeros: salida, fallo: falloActual() });
   });
@@ -80,15 +80,16 @@ export function mountWaAdmin(app, requireSession) {
     res.json({ ok: true });
   }));
 
-  // Dónde contesta cada número.
+  // Dónde contesta cada número. Rama cancun: una sola empresa, así que el grupo no lleva cliente (en
+  // Zebra decía de qué cliente es el grupo); se guarda su nombre para reconocerlo en el panel.
   app.post('/api/wa/grupos', requireSession, async (req, res) => {
-    const { jid, cliente, instancia } = req.body ?? {};
+    const { jid, nombre, instancia } = req.body ?? {};
     if (!jidValido(jid)) return res.status(400).json({ error: 'Ese identificador de grupo no es válido.' });
     if (!(await existe(instancia))) return res.status(404).json({ error: 'Ese número no existe.' });
     try {
       await ponerGrupo({
         jid,
-        cliente: typeof cliente === 'string' && cliente.trim() ? cliente.trim().slice(0, 80) : null,
+        nombre: typeof nombre === 'string' && nombre.trim() ? nombre.trim().slice(0, 120) : null,
         instancia,
         por: req.user.email,
       });
