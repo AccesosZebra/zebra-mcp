@@ -210,8 +210,7 @@ body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.
 .aj-bloque-cab{display:flex;flex-direction:column;gap:4px;margin-bottom:4px}
 .aj-bloque-cab h2{margin:0;display:flex;align-items:baseline;gap:10px;font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .ad-cuenta{font-size:13px;font-weight:500;letter-spacing:0;color:var(--muted);font-variant-numeric:tabular-nums}
-.aj-estado-ia{display:flex;flex-direction:column;gap:2px}
-.aj-estado-ia .aj-activo{margin:0;font-size:16px}
+.aj-pendiente{margin:0;font-size:14px;font-weight:600}
 .aj-bloque .form-error{margin:0}
 
 /* Usuarios: alta en una franja, y una fila por persona con columnas estables. */
@@ -272,50 +271,54 @@ body.es-cliente .sb-clave{display:inline-block}
 .cl-acc{display:flex;justify-content:flex-end;gap:8px}
 .cl-acc .btn[type="submit"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 /* Ajustes: cabecera, proveedores y la base del negocio, con los tokens del panel. */
-.aj-top{display:flex;flex-direction:column;gap:4px;max-width:900px}
-.aj-activo{margin:6px 0 2px;font-size:18px;font-weight:600}
 .aj-nota{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
 .aj-nota code{font-family:var(--font-mono);font-size:12px;padding:1px 5px;border-radius:5px;background:color-mix(in srgb,var(--fg) 8%,transparent);overflow-wrap:anywhere}
-.aj-proveedores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-width:900px}
+.aj-proveedores{display:flex;flex-direction:column;gap:12px;max-width:900px}
 .aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:18px 20px;display:flex;flex-direction:column;gap:16px}
 .aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
 .aj-head{display:flex;align-items:center;gap:12px}
 .aj-head img{width:36px;height:36px;flex:none;object-fit:contain}
 .aj-head-txt{display:flex;flex-direction:column;gap:1px;min-width:0}
 .aj-sub{font-size:13px;color:var(--muted)}
-.aj-activo.es-falta{color:var(--muted)}
-/* Paso 1 (sin clave) y paso 2 (modelo). */
-.aj-paso,.aj-modelo{display:flex;flex-direction:column;gap:10px}
 .aj-etq{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.aj-modelo-fila,.aj-clave-campos{display:flex;gap:8px;flex-wrap:wrap}
-.aj-modelo-fila select{flex:1 1 180px;min-width:0;width:auto}
-.aj-usar{background:var(--accent);color:var(--on-accent);border-color:var(--accent);white-space:nowrap}
-/* Desactivado = no hay nada que guardar todavía: discreto, no un bloque gris que parece error. */
-.aj-card .aj-usar:disabled{background:transparent;color:var(--muted);border-color:var(--border2);opacity:1}
+/* Quién contesta: clave (si hay varias), modelo y Guardar en una fila. */
+.aj-elegir{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end}
+.aj-elegir.es-una{grid-template-columns:minmax(0,1fr) auto}
+.aj-campo-ia{display:flex;flex-direction:column;gap:6px;min-width:0}
+.aj-usar{background:var(--accent);color:var(--on-accent);border-color:var(--accent);white-space:nowrap;justify-content:center}
+.aj-usar:disabled{background:transparent;color:var(--muted);border-color:var(--border2);cursor:not-allowed;transform:none;box-shadow:none}
 .aj-aviso-clave{margin:0;font-size:13px;line-height:1.5;color:var(--danger);padding:10px 12px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);background:color-mix(in srgb,var(--danger) 7%,transparent);overflow-wrap:anywhere}
-.aj-clave-linea{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;padding:9px 12px;border-radius:var(--r-control);background:color-mix(in srgb,var(--fg) 4%,transparent)}
-.aj-clave-txt{flex:1;min-width:0}
-.aj-clave-txt .fin{font-family:var(--font-mono);font-size:12px}
-.aj-clave-txt .de{color:var(--muted)}
 .aj-link{background:none;border:0;padding:2px 4px;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--border2);border-radius:4px}
 .aj-link:hover{text-decoration-color:currentColor}
-.aj-link[data-confirmar="1"]{color:var(--danger);text-decoration-color:currentColor}
-/* El logo de OpenAI es negro: sobre la tarjeta oscura hay que usar su versión blanca. */
-body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/openai-claro.png')}
+body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro.png')}
 .aj-nombre{font-size:15px;font-weight:600}
-.aj-badge{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
-.aj-card select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font-size:13px;color:var(--fg)}
-.aj-card select:disabled{opacity:.5;cursor:not-allowed}
-.aj-clave{display:flex;flex-direction:column;gap:8px}
-.aj-punto{width:7px;height:7px;flex:none;border-radius:50%;background:#10b981;transform:translateY(-1px)}
-.aj-clave-form{display:flex;flex-direction:column;gap:6px}
-.aj-clave-form input{flex:1 1 200px;min-width:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:inherit;font-family:var(--font-mono);font-size:12px;color:var(--fg)}
+:is(.aj-card,.aj-otra) :is(select,input){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:400 13px/1.4 'Inter',system-ui,sans-serif;color:var(--fg)}
+:is(.aj-card,.aj-otra) :is(select,input):focus{outline:none;border-color:var(--accent)}
+:is(.aj-card,.aj-otra) select:disabled{opacity:.5;cursor:not-allowed}
+.aj-clave-form{display:flex;flex-direction:column;gap:8px}
+.aj-clave-form input[type="password"]{flex:1 1 200px;width:auto;min-width:0;font-family:var(--font-mono);font-size:12px}
 .aj-clave-form input::placeholder{font-family:'Inter',system-ui,sans-serif;font-size:13px;color:var(--faint)}
-.aj-clave-form input:focus{outline:none;border-color:var(--accent)}
-.aj-clave-ayuda{font-size:12px;color:var(--muted)}
+.aj-clave-campos{display:flex;gap:8px;flex-wrap:wrap}
+.aj-clave-campos .aj-campo-ia{flex:1 1 180px}
+.aj-clave-ayuda{margin:0;font-size:12px;color:var(--muted)}
 .aj-clave-ayuda a{color:var(--fg);text-underline-offset:3px}
-.aj-card .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;border-color:var(--border2)}
-.aj-clave-error{font-size:12px;color:var(--danger)}
+.aj-clave-error{margin:0;font-size:12px;color:var(--danger)}
+/* Las claves que hay: una fila por clave, como la lista de usuarios. */
+.aj-claves{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface)}
+.aj-claves li{display:flex;align-items:center;gap:12px;padding:10px 16px;min-height:56px}
+.aj-claves .ad-quien{flex:1}
+.aj-claves .ad-acc{min-width:28px}
+.aj-claves .ad-acc:empty{display:none}
+.aj-claves li + li{border-top:1px solid var(--border)}
+.aj-claves img{width:20px;height:20px;flex:none;object-fit:contain}
+.ad-estado.es-error{border-color:color-mix(in srgb,var(--danger) 50%,transparent);color:var(--danger)}
+/* "Añadir otra clave": un enlace pequeño; el formulario aparece debajo. */
+.aj-otra{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.aj-mas{display:inline-flex;align-items:center;gap:4px;color:var(--muted);text-decoration:none;padding:4px 2px}
+.aj-mas:hover{color:var(--fg)}
+.aj-mas svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.aj-otra .aj-clave-form{align-self:stretch;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card)}
+@media (max-width:560px){ .aj-elegir,.aj-elegir.es-una{grid-template-columns:1fr} }
 /* ── Integración WA: réplica del mockup de Stitch. Grises fríos (slate) y esmeralda en claro;
    en oscuro, la misma pieza sobre las superficies que el mockup trae en su config (#11151c).
    Los grises de texto chico y el verde de texto suben un tono respecto al mockup: slate-400 y
@@ -601,7 +604,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <symbol id="i-report" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M9 17v-4"/><path d="M12 17v-1"/><path d="M15 17v-3"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5l-5 3v-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12Z"/></symbol>
   <symbol id="i-wa" viewBox="0 0 24 24"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></symbol>
-  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M10.3 4.3a2 2 0 0 1 3.4 0l.4.7a2 2 0 0 0 2.3 1l.8-.3a2 2 0 0 1 2.4 2.4l-.2.8a2 2 0 0 0 1 2.3l.7.4a2 2 0 0 1 0 3.4l-.7.4a2 2 0 0 0-1 2.3l.2.8a2 2 0 0 1-2.4 2.4l-.8-.2a2 2 0 0 0-2.3 1l-.4.7a2 2 0 0 1-3.4 0l-.4-.7a2 2 0 0 0-2.3-1l-.8.2a2 2 0 0 1-2.4-2.4l.2-.8a2 2 0 0 0-1-2.3l-.7-.4a2 2 0 0 1 0-3.4l.7-.4a2 2 0 0 0 1-2.3l-.2-.8a2 2 0 0 1 2.4-2.4l.8.3a2 2 0 0 0 2.3-1l.4-.7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-settings" viewBox="0 1.36 24 24"><path d="M10.3 4.3a2 2 0 0 1 3.4 0l.4.7a2 2 0 0 0 2.3 1l.8-.3a2 2 0 0 1 2.4 2.4l-.2.8a2 2 0 0 0 1 2.3l.7.4a2 2 0 0 1 0 3.4l-.7.4a2 2 0 0 0-1 2.3l.2.8a2 2 0 0 1-2.4 2.4l-.8-.2a2 2 0 0 0-2.3 1l-.4.7a2 2 0 0 1-3.4 0l-.4-.7a2 2 0 0 0-2.3-1l-.8.2a2 2 0 0 1-2.4-2.4l.2-.8a2 2 0 0 0-1-2.3l-.7-.4a2 2 0 0 1 0-3.4l.7-.4a2 2 0 0 0 1-2.3l-.2-.8a2 2 0 0 1 2.4-2.4l.8.3a2 2 0 0 0 2.3-1l.4-.7Z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.12a7.5 7.5 0 0 1 15 0A17.93 17.93 0 0 1 12 21.75c-2.68 0-5.22-.58-7.5-1.63Z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
@@ -702,13 +705,10 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     <section class="aj-bloque" id="aj-ia" aria-labelledby="aj-ia-tit">
       <header class="aj-bloque-cab">
         <h2 id="aj-ia-tit">Inteligencia artificial</h2>
-        <p class="aj-nota">Qué modelo responde en el Data Chat y en WhatsApp.</p>
+        <p class="aj-nota">Qué modelo responde en el Data Chat y en WhatsApp. Un cambio vale desde la pregunta siguiente.</p>
       </header>
       <div class="fallo-ia" id="aj-fallo" role="status" hidden></div>
-      <div class="aj-estado-ia">
-        <p class="aj-activo" id="aj-activo">Consultando…</p>
-        <p class="aj-nota" id="aj-donde">El cambio aplica al instante, también en WhatsApp.</p>
-      </div>
+      <p class="aj-pendiente" id="aj-donde" hidden></p>
       <p class="form-error" id="aj-error" hidden></p>
       <div class="aj-proveedores" id="aj-proveedores"></div>
     </section>
@@ -1474,139 +1474,172 @@ $('wa-form').addEventListener('submit', async (e) => {
   finally { btn.disabled = false; txt.textContent = 'Añadir número'; }
 });
 
-// ── Ajustes: proveedor y modelo ────────────────────────────────────────────
+// ── Ajustes: inteligencia artificial ───────────────────────────────────────
+// Una tarjeta dice quién contesta y deja cambiar clave y modelo; debajo, las claves que hay. OpenAI
+// es la de siempre: sin claves, la tarjeta pide la suya. Añadir otra (de Claude o una segunda de
+// OpenAI) es un enlace discreto al final.
 const ajError = (m) => { $('aj-error').textContent = m; $('aj-error').hidden = !m; };
+const DE = (d, c) => d.proveedores[c.proveedor] ?? { nombre: c.proveedor };
 
 async function cargarAjustes() {
   ajError('');
   try {
     const d = await waFetch('/api/settings');
     pintarFallo('aj-fallo', d.fallo);
-    // Solo contesta alguien si su proveedor tiene una clave que funciona y un modelo elegido.
-    const activo = d.proveedores.find((p) => p.id === d.activo.proveedor);
-    const listo = activo?.clave.hay && activo.clave.legible && d.modelos?.[activo.id]?.modelos?.length && d.activo.modelo;
-    $('aj-activo').textContent = listo ? `${activo.nombre} · ${d.activo.modelo}` : 'Nadie contesta todavía';
-    $('aj-activo').classList.toggle('es-falta', !listo);
+    const usables = d.claves.filter((c) => c.legible);
+    const enUso = d.claves.find((c) => c.id === d.activo.clave);
+    // Solo contesta alguien si su clave funciona y hay un modelo elegido. Si es así, los selectores ya
+    // lo dicen; si no, una nota dice qué falta.
+    const listo = enUso && d.modelos?.[enUso.id]?.modelos?.length && d.activo.modelo;
     $('aj-donde').textContent = !d.hayBase
       ? 'Falta APP_DATABASE_URL: mientras tanto mandan las variables de entorno y aquí no se puede guardar.'
-      : !listo
-        ? 'Pega la clave de API de un proveedor y elige su modelo. Desde ese momento contesta en el chat y en WhatsApp.'
-        : 'Contesta en el chat y en WhatsApp. Los cambios valen desde la pregunta siguiente.';
+      : !usables.length
+        ? 'Nadie contesta todavía. Pega la clave de API de OpenAI y elige su modelo.'
+        : !listo
+          ? 'Nadie contesta todavía. Elige un modelo y guarda.'
+          : '';
+    $('aj-donde').hidden = !$('aj-donde').textContent;
     const cont = $('aj-proveedores');
     cont.textContent = '';
-    for (const p of d.proveedores) cont.append(tarjetaProveedor(p, d));
+    cont.append(usables.length ? tarjetaElegir(d, usables) : tarjetaPrimera(d));
+    if (d.claves.length) cont.append(listaClaves(d));
+    if (d.hayBase) cont.append(otraClave(d));
   } catch (e) { ajError(e.message); }
 }
 
-// Cada tarjeta muestra UN siguiente paso según su estado: sin clave no hay modelos que elegir, así
-// que primero la clave; con clave, el modelo. Quién contesta lo dice la cabecera de la pantalla.
-function tarjetaProveedor(p, d) {
-  const info = d.modelos?.[p.id] ?? {};
-  const k = p.clave;
-  const lista = k.hay && k.legible && info.modelos?.length ? info.modelos : null;
-  const enUso = p.id === d.activo.proveedor && Boolean(lista);
-  const card = h('div', { class: `aj-card${enUso ? ' is-activo' : ''}` });
+const logo = (d, proveedor, tam) => {
+  const img = h('img', { src: d.proveedores[proveedor]?.logo ?? '', alt: '', width: tam, height: tam });
+  img.dataset.logo = proveedor; // la hoja de estilos cambia el de OpenAI según el tema
+  return img;
+};
 
-  const img = h('img', { src: p.logo, alt: '', width: 36, height: 36 });
-  img.dataset.logo = p.id; // la hoja de estilos cambia el de OpenAI según el tema
-  card.append(h('div', { class: 'aj-head' }, img,
-    h('div', { class: 'aj-head-txt' }, h('span', { class: 'aj-nombre' }, p.nombre), h('span', { class: 'aj-sub' }, p.nota)),
-    enUso ? h('span', { class: 'aj-badge' }, 'En uso') : null));
-
-  if (!lista) {
-    // Paso 1: la clave. Si hay una pero no sirve, se dice por qué.
-    let aviso = null;
-    if (!k.legible) aviso = 'La clave guardada no se puede leer (cambió el secreto del servidor). Pégala de nuevo.';
-    else if (k.hay) aviso = `${p.nombre} no aceptó la clave que termina en ${k.fin}: ${info.error ?? 'no devolvió modelos'}.`;
-    card.append(pasoClave(p, d.hayBase, aviso));
+// Sin ninguna clave que sirva: OpenAI, su campo y de dónde sacarla. Nada más.
+function tarjetaPrimera(d) {
+  const p = d.proveedores.openai;
+  const card = h('div', { class: 'aj-card' },
+    h('div', { class: 'aj-head' }, logo(d, 'openai', 36),
+      h('div', { class: 'aj-head-txt' }, h('span', { class: 'aj-nombre' }, p.nombre), h('span', { class: 'aj-sub' }, p.nota))));
+  if (d.claves.length) card.append(h('p', { class: 'aj-aviso-clave', role: 'alert' }, 'Las claves guardadas no se pueden leer (cambió el secreto del servidor). Pégalas de nuevo.'));
+  if (!d.hayBase) {
+    card.append(h('p', { class: 'aj-nota' }, 'Para guardar claves hace falta la base del dashboard (APP_DATABASE_URL).'));
     return card;
   }
-
-  // Paso 2: el modelo. La clave queda en una línea, con sus acciones a mano.
-  card.append(lineaClave(p, d.hayBase));
-  const sel = h('select', { id: `aj-modelo-${p.id}` });
-  sel.append(new Option('Elige un modelo…', ''));
-  for (const m of lista) {
-    const op = new Option(m, m);
-    if (enUso && m === d.activo.modelo) op.selected = true;
-    sel.append(op);
-  }
-  const usar = h('button', { type: 'button', class: 'btn aj-usar' }, enUso ? 'Cambiar modelo' : `Usar ${p.nombre}`);
-  const actualizar = () => { usar.disabled = !sel.value || (enUso && sel.value === d.activo.modelo); };
-  sel.addEventListener('change', actualizar);
-  actualizar();
-  usar.addEventListener('click', async () => {
-    ajError('');
-    usar.disabled = true; usar.textContent = 'Guardando…';
-    try {
-      await waFetch('/api/settings', enviarJson({ proveedor: p.id, modelo: sel.value }));
-      cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
-    } catch (e) {
-      ajError(e.message);
-      usar.textContent = enUso ? 'Cambiar modelo' : `Usar ${p.nombre}`; actualizar();
-    }
-  });
-  card.append(h('div', { class: 'aj-modelo' },
-    h('label', { class: 'aj-etq', htmlFor: `aj-modelo-${p.id}` }, 'Modelo'),
-    h('div', { class: 'aj-modelo-fila' }, sel, usar),
-    enUso ? h('p', { class: 'aj-nota' }, 'Contesta en el chat y en WhatsApp. El cambio vale desde la pregunta siguiente.') : null));
+  card.append(h('p', { class: 'aj-nota' }, 'Pega tu clave de API de OpenAI. Con ella aparecen sus modelos.'),
+    formClave(d, { nombre: 'Principal', proveedor: 'openai' }));
   return card;
 }
 
-// Sin clave: el campo, el botón y de dónde sacarla. Nada más.
-function pasoClave(p, hayBase, aviso) {
-  const caja = h('div', { class: 'aj-paso' });
-  if (aviso) caja.append(h('p', { class: 'aj-aviso-clave', role: 'alert' }, aviso));
-  else caja.append(h('p', { class: 'aj-nota' }, `Para usar ${p.nombre}, pega tu clave de API. Con ella aparecen sus modelos.`));
-  if (!hayBase) {
-    caja.append(h('p', { class: 'aj-nota' }, 'Para guardar claves hace falta la base del dashboard (APP_DATABASE_URL).'));
-    return caja;
-  }
-  caja.append(formClave(p),
-    h('p', { class: 'aj-clave-ayuda' }, 'Se consigue en ', h('a', { href: p.consola, target: '_blank', rel: 'noopener noreferrer' }, new URL(p.consola).host),
-      '. Se prueba antes de guardarla y se guarda cifrada.'));
-  return caja;
+// Quién contesta: la clave (si hay más de una), el modelo y Guardar. Qué clave es cada una lo dice
+// la lista de abajo; aquí solo se elige.
+function tarjetaElegir(d, usables) {
+  const actual = usables.find((c) => c.id === d.activo.clave) ?? usables[0];
+  const card = h('div', { class: 'aj-card is-activo' });
+
+  const selClave = h('select', { id: 'aj-sel-clave' }, ...usables.map((c) => h('option', { value: c.id, selected: c.id === actual.id }, `${c.nombre} · ${DE(d, c).nombre}`)));
+  const selModelo = h('select', { id: 'aj-sel-modelo' });
+  const aviso = h('p', { class: 'aj-aviso-clave', role: 'alert', hidden: true });
+  const guardarBtn = h('button', { type: 'button', class: 'btn aj-usar' }, 'Guardar');
+
+  const pintar = () => {
+    const c = usables.find((x) => x.id === selClave.value);
+    const info = d.modelos?.[c.id] ?? {};
+    aviso.hidden = Boolean(info.modelos?.length);
+    aviso.textContent = `${DE(d, c).nombre} no aceptó la clave «${c.nombre}»: ${info.error ?? 'no devolvió modelos'}.`;
+    // El modelo de antes se conserva si la clave es del mismo proveedor; si no, hay que elegir.
+    const previo = c.proveedor === d.activo.proveedor ? d.activo.modelo : null;
+    selModelo.textContent = '';
+    selModelo.append(new Option('Elige un modelo…', ''), ...(info.modelos ?? []).map((m) => new Option(m, m, false, m === previo)));
+    selModelo.disabled = !info.modelos?.length;
+    actualizar();
+  };
+  const actualizar = () => {
+    guardarBtn.disabled = !d.hayBase || !selModelo.value || (selClave.value === d.activo.clave && selModelo.value === d.activo.modelo);
+  };
+  selClave.addEventListener('change', pintar);
+  selModelo.addEventListener('change', actualizar);
+  guardarBtn.addEventListener('click', async () => {
+    ajError('');
+    guardarBtn.disabled = true; guardarBtn.textContent = 'Guardando…';
+    try {
+      await waFetch('/api/settings', enviarJson({ clave: selClave.value, modelo: selModelo.value }));
+      cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
+    } catch (e) { ajError(e.message); guardarBtn.textContent = 'Guardar'; actualizar(); }
+  });
+
+  card.append(aviso, h('div', { class: `aj-elegir${usables.length > 1 ? '' : ' es-una'}` },
+    usables.length > 1 ? h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Clave'), selClave) : null,
+    h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Modelo'), selModelo),
+    guardarBtn));
+  pintar();
+  return card;
 }
 
-// Con clave: una línea que dice de dónde viene, y Cambiar/Quitar sin ocupar más.
-function lineaClave(p, hayBase) {
-  const k = p.clave;
-  const fila = h('div', { class: 'aj-clave-linea' },
-    h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
-    h('span', { class: 'aj-clave-txt' }, 'Clave ', h('span', { class: 'fin' }, `…${k.fin}`),
-      h('span', { class: 'de' }, k.origen === 'panel' ? ' · guardada aquí' : ` · de la variable ${p.env}`)));
-  const caja = h('div', { class: 'aj-clave' }, fila);
-  if (!hayBase) return caja;
-  const form = formClave(p);
-  form.hidden = true;
-  const cambiar = h('button', { type: 'button', class: 'aj-link' }, 'Cambiar');
-  cambiar.addEventListener('click', () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector('input').focus(); });
-  fila.append(cambiar);
-  if (k.origen === 'panel') {
-    fila.append(conConfirmacion(h('button', { type: 'button', class: 'aj-link' }, 'Quitar'), 'Confirmar: dejará de contestar',
-      async () => {
-        try { await waFetch(`/api/settings/clave/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); cargarAjustes(); }
+// Las claves que hay: de quién son, cómo terminan, cuál está en uso, y la papelera.
+function listaClaves(d) {
+  return h('ul', { class: 'aj-claves', 'aria-label': 'Claves de API' }, ...d.claves.map((c) => {
+    const quitar = c.origen === 'panel' && d.hayBase && c.id !== d.activo.clave
+      ? conConfirmacion(h('button', { type: 'button', class: 'btn ad-icono es-peligro', title: 'Quitar clave', 'aria-label': `Quitar la clave ${c.nombre}` },
+        icono('i-trash'), h('span', { 'data-etq': '' })), '¿Quitar?', async () => {
+        ajError('');
+        try { await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'DELETE' }); cargarAjustes(); }
         catch (err) { ajError(err.message); }
-      }));
-  }
-  caja.append(form);
+      })
+      : null;
+    const estado = !c.legible ? h('span', { class: 'ad-estado es-error' }, 'Ilegible')
+      : c.id === d.activo.clave ? h('span', { class: 'ad-estado es-activo' }, 'En uso') : null;
+    return h('li', {},
+      logo(d, c.proveedor, 20),
+      h('div', { class: 'ad-quien' }, h('strong', {}, c.nombre),
+        h('span', {}, `${DE(d, c).nombre} · …${c.fin}${c.origen === 'entorno' ? ' · variable de entorno' : ''}`)),
+      estado ?? h('span'),
+      h('div', { class: 'ad-acc' }, quitar));
+  }));
+}
+
+// El enlace discreto: abre un formulario con nombre, de quién es y la clave.
+function otraClave(d) {
+  const caja = h('div', { class: 'aj-otra' });
+  const abrir = h('button', { type: 'button', class: 'aj-link aj-mas', 'aria-expanded': 'false' }, icono('i-plus'), 'Añadir otra clave');
+  const form = formClave(d, null);
+  form.hidden = true;
+  abrir.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    abrir.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) form.querySelector('input').focus();
+  });
+  caja.append(abrir, form);
   return caja;
 }
 
-function formClave(p) {
+// fijo = { nombre, proveedor } para la primera clave; null para "otra clave", que pregunta ambos.
+function formClave(d, fijo) {
   const error = h('p', { class: 'aj-clave-error', role: 'alert', hidden: true });
-  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: `Clave de ${p.nombre}`, 'aria-label': `Clave de API de ${p.nombre}` });
+  const nombre = h('input', { type: 'text', maxLength: 40, autocomplete: 'off', placeholder: 'p. ej. Respaldo', 'aria-label': 'Nombre de la clave' });
+  const prov = h('select', { 'aria-label': 'De quién es la clave' }, new Option('OpenAI', 'openai'), new Option('Claude (Anthropic)', 'anthropic'));
+  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: 'Pega la clave de API', 'aria-label': 'Clave de API' });
   const guardarBtn = h('button', { type: 'submit', class: 'btn aj-usar' }, 'Guardar clave');
-  const form = h('form', { class: 'aj-clave-form' }, h('div', { class: 'aj-clave-campos' }, campo, guardarBtn), error);
+  const consola = h('a', { target: '_blank', rel: 'noopener noreferrer' });
+  const ayuda = h('p', { class: 'aj-clave-ayuda' }, 'Se consigue en ', consola, '. Se prueba antes de guardarla y se guarda cifrada.');
+  const deQuien = () => fijo?.proveedor ?? prov.value;
+  const pintarAyuda = () => { const p = d.proveedores[deQuien()]; consola.href = p.consola; consola.textContent = new URL(p.consola).host; };
+  prov.addEventListener('change', pintarAyuda);
+  pintarAyuda();
+
+  const form = h('form', { class: `aj-clave-form${fijo ? '' : ' es-otra'}` },
+    fijo ? null : h('div', { class: 'aj-clave-campos' },
+      h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Nombre'), nombre),
+      h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'De'), prov)),
+    h('div', { class: 'aj-clave-campos' }, campo, guardarBtn), error, ayuda);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     error.hidden = true;
+    if (!fijo && !nombre.value.trim()) { error.textContent = 'Ponle un nombre para reconocerla.'; error.hidden = false; return; }
     if (!campo.value.trim()) { error.textContent = 'Pega la clave primero.'; error.hidden = false; return; }
     guardarBtn.disabled = true; guardarBtn.textContent = 'Probando la clave…';
     try {
-      await waFetch('/api/settings/clave', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proveedor: p.id, clave: campo.value }) });
-      campo.value = '';
-      cargarAjustes(); // con la clave nueva, la tarjeta pasa al paso del modelo
+      await waFetch('/api/settings/clave', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: fijo?.nombre ?? nombre.value, proveedor: deQuien(), clave: campo.value }) });
+      cargarAjustes();
     } catch (err) {
       error.textContent = err.message; error.hidden = false;
       guardarBtn.disabled = false; guardarBtn.textContent = 'Guardar clave';

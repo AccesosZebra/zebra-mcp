@@ -1,57 +1,50 @@
-// La pantalla "Ajustes": qué proveedor y modelo están activos, cuáles hay disponibles, el cambio, y
-// las claves de API. Guardar surte efecto de inmediato, también en WhatsApp: el turno siguiente ya
-// usa lo elegido. Las claves entran por aquí pero nunca salen: solo de dónde vienen y cómo terminan.
+// El bloque "Inteligencia artificial" de Ajustes: qué clave y qué modelo contestan, las claves con
+// nombre que hay, y el cambio. Guardar surte efecto de inmediato, también en WhatsApp: el turno
+// siguiente ya usa lo elegido. Las claves entran por aquí pero nunca salen: solo de dónde vienen y
+// cómo terminan.
 import { hayBase } from './db.mjs';
-import { PROVEEDORES, activo, estadoClave, falloActual, guardar, guardarClave, modelosDisponibles, quitarClave } from './proveedores.mjs';
+import { PROVEEDORES, activo, claves, falloActual, guardar, guardarClave, modelosDisponibles, quitarClave } from './proveedores.mjs';
 
-export function mountAjustes(app, requireSession) {
-  app.get('/api/settings', requireSession, async (_req, res) => {
-    const { proveedor, modelo } = activo();
+export function mountAjustes(app, soloAdmin) {
+  app.get('/api/settings', soloAdmin, async (_req, res) => {
     res.json({
-      activo: { proveedor, modelo },
+      activo: activo(),
       hayBase,
-      proveedores: Object.entries(PROVEEDORES).map(([id, p]) => ({
-        id,
-        nombre: p.nombre,
-        logo: p.logo,
-        nota: p.nota,
-        consola: p.consola,
-        env: p.env,
-        clave: estadoClave(id),
-      })),
+      proveedores: Object.fromEntries(Object.entries(PROVEEDORES).map(([id, p]) => [id, { nombre: p.nombre, logo: p.logo, nota: p.nota, consola: p.consola }])),
+      claves: claves(),
       modelos: await modelosDisponibles(),
       fallo: falloActual(),
     });
   });
 
-  app.post('/api/settings', requireSession, async (req, res) => {
-    const { proveedor, modelo } = req.body ?? {};
+  app.post('/api/settings', soloAdmin, async (req, res) => {
+    const { clave, modelo } = req.body ?? {};
     try {
-      const elegido = await guardar({ proveedor, modelo }, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, ...elegido }));
+      const elegido = await guardar({ clave, modelo }, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'elegir', clave: elegido.nombre, proveedor: elegido.proveedor, modelo: elegido.modelo }));
       res.json({ activo: elegido });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  // La clave se prueba contra el proveedor antes de guardarla. En el log va quién, nunca cuál.
-  app.put('/api/settings/clave', requireSession, async (req, res) => {
-    const { proveedor, clave } = req.body ?? {};
+  // La clave se prueba contra el proveedor antes de guardarla. En el log va quién y su nombre, nunca cuál.
+  app.put('/api/settings/clave', soloAdmin, async (req, res) => {
+    const { nombre, proveedor, clave } = req.body ?? {};
     try {
-      const estado = await guardarClave(proveedor, clave, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, clave: proveedor, accion: 'guardar', fin: estado.fin }));
-      res.json({ clave: estado });
+      const nueva = await guardarClave({ nombre, proveedor, clave }, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'añadir clave', nombre: nueva.nombre, proveedor, fin: nueva.fin }));
+      res.json({ clave: nueva });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  app.delete('/api/settings/clave/:proveedor', requireSession, async (req, res) => {
+  app.delete('/api/settings/clave/:id', soloAdmin, async (req, res) => {
     try {
-      const estado = await quitarClave(req.params.proveedor, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, clave: req.params.proveedor, accion: 'quitar' }));
-      res.json({ clave: estado });
+      await quitarClave(req.params.id, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'quitar clave', id: req.params.id }));
+      res.json({ ok: true });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
