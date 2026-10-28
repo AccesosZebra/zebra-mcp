@@ -314,7 +314,7 @@ body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro
 .aj-clave-ayuda a{color:var(--fg);text-underline-offset:3px}
 .aj-clave-error{margin:0;font-size:12px;color:var(--danger)}
 /* Las claves que hay: una fila por clave, como la lista de usuarios. */
-.aj-claves{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface)}
+.aj-claves{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);background:var(--surface)}
 .aj-claves li{display:flex;flex-direction:column;gap:10px;padding:10px 16px}
 .aj-clave-fila{display:flex;align-items:center;gap:12px;min-height:36px}
 .aj-claves .ad-quien{flex:1}
@@ -328,6 +328,16 @@ body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro
 .aj-editar-acc .ad-ghost:hover{color:var(--fg);border-color:transparent;transform:none;box-shadow:none}
 .aj-claves .ad-acc{min-width:28px}
 .aj-claves .ad-acc:empty{display:none}
+/* El menú (…) de cada clave: Probar, Editar y Eliminar. Flota sobre la fila siguiente. */
+.aj-acciones{position:relative}
+.aj-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;min-width:200px;display:flex;flex-direction:column;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-btn);box-shadow:var(--shadow-lg)}
+.aj-menu[hidden]{display:none}
+.aj-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:6px;background:none;font:inherit;font-size:13px;color:var(--fg);text-align:left;cursor:pointer}
+.aj-menu-item:is(:hover,:focus-visible):not(:disabled){background:color-mix(in srgb,var(--fg) 6%,transparent);outline:none}
+.aj-menu-item.es-peligro{color:var(--danger)}
+.aj-menu-item.es-peligro:is(:hover,:focus-visible):not(:disabled),.aj-menu-item[data-confirmar="1"]{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.aj-menu-item:disabled{color:var(--muted);cursor:not-allowed}
+.aj-menu-nota{margin:0;padding:0 10px 6px;font-size:11px;color:var(--muted)}
 .aj-claves li + li{border-top:1px solid var(--border)}
 .aj-claves img{width:20px;height:20px;flex:none;object-fit:contain}
 .ad-estado.es-error{border-color:color-mix(in srgb,var(--danger) 50%,transparent);color:var(--danger)}
@@ -337,7 +347,7 @@ body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro
 .aj-mas:hover{color:var(--fg)}
 .aj-mas svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .aj-otra .aj-clave-form{align-self:stretch;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card)}
-@media (max-width:560px){ .aj-elegir,.aj-elegir.es-una{grid-template-columns:1fr} .aj-clave-fila{flex-wrap:wrap} .aj-clave-fila .ad-acc{width:100%;justify-content:flex-start;margin-left:20px} .aj-prueba,.aj-editar{margin-left:0} }
+@media (max-width:560px){ .aj-elegir,.aj-elegir.es-una{grid-template-columns:1fr} .aj-prueba,.aj-editar{margin-left:0} }
 /* ── Integración WA: réplica del mockup de Stitch. Grises fríos (slate) y esmeralda en claro;
    en oscuro, la misma pieza sobre las superficies que el mockup trae en su config (#11151c).
    Los grises de texto chico y el verde de texto suben un tono respecto al mockup: slate-400 y
@@ -677,6 +687,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
   <symbol id="i-message" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.42-4.03 8-9 8a9.86 9.86 0 0 1-4.26-.95L3 20l1.4-3.72A7.7 7.7 0 0 1 3 12c0-4.42 4.03-8 9-8s9 3.58 9 8Z"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.04A8.97 8.97 0 0 0 6 3.75c-1.05 0-2.06.18-3 .51v14.25A8.99 8.99 0 0 1 6 18c2.3 0 4.4.87 6 2.29m0-14.25a8.97 8.97 0 0 1 6-2.29c1.05 0 2.06.18 3 .51v14.25A8.99 8.99 0 0 0 18 18a8.97 8.97 0 0 0-6 2.29m0-14.25v14.25"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6l12 12"/></symbol>
@@ -1792,7 +1803,7 @@ function tarjetaElegir(d, usables) {
 }
 
 // Las claves que hay: de quién son, cómo terminan y cuál está en uso. Cada una se puede probar,
-// editar (nombre o la clave misma) y quitar.
+// editar (nombre o la clave misma) y quitar, desde su menú (…). Las del entorno no se borran: se ocultan.
 function listaClaves(d) {
   return h('ul', { class: 'aj-claves', 'aria-label': 'Claves de API' }, ...d.claves.map((c) => filaClave(d, c)));
 }
@@ -1802,32 +1813,59 @@ function filaClave(d, c) {
   const resultado = h('p', { class: 'aj-prueba', role: 'status', hidden: true });
   const avisar = (texto, ok) => { resultado.textContent = texto; resultado.className = `aj-prueba ${ok ? 'es-ok' : 'es-mal'}`; resultado.hidden = false; };
 
-  const probar = h('button', { type: 'button', class: 'btn ad-ghost' }, 'Probar');
-  probar.addEventListener('click', async () => {
-    probar.disabled = true; probar.textContent = 'Probando…'; resultado.hidden = true;
+  const item = (texto, props = {}) => h('button', { type: 'button', role: 'menuitem', class: 'aj-menu-item', ...props }, texto);
+
+  const probar = c.legible ? item('Probar') : null;
+  probar?.addEventListener('click', async () => {
+    cerrarMenus();
+    resultado.textContent = 'Probando…'; resultado.className = 'aj-prueba'; resultado.hidden = false;
     try {
       const { modelos } = await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}/probar`, { method: 'POST' });
       avisar(`Funciona: ${DE(d, c).nombre} respondió con ${plural(modelos, 'modelo disponible', 'modelos disponibles')}.`, true);
     } catch (err) { avisar(err.message, false); }
-    finally { probar.disabled = false; probar.textContent = 'Probar'; }
   });
 
-  const delPanel = c.origen === 'panel' && d.hayBase;
-  const form = delPanel ? formEditar(d, c) : null;
-  const editar = delPanel ? h('button', { type: 'button', class: 'btn', 'aria-expanded': 'false' }, 'Editar') : null;
+  const form = c.origen === 'panel' && d.hayBase ? formEditar(d, c) : null;
+  const editar = form ? item('Editar') : null;
   editar?.addEventListener('click', () => {
-    form.hidden = !form.hidden;
-    editar.setAttribute('aria-expanded', String(!form.hidden));
-    if (!form.hidden) form.querySelector('input').focus();
+    cerrarMenus();
+    form.hidden = false;
+    form.querySelector('input').focus();
   });
-  const quitar = delPanel && c.id !== d.activo.clave
-    ? conConfirmacion(h('button', { type: 'button', class: 'btn ad-icono es-peligro', title: 'Quitar clave', 'aria-label': `Quitar la clave ${c.nombre}` },
-      icono('i-trash'), h('span', { 'data-etq': '' })), '¿Quitar?', async () => {
-      ajError('');
-      try { await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'DELETE' }); cargarAjustes(); }
-      catch (err) { ajError(err.message); }
-    })
+
+  // La que está en uso no se quita mientras haya otra a la que pasarse (lo mismo que exige el servidor).
+  const enUso = c.id === d.activo.clave && d.claves.filter((x) => x.legible).length > 1;
+  const deEntorno = c.origen === 'entorno';
+  const eliminar = d.hayBase
+    ? conConfirmacion(item('Eliminar', { class: 'aj-menu-item es-peligro', disabled: enUso }),
+      deEntorno ? '¿Ocultarla? Sigue en EasyPanel' : '¿Seguro? Clic para eliminar', async () => {
+        cerrarMenus(); ajError('');
+        try { await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'DELETE' }); cargarAjustes(); }
+        catch (err) { ajError(err.message); }
+      })
     : null;
+  const nota = enUso ? 'En uso: elige otra clave antes de eliminarla.'
+    : deEntorno && eliminar ? 'Viene de EasyPanel: aquí solo se oculta.' : null;
+
+  const items = [probar, editar, eliminar].filter(Boolean);
+  const menu = h('div', { class: 'aj-menu', role: 'menu', hidden: true }, items, nota ? h('p', { class: 'aj-menu-nota' }, nota) : null);
+  const mas = h('button', { type: 'button', class: 'btn ad-icono', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Opciones de la clave ${c.nombre}`, title: 'Opciones' }, icono('i-dots'));
+  mas.addEventListener('click', () => {
+    const abrir = menu.hidden;
+    cerrarMenus();
+    if (!abrir) return;
+    menu.hidden = false; mas.setAttribute('aria-expanded', 'true');
+    menu.querySelector('.aj-menu-item:not(:disabled)')?.focus();
+  });
+  menu.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { cerrarMenus(); mas.focus(); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const activos = items.filter((b) => !b.disabled);
+    const i = activos.indexOf(document.activeElement);
+    activos[(i + (e.key === 'ArrowDown' ? 1 : -1) + activos.length) % activos.length]?.focus();
+  });
+
   const estado = !c.legible ? h('span', { class: 'ad-estado es-error' }, 'Ilegible')
     : c.id === d.activo.clave ? h('span', { class: 'ad-estado es-activo' }, 'En uso') : null;
 
@@ -1836,9 +1874,18 @@ function filaClave(d, c) {
       logo(d, c.proveedor, 20),
       h('div', { class: 'ad-quien' }, h('strong', {}, c.nombre), sub),
       estado,
-      h('div', { class: 'ad-acc' }, c.legible ? probar : null, editar, quitar)),
+      items.length ? h('div', { class: 'ad-acc aj-acciones' }, mas, menu) : null),
     resultado, form);
 }
+
+// Un menú abierto a la vez; se cierra con un clic fuera.
+function cerrarMenus() {
+  for (const m of document.querySelectorAll('.aj-menu:not([hidden])')) {
+    m.hidden = true;
+    m.parentElement.querySelector('[aria-haspopup="menu"]').setAttribute('aria-expanded', 'false');
+  }
+}
+document.addEventListener('click', (e) => { if (!e.target.closest('.aj-acciones')) cerrarMenus(); });
 
 // Editar: el nombre, y la clave solo si se pega una nueva (se prueba antes de guardarla).
 function formEditar(d, c) {

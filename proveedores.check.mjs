@@ -1,12 +1,13 @@
 // Uso: node proveedores.check.mjs
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 process.env.AUTH_BASE_URL = 'https://ejemplo.test/';
 process.env.MCP_AUTH_TOKEN = 'token-de-prueba';
 process.env.AUTH_SESSION_SECRET = 'secreto-de-prueba-'.padEnd(64, 'x');
 delete process.env.APP_DATABASE_URL; // sin base del dashboard: manda el entorno y guardar tiene que avisar
 
-const { activo, elegirActiva, desdeGuardado, recordar, claves, clave, validar, guardar, guardarClave, editarClave, probarClave, explicarHttp, quitarClave, system, PROVEEDORES, cifrar, descifrar, causaDeFallo, registrarFallo, registrarExito, falloActual } = await import('./proveedores.mjs');
+const { activo, elegirActiva, desdeGuardado, recordar, claves, clave, validar, guardar, guardarClave, editarClave, probarClave, explicarHttp, quitarClave, recordarOcultas, system, PROVEEDORES, cifrar, descifrar, causaDeFallo, registrarFallo, registrarExito, falloActual } = await import('./proveedores.mjs');
 
 // ── Cuál contesta ───────────────────────────────────────────────────────────
 const k = (id, proveedor, legible = true) => ({ id, nombre: id, proveedor, legible });
@@ -42,7 +43,18 @@ assert.deepEqual(claves(), [{ id: 'entorno-openai', nombre: 'OpenAI (entorno)', 
 assert.equal(clave('entorno-openai'), 'sk-del-entorno-1234567890-9z8y');
 assert.equal(clave('inventada'), null);
 assert.equal(activo().clave, 'entorno-openai');
-await assert.rejects(quitarClave('entorno-openai'), /variable de entorno/);
+// Ocultarla necesita la base; oculta, no se ve ni se usa, y vuelve si en EasyPanel cambia su valor.
+await assert.rejects(quitarClave('entorno-openai'), /APP_DATABASE_URL/);
+const huella = (v) => createHash('sha256').update(v).digest('hex').slice(0, 16);
+recordarOcultas({ 'entorno-openai': huella('sk-del-entorno-1234567890-9z8y') });
+assert.deepEqual(claves(), []);
+assert.equal(clave('entorno-openai'), null);
+assert.equal(activo().clave, null);
+process.env.OPENAI_API_KEY = 'sk-otra-del-entorno-123456-7x6w';
+assert.equal(activo().clave, 'entorno-openai', 'otro valor en EasyPanel: vuelve a verse');
+process.env.OPENAI_API_KEY = 'sk-del-entorno-1234567890-9z8y';
+recordarOcultas(null);
+assert.equal(claves().length, 1);
 
 // Las del panel: se descifran al cargar; con otro secreto quedan ilegibles y no se eligen.
 recordar([{ id: 'a1', nombre: 'Principal', proveedor: 'openai', cifrada: cifrar('sk-panel-1234567890-abcd'), fin: 'abcd' }]);

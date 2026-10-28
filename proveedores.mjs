@@ -1,6 +1,6 @@
 // Quién contesta las preguntas. El MCP es el mismo para todos (es protocolo abierto); lo que
 // cambia es qué proveedor ejecuta el bucle de consultas contra él.
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 
 import { guardarAjuste, leerAjuste } from './db.mjs';
@@ -30,7 +30,7 @@ export const PROVEEDORES = {
 // viven en la base del dashboard, cifradas: una copia de la base no basta para usarlas. La llave
 // sale de AUTH_SESSION_SECRET, así que rotarlo deja las guardadas ilegibles; el panel lo dice y se
 // vuelven a pegar. Las variables de entorno (OPENAI_API_KEY, ANTHROPIC_API_KEY) aparecen como una
-// clave más, de solo lectura.
+// clave más, de solo lectura: se pueden ocultar, pero vuelven si en EasyPanel cambia su valor.
 const llave = () => Buffer.from(hkdfSync('sha256', process.env.AUTH_SESSION_SECRET ?? '', 'zebra-mcp', 'claves-ia', 32));
 
 export function cifrar(texto) {
@@ -57,6 +57,15 @@ const ENTORNO = (proveedor) => `entorno-${proveedor}`;
 
 let guardadas = []; // lo que hay en la base, cifrado: [{ id, nombre, proveedor, cifrada, fin, por, cuando }]
 const enClaro = new Map(); // id → la clave descifrada, o null si no se pudo leer
+let ocultas = {}; // id del entorno → huella del valor que se ocultó
+
+// Huella y no el valor: así se sabe si en EasyPanel la cambiaron, sin guardar la clave.
+const huella = (valor) => createHash('sha256').update(valor).digest('hex').slice(0, 16);
+const oculta = (id, valor) => ocultas[id] === huella(valor);
+
+export function recordarOcultas(valor) {
+  ocultas = valor && typeof valor === 'object' ? valor : {};
+}
 
 /** Lo guardado, como lista. Antes era { anthropic: {…}, openai: {…} }: se convierte al leerlo. */
 export function desdeGuardado(valor) {
@@ -77,7 +86,7 @@ export function claves() {
   const delPanel = guardadas.map((g) => ({
     id: g.id, nombre: g.nombre, proveedor: g.proveedor, origen: 'panel', fin: g.fin, legible: Boolean(enClaro.get(g.id)), por: g.por ?? null,
   }));
-  const delEntorno = Object.entries(PROVEEDORES).filter(([, p]) => process.env[p.env]).map(([id, p]) => ({
+  const delEntorno = Object.entries(PROVEEDORES).filter(([id, p]) => process.env[p.env] && !oculta(ENTORNO(id), process.env[p.env])).map(([id, p]) => ({
     id: ENTORNO(id), nombre: `${p.nombre} (entorno)`, proveedor: id, origen: 'entorno', fin: process.env[p.env].slice(-4), legible: true, por: null,
   }));
   return [...delPanel, ...delEntorno];
@@ -87,7 +96,8 @@ export function claves() {
 export function clave(id) {
   if (enClaro.get(id)) return enClaro.get(id);
   const p = Object.keys(PROVEEDORES).find((x) => ENTORNO(x) === id);
-  return (p && process.env[PROVEEDORES[p].env]) || null;
+  const valor = p && process.env[PROVEEDORES[p].env];
+  return valor && !oculta(id, valor) ? valor : null;
 }
 
 function validarNombre(nombre, menos = null) {
@@ -160,10 +170,20 @@ export async function probarClave(id) {
   }
 }
 
-/** Quita una del panel. La que está en uso no, mientras haya otra a la que pasarse. */
+/**
+ * Quita una del panel, u oculta una del entorno (la variable sigue en EasyPanel). La que está en uso
+ * no, mientras haya otra a la que pasarse.
+ */
 export async function quitarClave(id, por = null) {
-  delPanel(id);
-  if (activo().clave === id && claves().filter((c) => c.legible).length > 1) throw new Error('Es la que está en uso: elige otra antes de quitarla.');
+  const c = claves().find((x) => x.id === id);
+  if (!c) throw new Error('Esa clave no existe.');
+  if (activo().clave === id && claves().filter((x) => x.legible).length > 1) throw new Error('Es la que está en uso: elige otra antes de quitarla.');
+  if (c.origen === 'entorno') {
+    const nuevas = { ...ocultas, [id]: huella(clave(id)) };
+    await guardarAjuste('claves-ocultas', nuevas, por);
+    ocultas = nuevas;
+    return;
+  }
   await guardarLista(guardadas.filter((g) => g.id !== id), por);
 }
 
@@ -178,6 +198,7 @@ export async function cargar() {
   try {
     elegido = await leerAjuste('ia');
     recordar(await leerAjuste('claves-ia'));
+    recordarOcultas(await leerAjuste('claves-ocultas'));
     for (const c of claves()) if (!c.legible) console.error(`ajustes: la clave "${c.nombre}" no se puede leer (¿cambió AUTH_SESSION_SECRET?)`);
   } catch (e) { console.error('ajustes: no pude leer la base, sigo con el entorno:', e.message); }
   return activo();
