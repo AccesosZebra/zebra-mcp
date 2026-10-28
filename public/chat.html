@@ -175,7 +175,7 @@ body.nav-collapsed .sb-session{flex-direction:column;gap:6px;padding:6px 0}
 .disclaimer{text-align:center;font-size:11px;color:var(--faint);margin:8px 0 0}
 
 /* Pantallas "Integración WA" y "Ajustes" */
-#wa,#ajustes,#admin,#reporte{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
+#wa,#ajustes,#reporte{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px 6px 12px}
 /* Fuera del chat, lo del chat no se ve: una regla para todas las vistas, no una por vista. */
 body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.disclaimer,#error){display:none}
 
@@ -184,6 +184,15 @@ body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.
 .fallo-ia svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--danger);stroke-width:2}
 .fallo-ia strong{display:block;font-weight:600}
 .fallo-ia span{color:var(--muted)}
+/* La misma franja, en amarillo: algo pide atención, pero no es un error del bot. */
+.fallo-ia.es-aviso{border-color:color-mix(in srgb,#f59e0b 50%,transparent);background:color-mix(in srgb,#f59e0b 9%,transparent)}
+.fallo-ia.es-aviso svg{color:#d97706}
+.fallo-ia.es-aviso > div{display:flex;flex-direction:column;gap:6px}
+.fallo-ia .aj-link{align-self:flex-start;padding:0}
+/* Un punto amarillo en la pestaña cuando un número necesita volver a escanear el QR. */
+.app-tab{position:relative}
+.app-tab[data-aviso]::after{content:'';position:absolute;left:25px;top:7px;width:8px;height:8px;border-radius:50%;background:#f59e0b;box-shadow:0 0 0 2px var(--sb-bg,#0a0a0a)}
+.app-tab.active[data-aviso]::after{box-shadow:0 0 0 2px var(--sb-active-bg)}
 #wa .fallo-ia{max-width:none;border-radius:12px}
 
 /* ── Reporte: páginas de otros sistemas dentro del panel ────────────────── */
@@ -200,43 +209,63 @@ body[data-view]:not([data-view="chat"]) :is(.chat-messages,.chat-composer-zone,.
 .rp-marco iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 .rp-vacio{margin:auto;max-width:44ch;text-align:center;color:var(--muted);font-size:14px;line-height:1.6;padding:40px 16px}
 .rp-vacio strong{display:block;color:var(--fg);font-size:16px;margin-bottom:6px}
-/* Ajustes: la lista de reportes */
-.rp-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1.1fr) auto;gap:10px;align-items:end}
-.rp-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.rp-form :is(input,select){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
-.rp-form :is(input,select):focus{outline:none;border-color:var(--accent)}
-.rp-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.rp-aviso{margin:0;font-size:13px;line-height:1.5;padding:10px 12px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,#f59e0b 45%,transparent);background:color-mix(in srgb,#f59e0b 8%,transparent);color:var(--fg)}
-.rp-url{font-family:var(--font-mono);font-size:11px;color:var(--muted);overflow-wrap:anywhere}
-@media (max-width:900px){ .rp-form{grid-template-columns:1fr 1fr} }
-@media (max-width:560px){ .rp-form{grid-template-columns:1fr} #reporte .rp-marco{min-height:420px} }
+@media (max-width:560px){ #reporte .rp-marco{min-height:420px} }
 
-/* ── Admin: usuarios con contraseña ─────────────────────────────────────── */
-#admin > *{flex-shrink:0}
-.ad-card{max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:20px 22px;display:flex;flex-direction:column;gap:14px}
-.ad-card h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
-.ad-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:10px;align-items:end}
+/* ── Ajustes: dos bloques, IA y Usuarios, en una sola página ─────────────── */
+#ajustes{gap:0}
+#ajustes > *{flex-shrink:0}
+.aj-bloque{display:flex;flex-direction:column;gap:14px;max-width:900px;width:100%}
+.aj-bloque + .aj-bloque{margin-top:36px;padding-top:32px;border-top:1px solid var(--border)}
+.aj-bloque-cab{display:flex;flex-direction:column;gap:4px;margin-bottom:4px}
+.aj-bloque-cab h2{margin:0;display:flex;align-items:baseline;gap:10px;font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
+.ad-cuenta{font-size:13px;font-weight:500;letter-spacing:0;color:var(--muted);font-variant-numeric:tabular-nums}
+.aj-pendiente{margin:0;font-size:14px;font-weight:600}
+.aj-bloque .form-error{margin:0}
+
+/* Usuarios: alta en una franja, y una fila por persona con columnas estables. */
+.ad-form{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,.8fr) auto;gap:10px 10px;align-items:end;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card)}
 .ad-form label{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.ad-form input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
-.ad-form input:focus{outline:none;border-color:var(--accent)}
-.ad-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent);justify-content:center}
+.ad-form :is(input,select){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:400 14px/1.4 'Inter',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--fg)}
+.ad-form :is(input,select):focus,.ad-rol:focus-visible{outline:none;border-color:var(--accent)}
+.ad-form .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent);justify-content:center;white-space:nowrap}
+.ad-form .btn:disabled{opacity:.6;cursor:progress;transform:none;box-shadow:none}
+.ad-roles{grid-column:1/-1}
+.ad-roles strong{color:var(--fg);font-weight:600}
 .ad-temporal{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,#10b981 45%,transparent);background:color-mix(in srgb,#10b981 8%,transparent)}
 .ad-temporal p{margin:0;font-size:13px;line-height:1.5;color:var(--fg)}
 .ad-clave{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ad-clave code{font-family:var(--font-mono);font-size:16px;font-weight:500;letter-spacing:.06em;padding:6px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border2);user-select:all}
-.ad-lista{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden}
-.ad-lista li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;flex-wrap:wrap}
+.ad-lista{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface);display:grid;grid-template-columns:minmax(0,1fr) 150px max-content max-content;column-gap:16px}
+/* subgrid: las columnas de rol, estado y acciones se alinean entre todas las filas. */
+.ad-lista li{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:center;row-gap:10px;padding:12px 16px}
 .ad-lista li + li{border-top:1px solid var(--border)}
+.ad-lista li.es-inactivo .ad-quien{opacity:.6}
 .ad-quien{display:flex;flex-direction:column;gap:2px;min-width:0}
-.ad-quien strong{font-size:14px;font-weight:600;overflow-wrap:anywhere}
-.ad-quien span{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
-.ad-estado{font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap}
+.ad-quien > *{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-quien strong{font-size:14px;font-weight:600}
+.ad-quien > span{font-size:12px;color:var(--muted)}
+.ad-tu{font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-left:6px;font-weight:500}
+.ad-rol{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:6px 8px;font:500 13px/1.3 'Inter',system-ui,sans-serif;color:var(--fg);cursor:pointer}
+.ad-rol:disabled{opacity:.6;cursor:progress}
+.ad-rol-fijo{font-size:13px;font-weight:500;padding:0 9px}
+.ad-estado{justify-self:start;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap}
 .ad-estado.es-activo{border-color:color-mix(in srgb,#10b981 50%,transparent);color:#10b981}
-.ad-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.ad-acc .btn{padding:6px 10px;font-size:12px}
+.ad-acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.ad-acc .btn{padding:6px 10px;font-size:12px;white-space:nowrap}
+.ad-acc .btn:hover{transform:none;box-shadow:none}
+/* Tres pesos: resetear es ghost (sin borde), activar/desactivar lleva contorno, borrar es solo el icono. */
+.ad-acc .ad-ghost{border-color:transparent;color:var(--muted)}
+.ad-acc .ad-ghost:hover{color:var(--fg);border-color:transparent;background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.ad-acc .ad-icono{padding:6px;border-color:transparent;color:var(--muted)}
+.ad-acc .ad-icono svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ad-acc .ad-icono [data-etq]:empty{display:none}
+.ad-acc .btn.es-peligro:hover{color:var(--danger);border-color:transparent;background:color-mix(in srgb,var(--danger) 10%,transparent)}
 .ad-acc .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
-.ad-vacio{margin:0;padding:18px;text-align:center;font-size:13px;color:var(--muted);border:1px dashed var(--border2);border-radius:var(--r-card)}
-@media (max-width:700px){ .ad-form{grid-template-columns:1fr} .ad-card{padding:16px} }
+.ad-acc .ad-ghost[data-confirmar="1"]{border-color:transparent;background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.ad-acc .ad-icono[data-confirmar="1"]{padding:6px 10px;border-color:transparent;background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.ad-vacio{margin:0;padding:18px;text-align:center;font-size:13px;line-height:1.5;color:var(--muted);border:1px dashed var(--border2);border-radius:var(--r-card)}
+@media (max-width:900px){ .ad-form{grid-template-columns:1fr 1fr} .ad-lista{grid-template-columns:minmax(0,1fr) 140px max-content} .ad-acc{grid-column:1/-1;justify-content:flex-start;gap:4px} .ad-acc .ad-ghost{margin-left:-10px} .ad-acc .ad-icono{margin-left:auto} }
+@media (max-width:560px){ .ad-form{grid-template-columns:1fr} .ad-lista{grid-template-columns:minmax(0,1fr) max-content} .ad-quien{grid-column:1/-1} .ad-acc{flex-wrap:nowrap;gap:2px} .ad-acc .btn:not(.ad-icono){padding-inline:8px} .ad-acc .ad-ghost{margin-left:-8px} .aj-bloque + .aj-bloque{margin-top:28px;padding-top:24px} }
 
 /* Cambiar contraseña (solo usuarios del cliente) */
 .sb-clave{display:none}
@@ -251,88 +280,64 @@ body.es-cliente .sb-clave{display:inline-block}
 .cl-acc{display:flex;justify-content:flex-end;gap:8px}
 .cl-acc .btn[type="submit"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 /* Ajustes: cabecera, proveedores y la base del negocio, con los tokens del panel. */
-.aj-top{display:flex;flex-direction:column;gap:4px;max-width:900px}
-.aj-activo{margin:6px 0 2px;font-size:18px;font-weight:600}
 .aj-nota{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
 .aj-nota code{font-family:var(--font-mono);font-size:12px;padding:1px 5px;border-radius:5px;background:color-mix(in srgb,var(--fg) 8%,transparent);overflow-wrap:anywhere}
-.aj-base{flex-shrink:0;max-width:900px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);transition:border-color .18s var(--ease),box-shadow .18s var(--ease)}
-.aj-base:not([open]):hover{border-color:var(--border2)}
-.aj-base[open]{box-shadow:var(--shadow-lg)}
-/* La tarjeta plegada es un resumen que se lee de un vistazo; el detalle, al abrirla. */
-.aj-base-sum{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-radius:var(--r-card)}
-.aj-base-sum::-webkit-details-marker{display:none}
-.aj-base-sum:focus-visible{outline:none;box-shadow:0 0 0 1px var(--accent)}
-.aj-base-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
-.aj-base-tit{font-size:15px;font-weight:600;letter-spacing:-.01em}
-.aj-base-res{font-size:13px;color:var(--muted);line-height:1.45}
-.aj-base-res .es-falta{color:var(--danger)}
-.aj-base-ver{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
-.aj-base-ver svg{width:16px;height:16px;transform:rotate(-90deg);transition:transform .2s var(--ease)}
-.aj-base[open] .aj-base-ver svg{transform:rotate(90deg)}
-.aj-base[open] .aj-base-sum{border-bottom:1px solid var(--border);border-radius:var(--r-card) var(--r-card) 0 0}
-.aj-base-body{display:flex;flex-direction:column;gap:16px;padding:18px 20px 20px}
-.aj-campos{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:12px}
-.aj-campo{display:flex;flex-direction:column;gap:6px;min-width:0}
-.aj-campo > span,.aj-guia-head label{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.aj-guia-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.aj-cuenta{font-family:var(--font-mono);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
-.aj-cuenta.es-tope{color:var(--danger)}
-.aj-base input[type="text"],.aj-base textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:9px 11px;font:inherit;font-size:14px;color:var(--fg);transition:border-color .15s var(--ease)}
-.aj-base textarea{font-family:var(--font-mono);font-size:12.5px;line-height:1.6;resize:vertical;min-height:220px;tab-size:2}
-.aj-base input::placeholder,.aj-base textarea::placeholder{color:var(--faint);font-family:'Inter',system-ui,sans-serif}
-.aj-base input:focus,.aj-base textarea:focus{outline:none;border-color:var(--accent)}
-.aj-aviso{margin:0;font-size:13px;line-height:1.5;padding:10px 12px;border-radius:var(--r-control);border:1px dashed var(--border2);color:var(--fg);background:color-mix(in srgb,var(--fg) 4%,transparent)}
-.aj-acciones{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.aj-guardar{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.aj-base .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
-.aj-base .btn[data-confirmar="1"]{color:var(--danger);border-color:var(--danger)}
-.aj-estado{font-size:13px;color:var(--muted)}
-.aj-estado.es-pendiente{color:var(--fg)}
-.aj-base .form-error{margin:0}
-.aj-permisos{padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
-.aj-permisos h3{margin:0;font-size:14px;font-weight:600}
-@media (max-width:700px){ .aj-campos{grid-template-columns:1fr} .aj-base-sum,.aj-base-body{padding-left:16px;padding-right:16px} .aj-ver-txt{display:none} }
-@media (prefers-reduced-motion:reduce){ .aj-base-ver svg{transition:none} }
-.aj-proveedores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-width:900px}
+.aj-proveedores{display:flex;flex-direction:column;gap:12px;max-width:900px}
 .aj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:18px 20px;display:flex;flex-direction:column;gap:16px}
 .aj-card.is-activo{border-color:var(--accent);box-shadow:var(--shadow-lg)}
 .aj-head{display:flex;align-items:center;gap:12px}
 .aj-head img{width:36px;height:36px;flex:none;object-fit:contain}
 .aj-head-txt{display:flex;flex-direction:column;gap:1px;min-width:0}
 .aj-sub{font-size:13px;color:var(--muted)}
-.aj-activo.es-falta{color:var(--muted)}
-/* Paso 1 (sin clave) y paso 2 (modelo). */
-.aj-paso,.aj-modelo{display:flex;flex-direction:column;gap:10px}
 .aj-etq{font-family:var(--font-mono);font-size:var(--t-label);font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.aj-modelo-fila,.aj-clave-campos{display:flex;gap:8px;flex-wrap:wrap}
-.aj-modelo-fila select{flex:1 1 180px;min-width:0;width:auto}
-.aj-usar{background:var(--accent);color:var(--on-accent);border-color:var(--accent);white-space:nowrap}
-/* Desactivado = no hay nada que guardar todavía: discreto, no un bloque gris que parece error. */
-.aj-card .aj-usar:disabled{background:transparent;color:var(--muted);border-color:var(--border2);opacity:1}
+/* Quién contesta: clave (si hay varias), modelo y Guardar en una fila. */
+.aj-elegir{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end}
+.aj-elegir.es-una{grid-template-columns:minmax(0,1fr) auto}
+.aj-campo-ia{display:flex;flex-direction:column;gap:6px;min-width:0}
+.aj-usar{background:var(--accent);color:var(--on-accent);border-color:var(--accent);white-space:nowrap;justify-content:center}
+.aj-usar:disabled{background:transparent;color:var(--muted);border-color:var(--border2);cursor:not-allowed;transform:none;box-shadow:none}
 .aj-aviso-clave{margin:0;font-size:13px;line-height:1.5;color:var(--danger);padding:10px 12px;border-radius:var(--r-control);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);background:color-mix(in srgb,var(--danger) 7%,transparent);overflow-wrap:anywhere}
-.aj-clave-linea{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;padding:9px 12px;border-radius:var(--r-control);background:color-mix(in srgb,var(--fg) 4%,transparent)}
-.aj-clave-txt{flex:1;min-width:0}
-.aj-clave-txt .fin{font-family:var(--font-mono);font-size:12px}
-.aj-clave-txt .de{color:var(--muted)}
 .aj-link{background:none;border:0;padding:2px 4px;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--border2);border-radius:4px}
 .aj-link:hover{text-decoration-color:currentColor}
-.aj-link[data-confirmar="1"]{color:var(--danger);text-decoration-color:currentColor}
-/* El logo de OpenAI es negro: sobre la tarjeta oscura hay que usar su versión blanca. */
-body[data-theme="dark"] .aj-head img[data-logo="openai"]{content:url('/logos/openai-claro.png')}
+body[data-theme="dark"] img[data-logo="openai"]{content:url('/logos/openai-claro.png')}
 .aj-nombre{font-size:15px;font-weight:600}
-.aj-badge{margin-left:auto;font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
-.aj-card select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font-size:13px;color:var(--fg)}
-.aj-card select:disabled{opacity:.5;cursor:not-allowed}
-.aj-clave{display:flex;flex-direction:column;gap:8px}
-.aj-punto{width:7px;height:7px;flex:none;border-radius:50%;background:#10b981;transform:translateY(-1px)}
-.aj-clave-form{display:flex;flex-direction:column;gap:6px}
-.aj-clave-form input{flex:1 1 200px;min-width:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:inherit;font-family:var(--font-mono);font-size:12px;color:var(--fg)}
+:is(.aj-card,.aj-otra,.aj-editar) :is(select,input){width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-control);padding:8px 10px;font:400 13px/1.4 'Inter',system-ui,sans-serif;color:var(--fg)}
+:is(.aj-card,.aj-otra,.aj-editar) :is(select,input):focus{outline:none;border-color:var(--accent)}
+:is(.aj-card,.aj-otra) select:disabled{opacity:.5;cursor:not-allowed}
+.aj-clave-form{display:flex;flex-direction:column;gap:8px}
+.aj-clave-campos > input[type="password"]{flex:1 1 200px;width:auto;min-width:0}
+.aj-clave-form input[type="password"]{font-family:var(--font-mono);font-size:12px}
 .aj-clave-form input::placeholder{font-family:'Inter',system-ui,sans-serif;font-size:13px;color:var(--faint)}
-.aj-clave-form input:focus{outline:none;border-color:var(--accent)}
-.aj-clave-ayuda{font-size:12px;color:var(--muted)}
+.aj-clave-campos{display:flex;gap:8px;flex-wrap:wrap}
+.aj-clave-campos .aj-campo-ia{flex:1 1 180px}
+.aj-clave-ayuda{margin:0;font-size:12px;color:var(--muted)}
 .aj-clave-ayuda a{color:var(--fg);text-underline-offset:3px}
-.aj-card .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;border-color:var(--border2)}
-.aj-clave-error{font-size:12px;color:var(--danger)}
+.aj-clave-error{margin:0;font-size:12px;color:var(--danger)}
+/* Las claves que hay: una fila por clave, como la lista de usuarios. */
+.aj-claves{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface)}
+.aj-claves li{display:flex;flex-direction:column;gap:10px;padding:10px 16px}
+.aj-clave-fila{display:flex;align-items:center;gap:12px;min-height:36px}
+.aj-claves .ad-quien{flex:1}
+.aj-prueba{margin:0 0 2px 32px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.aj-prueba.es-ok{color:#10b981}
+.aj-prueba.es-mal{color:var(--danger)}
+.aj-editar{margin-left:32px;padding-top:4px}
+.aj-editar .aj-campo-clave{flex:2 1 240px}
+.aj-editar-acc{display:flex;justify-content:flex-end;gap:8px}
+.aj-editar-acc .ad-ghost{border-color:transparent;color:var(--muted)}
+.aj-editar-acc .ad-ghost:hover{color:var(--fg);border-color:transparent;transform:none;box-shadow:none}
+.aj-claves .ad-acc{min-width:28px}
+.aj-claves .ad-acc:empty{display:none}
+.aj-claves li + li{border-top:1px solid var(--border)}
+.aj-claves img{width:20px;height:20px;flex:none;object-fit:contain}
+.ad-estado.es-error{border-color:color-mix(in srgb,var(--danger) 50%,transparent);color:var(--danger)}
+/* "Añadir otra clave": un enlace pequeño; el formulario aparece debajo. */
+.aj-otra{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.aj-mas{display:inline-flex;align-items:center;gap:4px;color:var(--muted);text-decoration:none;padding:4px 2px}
+.aj-mas:hover{color:var(--fg)}
+.aj-mas svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.aj-otra .aj-clave-form{align-self:stretch;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card)}
+@media (max-width:560px){ .aj-elegir,.aj-elegir.es-una{grid-template-columns:1fr} .aj-clave-fila{flex-wrap:wrap} .aj-clave-fila .ad-acc{width:100%;justify-content:flex-start;margin-left:20px} .aj-prueba,.aj-editar{margin-left:0} }
 /* ── Integración WA: réplica del mockup de Stitch. Grises fríos (slate) y esmeralda en claro;
    en oscuro, la misma pieza sobre las superficies que el mockup trae en su config (#11151c).
    Los grises de texto chico y el verde de texto suben un tono respecto al mockup: slate-400 y
@@ -424,15 +429,27 @@ body[data-theme="dark"] #wa{
 .wa-avatar[data-estado="conectado"] .wa-dot-core{background:var(--wa-ok-dot)}
 .wa-avatar[data-estado="conectado"] .wa-dot-ping{background:var(--wa-ok-ping);opacity:.75;animation:wa-pulso 2.2s cubic-bezier(.4,0,.6,1) infinite}
 .wa-avatar[data-estado="esperando"] .wa-dot-core{background:var(--wa-warn-dot)}
+/* Sesión vencida: WhatsApp la cerró y hay que volver a escanear. Amarillo, sin pulso. */
+.wa-avatar[data-estado="vencida"] .wa-avatar-tile{background:var(--wa-warn-bg);border-color:var(--wa-warn-line);color:var(--wa-warn)}
+.wa-avatar[data-estado="vencida"] .wa-dot-core{background:var(--wa-warn-dot)}
 @keyframes wa-pulso{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:.35;transform:scale(1.15)}}
 .wa-num-title{display:flex;align-items:center;gap:10px;min-width:0}
 .wa-num-title h3{font-size:18px;font-weight:700;letter-spacing:-.015em;color:var(--wa-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wa-badge{flex:none;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:1.5;padding:2px 8px;border-radius:6px;border:1px solid transparent;background:var(--wa-chip);color:var(--wa-text)}
 .wa-badge[data-estado="conectado"]{background:var(--wa-btn);color:var(--wa-on-btn);box-shadow:var(--wa-sh-x)}
-.wa-badge[data-estado="esperando"]{background:var(--wa-warn-bg);color:var(--wa-warn);border-color:var(--wa-warn-line)}
+.wa-badge[data-estado="esperando"],.wa-badge[data-estado="vencida"]{background:var(--wa-warn-bg);color:var(--wa-warn);border-color:var(--wa-warn-line)}
+/* La (i) junto a la insignia: el tooltip se ancla bajo la fila del título (que en móvil se parte en
+   dos), así nunca tapa la insignia ni se sale de la tarjeta. */
+.wa-num-title{position:relative;flex-wrap:wrap}
+.wa-info-btn{flex:none;display:grid;place-items:center;width:22px;height:22px;margin-left:-4px;padding:0;border:0;border-radius:50%;background:none;color:var(--wa-soft);cursor:help}
+.wa-info-btn svg{width:16px;height:16px;stroke-width:1.8}
+.wa-info-btn:hover{color:var(--wa-ink)}
+.wa-info-tip{position:absolute;z-index:5;left:0;top:calc(100% + 6px);width:min(320px,calc(100cqw - 110px));padding:10px 12px;border-radius:10px;background:var(--wa-btn);color:var(--wa-on-btn);font-size:12px;font-weight:500;line-height:1.5;box-shadow:var(--wa-sh-btn2);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s var(--ease),transform .15s var(--ease),visibility .15s}
+.wa-info-btn:hover + .wa-info-tip,.wa-info-btn:focus-visible + .wa-info-tip{opacity:1;visibility:visible;transform:none}
 .wa-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:4px;font-size:12px;color:var(--wa-soft)}
 .wa-meta-k{margin-right:4px}
 .wa-meta > span{white-space:nowrap}
+.wa-meta > .wa-meta-libre{white-space:normal}
 .wa-mono-chip{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--wa-ink2);background:var(--wa-chip);padding:2px 6px;border-radius:4px}
 .wa-meta strong{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--wa-ink2)}
 .wa-sep{color:var(--wa-line3)}
@@ -458,6 +475,10 @@ body[data-theme="dark"] #wa{
 .wa-sec-head h4{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--wa-soft)}
 .wa-sec-head p{margin-top:2px;font-size:12px;color:var(--wa-soft)}
 .wa-count{font-size:12px;font-weight:500;color:var(--wa-soft)}
+.wa-sec-tools{display:flex;align-items:center;gap:12px}
+#wa .wa-buscar{width:200px;padding:6px 10px;font:500 12px/1.5 'Inter',system-ui,sans-serif;color:var(--wa-ink);background:var(--wa-well);border:1px solid var(--wa-line3);border-radius:8px;caret-color:var(--wa-ok-icon)}
+#wa .wa-buscar::placeholder{color:var(--wa-soft)}
+#wa .wa-buscar:focus{outline:none;background:var(--wa-card);border-color:transparent;box-shadow:0 0 0 2px var(--wa-ring)}
 .wa-count strong{color:var(--wa-ink);font-weight:700}
 .wa-rows{list-style:none;padding:0;background:var(--wa-card);border:1px solid var(--wa-line2);border-radius:12px;box-shadow:var(--wa-sh-x);overflow:hidden}
 .wa-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;transition:background .15s var(--ease)}
@@ -485,7 +506,34 @@ body[data-theme="dark"] #wa{
 .wa-foot-estado{display:inline-flex;align-items:center;gap:6px}
 .wa-foot-estado svg{width:16px;height:16px;stroke-width:2;color:var(--wa-icon)}
 .wa-foot-estado[data-estado="conectado"] svg{color:var(--wa-ok-dot)}
-.wa-foot-estado[data-estado="esperando"] svg{color:var(--wa-warn-dot)}
+.wa-foot-estado[data-estado="esperando"] svg,.wa-foot-estado[data-estado="vencida"] svg{color:var(--wa-warn-dot)}
+.wa-avanzado{margin-top:16px;border-top:1px solid var(--wa-divide);padding-top:12px}
+.wa-av-sum{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0;font-size:12px;font-weight:600;color:var(--wa-ink2);border-radius:6px}
+.wa-av-sum::-webkit-details-marker{display:none}
+.wa-av-sub{font-weight:500;color:var(--wa-soft)}
+.wa-av-sum svg{width:14px;height:14px;margin-left:auto;stroke-width:2;color:var(--wa-icon);transform:rotate(-90deg);transition:transform .2s var(--ease)}
+.wa-avanzado[open] .wa-av-sum svg{transform:rotate(90deg)}
+.wa-av-sum:hover{color:var(--wa-ink)}
+.wa-av-body{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+.wa-av-ayuda{font-size:12px;line-height:1.5;color:var(--wa-soft)}
+.wa-av-ayuda strong{color:var(--wa-ink2)}
+.wa-av-ayuda{position:relative}
+.wa-av-ayuda .wa-info-btn{display:inline-grid;vertical-align:middle;margin-left:2px;width:20px;height:20px}
+.wa-av-ayuda .wa-info-btn svg{width:15px;height:15px}
+.wa-av-pausa{padding:10px 12px;border-radius:10px;border:1px solid var(--wa-warn-line);background:var(--wa-warn-bg);font-size:12px;line-height:1.5;color:var(--wa-ink2)}
+.wa-av-pausa strong{display:block}
+.wa-av-pausa span{color:var(--wa-text)}
+.wa-av-fila{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
+.wa-av-k{flex:none;width:110px;font-size:12px;font-weight:600;color:var(--wa-soft)}
+.wa-av-v{flex:1 1 200px;min-width:0;font-family:var(--font-mono);font-size:12px;color:var(--wa-ink2);background:var(--wa-chip);padding:7px 10px;border-radius:6px;overflow-wrap:anywhere;user-select:all}
+.wa-av-v.es-texto{font-family:inherit;background:none;padding:0;user-select:auto;color:var(--wa-text)}
+.wa-av-acc{display:flex;gap:8px;flex-wrap:wrap}
+.wa-av-fila .wa-btn{height:32px;padding:0 12px}
+.wa-av-nueva{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:10px;border:1px solid var(--wa-ok-line);background:var(--wa-ok-bg)}
+.wa-av-nueva p{font-size:12px;line-height:1.5;color:var(--wa-ink2)}
+.wa-av-v.es-clave{background:var(--wa-card);border:1px solid var(--wa-ok-line);color:var(--wa-ink)}
+@media (max-width:639px){ .wa-av-k{width:100%} }
+@media (prefers-reduced-motion:reduce){ .wa-av-sum svg{transition:none} }
 .wa-link{display:inline-flex;align-items:center;gap:4px;padding:0;background:none;border:0;font-size:12px;font-weight:600;color:var(--wa-ink);text-underline-offset:3px}
 .wa-link:hover{text-decoration:underline}
 .wa-link svg{width:13px;height:13px;stroke-width:2.2}
@@ -588,6 +636,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   .wa-row-name p,.wa-num-title h3{white-space:normal;overflow-wrap:anywhere}
   .wa-row-act{justify-content:flex-end;flex-wrap:wrap}
   #wa .wa-row-act input{flex:1;width:auto;min-width:0}
+  .wa-sec-tools{width:100%} #wa .wa-buscar{flex:1;width:auto;min-width:0}
   .wa-qr{grid-template-columns:1fr;justify-items:center;text-align:left}
   .wa-qr-frame{width:min(232px,100%);height:auto;aspect-ratio:1}
 }
@@ -618,8 +667,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <symbol id="i-report" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M9 17v-4"/><path d="M12 17v-1"/><path d="M15 17v-3"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5l-5 3v-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12Z"/></symbol>
   <symbol id="i-wa" viewBox="0 0 24 24"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></symbol>
-  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M10.3 4.3a2 2 0 0 1 3.4 0l.4.7a2 2 0 0 0 2.3 1l.8-.3a2 2 0 0 1 2.4 2.4l-.2.8a2 2 0 0 0 1 2.3l.7.4a2 2 0 0 1 0 3.4l-.7.4a2 2 0 0 0-1 2.3l.2.8a2 2 0 0 1-2.4 2.4l-.8-.2a2 2 0 0 0-2.3 1l-.4.7a2 2 0 0 1-3.4 0l-.4-.7a2 2 0 0 0-2.3-1l-.8.2a2 2 0 0 1-2.4-2.4l.2-.8a2 2 0 0 0-1-2.3l-.7-.4a2 2 0 0 1 0-3.4l.7-.4a2 2 0 0 0 1-2.3l-.2-.8a2 2 0 0 1 2.4-2.4l.8.3a2 2 0 0 0 2.3-1l.4-.7Z"/><circle cx="12" cy="12" r="3"/></symbol>
-  <symbol id="i-admin" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3Z"/><rect x="9.5" y="11" width="5" height="4" rx="1"/><path d="M10.5 11V9.8a1.5 1.5 0 0 1 3 0V11"/></symbol>
+  <symbol id="i-settings" viewBox="0 1.35 24 24"><path d="M10.3 4.3a2 2 0 0 1 3.4 0l.4.7a2 2 0 0 0 2.3 1l.8-.3a2 2 0 0 1 2.4 2.4l-.2.8a2 2 0 0 0 1 2.3l.7.4a2 2 0 0 1 0 3.4l-.7.4a2 2 0 0 0-1 2.3l.2.8a2 2 0 0 1-2.4 2.4l-.8-.2a2 2 0 0 0-2.3 1l-.4.7a2 2 0 0 1-3.4 0l-.4-.7a2 2 0 0 0-2.3-1l-.8.2a2 2 0 0 1-2.4-2.4l.2-.8a2 2 0 0 0-1-2.3l-.7-.4a2 2 0 0 1 0-3.4l.7-.4a2 2 0 0 0 1-2.3l-.2-.8a2 2 0 0 1 2.4-2.4l.8.3a2 2 0 0 0 2.3-1l.4-.7Z"/><circle cx="12" cy="13.35" r="3"/></symbol>
   <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.12a7.5 7.5 0 0 1 15 0A17.93 17.93 0 0 1 12 21.75c-2.68 0-5.22-.58-7.5-1.63Z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
@@ -629,6 +677,8 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
   <symbol id="i-message" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.42-4.03 8-9 8a9.86 9.86 0 0 1-4.26-.95L3 20l1.4-3.72A7.7 7.7 0 0 1 3 12c0-4.42 4.03-8 9-8s9 3.58 9 8Z"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.04A8.97 8.97 0 0 0 6 3.75c-1.05 0-2.06.18-3 .51v14.25A8.99 8.99 0 0 1 6 18c2.3 0 4.4.87 6 2.29m0-14.25a8.97 8.97 0 0 1 6-2.29c1.05 0 2.06.18 3 .51v14.25A8.99 8.99 0 0 0 18 18a8.97 8.97 0 0 0-6 2.29m0-14.25v14.25"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6l12 12"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
 </svg>
@@ -650,7 +700,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
     <button class="app-tab" data-view="wa" title="Integración WA"><svg><use href="#i-wa"/></svg><span>Integración WA</span></button>
     <div class="sb-group" data-solo-admin>Sistema</div>
     <button class="app-tab" data-view="ajustes" data-solo-admin title="Ajustes"><svg><use href="#i-settings"/></svg><span>Ajustes</span></button>
-    <button class="app-tab" data-view="admin" data-solo-admin title="Admin"><svg><use href="#i-admin"/></svg><span>Admin</span></button>
   </nav>
 
   <div class="sb-foot">
@@ -717,63 +766,39 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
   <p class="disclaimer">Revisa las cifras importantes antes de compartirlas.</p>
 
   <section id="ajustes" hidden>
-    <div class="fallo-ia" id="aj-fallo" role="status" hidden></div>
-    <div class="aj-top">
-      <p class="section-label">Quién contesta</p>
-      <p class="aj-activo" id="aj-activo">Consultando…</p>
-      <p class="aj-nota" id="aj-donde">El cambio aplica al instante, también en WhatsApp.</p>
+    <section class="aj-bloque" id="aj-ia" aria-labelledby="aj-ia-tit">
+      <header class="aj-bloque-cab">
+        <h2 id="aj-ia-tit">Inteligencia artificial</h2>
+        <p class="aj-nota">Qué modelo responde en el Data Chat y en WhatsApp. Un cambio vale desde la pregunta siguiente.</p>
+      </header>
+      <div class="fallo-ia" id="aj-fallo" role="status" hidden></div>
+      <p class="aj-pendiente" id="aj-donde" hidden></p>
       <p class="form-error" id="aj-error" hidden></p>
-    </div>
-    <div class="aj-proveedores" id="aj-proveedores"></div>
+      <div class="aj-proveedores" id="aj-proveedores"></div>
+    </section>
 
-    <details class="aj-base" id="aj-base">
-      <summary class="aj-base-sum">
-        <span class="aj-base-txt">
-          <span class="aj-base-tit">La base de este negocio</span>
-          <span class="aj-base-res" id="aj-resumen">Consultando…</span>
-        </span>
-        <span class="aj-base-ver" aria-hidden="true"><span class="aj-ver-txt">Ver detalle</span><svg><use href="#i-chevron"/></svg></span>
-      </summary>
-    <form class="aj-base-body" id="aj-contexto">
-      <p class="aj-nota">Lo que el bot sabe antes de consultar: quién eres y qué hay en la base de métricas. Cada instancia tiene la suya y vale desde la pregunta siguiente.</p>
-      <div class="aj-campos">
-        <label class="aj-campo"><span>Nombre del negocio</span><input type="text" id="aj-nombre" maxlength="60" autocomplete="off" placeholder="p. ej. Sofía Residencial"></label>
-        <label class="aj-campo"><span>A qué se dedica</span><input type="text" id="aj-giro" maxlength="120" autocomplete="off" placeholder="p. ej. una desarrolladora inmobiliaria"></label>
-      </div>
-      <div class="aj-campo">
-        <div class="aj-guia-head"><label for="aj-guia">Guía de la base</label><span class="aj-cuenta" id="aj-cuenta" aria-live="polite"></span></div>
-        <p class="aj-aviso" id="aj-aviso" hidden>Sin guía: el bot explora la base en cada pregunta, más lento y con más riesgo de equivocarse de tabla. Genera un borrador y revísalo.</p>
-        <textarea id="aj-guia" rows="16" spellcheck="false" placeholder="Qué esquemas y tablas hay, qué significa cada métrica y dónde está, y las trampas (fechas como texto, moneda…)."></textarea>
-        <p class="aj-nota">La leen las herramientas del bot antes de cada consulta. El borrador lo escribe el modelo que está en uso a partir de lo que ve en la base; revísalo antes de guardar.</p>
-      </div>
-      <div class="aj-acciones">
-        <button type="button" class="btn" id="aj-borrador">Generar borrador con IA</button>
-        <button type="submit" class="btn aj-guardar" id="aj-guardar">Guardar</button>
-        <span class="aj-estado" id="aj-estado" role="status"></span>
-      </div>
-      <p class="form-error" id="aj-guia-error" hidden></p>
+    <section class="aj-bloque" id="aj-usuarios" aria-labelledby="aj-us-tit">
+      <header class="aj-bloque-cab">
+        <h2 id="aj-us-tit">Usuarios <span class="ad-cuenta" id="ad-cuenta"></span></h2>
+        <p class="aj-nota">Quién entra al panel con correo y contraseña.</p>
+      </header>
+      <p class="form-error" id="ad-error" hidden></p>
 
-      <div class="aj-permisos">
-        <h3>Permisos de lectura</h3>
-        <p class="aj-nota" id="aj-ve">Consultando…</p>
-        <div class="aj-acciones" id="aj-permisos-acc"></div>
-      </div>
-    </form>
-    </details>
-
-    <div class="ad-card" id="rp-ajustes">
-      <h2>Reportes</h2>
-      <p class="aj-nota">Páginas que se ven en la pestaña Reporte. <strong>Incrustar</strong> sirve para cualquier página que lo permita. <strong>Servir desde el panel</strong> es para apps de esta misma VPS (por ejemplo <code>http://postgres_reportes:3000/</code>): quedan detrás del login del panel y pueden dejar de ser públicas.</p>
-      <form class="rp-form" id="rp-form">
-        <label>Nombre<input type="text" id="rp-nombre" maxlength="60" required autocomplete="off" placeholder="p. ej. Embudo diario"></label>
-        <label>URL<input type="url" id="rp-url" required autocomplete="off" placeholder="https://…"></label>
-        <label>Cómo se muestra<select id="rp-modo"><option value="incrustar">Incrustar la página</option><option value="interno">Servir desde el panel</option></select></label>
-        <button type="submit" class="btn" id="rp-crear">Añadir</button>
+      <form class="ad-form" id="ad-form" aria-label="Añadir un usuario">
+        <label>Correo<input type="email" id="ad-email" required autocomplete="off" placeholder="nombre@cliente.com"></label>
+        <label>Nombre<input type="text" id="ad-nombre" maxlength="80" autocomplete="off" placeholder="Opcional"></label>
+        <label>Rol<select id="ad-rol"><option value="usuario">Usuario</option><option value="admin">Administrador</option></select></label>
+        <button type="submit" class="btn" id="ad-crear">Añadir usuario</button>
+        <p class="aj-nota ad-roles">Un <strong>usuario</strong> ve el Reporte, el Data Chat y la Integración WA. Un <strong>administrador</strong>, además, entra a Ajustes.</p>
       </form>
-      <p class="rp-aviso" id="rp-aviso" role="status" hidden></p>
-      <p class="form-error" id="rp-error" hidden></p>
-      <div id="rp-lista"></div>
-    </div>
+      <div class="ad-temporal" id="ad-temporal" hidden role="status">
+        <p id="ad-temporal-txt"></p>
+        <div class="ad-clave"><code id="ad-temporal-clave"></code><button type="button" class="btn" id="ad-copiar">Copiar</button></div>
+        <p class="aj-nota">Se muestra una sola vez. Compártela por un canal privado; la persona puede cambiarla después desde el botón «Clave» de la barra lateral.</p>
+      </div>
+
+      <div id="ad-lista"></div>
+    </section>
   </section>
 
   <section id="reporte" hidden>
@@ -782,35 +807,6 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
       <a class="rp-abrir" id="rp-abrir" href="#" target="_blank" rel="noopener noreferrer" hidden>Abrir en otra pestaña ↗</a>
     </div>
     <div class="rp-marco" id="rp-marco"></div>
-  </section>
-
-  <section id="admin" hidden>
-    <div class="aj-top">
-      <p class="section-label">Usuarios</p>
-      <p class="aj-activo">Quién entra al panel</p>
-      <p class="aj-nota" id="ad-google">El equipo entra con Google.</p>
-      <p class="form-error" id="ad-error" hidden></p>
-    </div>
-
-    <div class="ad-card">
-      <h2>Añadir un usuario del cliente</h2>
-      <p class="aj-nota">Entra con su correo y una contraseña. Ve el Data Chat y la Integración WA; no ve Ajustes ni esta pestaña.</p>
-      <form class="ad-form" id="ad-form">
-        <label>Correo<input type="email" id="ad-email" required autocomplete="off" placeholder="nombre@cliente.com"></label>
-        <label>Nombre<input type="text" id="ad-nombre" maxlength="80" autocomplete="off" placeholder="Opcional"></label>
-        <button type="submit" class="btn" id="ad-crear">Crear usuario</button>
-      </form>
-      <div class="ad-temporal" id="ad-temporal" hidden role="status">
-        <p id="ad-temporal-txt"></p>
-        <div class="ad-clave"><code id="ad-temporal-clave"></code><button type="button" class="btn" id="ad-copiar">Copiar</button></div>
-        <p class="aj-nota">Se muestra una sola vez. Compártela por un canal privado; la persona puede cambiarla después desde el botón «Clave» de la barra lateral.</p>
-      </div>
-    </div>
-
-    <div class="ad-card">
-      <h2>Usuarios con contraseña</h2>
-      <div id="ad-lista"></div>
-    </div>
   </section>
 
   <dialog class="cl-dialog" id="cl-dialog" aria-labelledby="cl-titulo">
@@ -828,6 +824,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
 
   <section id="wa" hidden>
     <div class="fallo-ia" id="wa-fallo" role="status" hidden></div>
+    <div class="fallo-ia es-aviso" id="wa-vencida" role="status" hidden></div>
     <p class="wa-alert" id="wa-error" role="alert" hidden></p>
 
     <div class="wa-add">
@@ -876,7 +873,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
       <header class="wa-manual-head">
         <div>
           <h2 id="wa-manual-titulo">Cómo usar el bot de WhatsApp</h2>
-          <p>El bot responde preguntas sobre las métricas de un cliente dentro de un grupo de WhatsApp. Solo contesta en los grupos que actives aquí, y solo cuando lo etiquetan.</p>
+          <p>El bot responde preguntas sobre las métricas dentro de un grupo de WhatsApp. Solo contesta en los grupos que actives aquí, y solo cuando lo etiquetan.</p>
         </div>
         <button type="button" class="wa-cerrar" data-cerrar aria-label="Cerrar el manual"><svg aria-hidden="true"><use href="#i-x"/></svg></button>
       </header>
@@ -887,10 +884,11 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
             <h3>Conecta el teléfono del bot</h3>
             <p>Se hace una sola vez. Escribe un nombre en <strong>Añadir un número</strong>, pulsa <strong>Añadir número</strong> y escanea el código QR con el teléfono que será el bot. En ese teléfono: <span class="wa-ruta">WhatsApp → Dispositivos vinculados → Vincular dispositivo</span>.</p>
             <p>Cuando su tarjeta diga <strong>Conectado</strong>, está listo. Usa un número dedicado al bot, no uno personal.</p>
+            <p>Si el teléfono del bot pasa más de 14 días sin usarse, WhatsApp cierra la sesión y el bot deja de contestar: la tarjeta se pone en amarillo con <strong>Sesión vencida</strong>. Para evitarlo, abre WhatsApp en ese teléfono al menos una vez por semana. Si vence, pulsa <strong>Volver a vincular</strong> y escanea el QR con el mismo teléfono: los grupos se conservan.</p>
           </li>
           <li>
-            <h3>Crea un grupo para el cliente</h3>
-            <p>En WhatsApp, desde cualquier teléfono, crea un grupo nuevo con las personas que van a hacer preguntas. Un grupo por cliente: el bot da por hecho que todo lo que se pregunta ahí es de ese cliente.</p>
+            <h3>Crea un grupo</h3>
+            <p>En WhatsApp, desde cualquier teléfono, crea un grupo nuevo con las personas que van a hacer preguntas. Puede haber varios, por ejemplo uno por equipo.</p>
           </li>
           <li>
             <h3>Añade el número del bot al grupo</h3>
@@ -899,7 +897,7 @@ body[data-theme="dark"] .wa-mencion{color:#53bdeb}
           </li>
           <li>
             <h3>Activa el grupo aquí</h3>
-            <p>En la tarjeta del número, pulsa <strong>Ver grupos del teléfono</strong>. Busca el grupo, escribe el nombre del cliente tal como aparece en los reportes (por ejemplo, Sofía) y pulsa <strong>Atender aquí</strong>.</p>
+            <p>En la tarjeta del número, pulsa <strong>Ver grupos del teléfono</strong>. Busca el grupo por su nombre y pulsa <strong>Atender aquí</strong>.</p>
             <p>Pasará a <strong>Grupos vinculados a este número</strong> con la etiqueta <strong>Escuchando</strong>.</p>
           </li>
           <li>
@@ -970,12 +968,12 @@ $('theme-btn').addEventListener('click', () => setTheme(document.body.dataset.th
   setNav(window.innerWidth < 900 ? true : nav === '1');
   setTheme(theme === 'light' ? 'light' : 'dark');
 })();
-fetch('/api/me').then((r) => r.json()).then(({ email, negocio, rol }) => {
-  // Un usuario del cliente no ve Ajustes ni Admin (el servidor tampoco se los deja usar).
-  if (rol === 'cliente') {
-    document.body.classList.add('es-cliente');
-    document.querySelectorAll('[data-solo-admin]').forEach((b) => b.remove());
-  }
+// El punto de "sesión vencida" en la pestaña se calcula desde el arranque, no solo al entrar a WhatsApp.
+waFetch('/api/wa/numeros').then((d) => { ultimos = d.numeros ?? []; pintarVencidas(); }).catch(() => {});
+fetch('/api/me').then((r) => r.json()).then(({ email, negocio, rol, admin }) => {
+  // Ajustes y Admin, solo para administradores (Zebra o del cliente). El servidor tampoco deja usarlos.
+  if (rol === 'cliente') document.body.classList.add('es-cliente');
+  if (!admin) document.querySelectorAll('[data-solo-admin]').forEach((b) => b.remove());
   // El título lleva el nombre del negocio de esta instancia, si ya se dijo en Ajustes.
   if (negocio) {
     VISTAS.chat.titulo = `Pregúntale a la base de datos de ${negocio}`;
@@ -1157,8 +1155,7 @@ resetBtn.addEventListener('click', () => {
 const VISTAS = {
   chat: { pill: 'Data Chat', titulo: 'Pregúntale a la base de datos' },
   wa: { pill: 'Integración WA', titulo: 'Los números que responden por WhatsApp' },
-  ajustes: { pill: 'Ajustes', titulo: 'Qué modelo de IA responde las preguntas' },
-  admin: { pill: 'Admin', titulo: 'Quién puede entrar al panel' },
+  ajustes: { pill: 'Ajustes', titulo: 'La IA que responde y quién entra al panel' },
   reporte: { pill: 'Reporte', titulo: 'Los reportes de este negocio' },
 };
 const pill = document.querySelector('.pill-logo');
@@ -1170,7 +1167,6 @@ function verVista(v) {
   document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
   $('wa').hidden = v !== 'wa';
   $('ajustes').hidden = v !== 'ajustes';
-  $('admin').hidden = v !== 'admin';
   $('reporte').hidden = v !== 'reporte';
   resetBtn.hidden = v !== 'chat' || history.length === 0;
   $('wa-manual-abrir').hidden = v !== 'wa';
@@ -1178,8 +1174,7 @@ function verVista(v) {
   tituloTop.textContent = VISTAS[v].titulo;
   if (v !== 'wa') pararQr();
   if (v === 'wa') cargarNumeros();
-  if (v === 'ajustes') cargarAjustes();
-  if (v === 'admin') cargarUsuarios();
+  if (v === 'ajustes') { cargarAjustes(); cargarUsuarios(); }
   if (v === 'reporte') cargarReporte();
 }
 document.querySelectorAll('.app-tab[data-view]').forEach((b) => b.addEventListener('click', () => verVista(b.dataset.view)));
@@ -1189,6 +1184,7 @@ const ESTADOS = {
   conectado: 'Conectado',
   esperando: 'Esperando escaneo',
   desconectado: 'Sin vincular',
+  vencida: 'Sesión vencida',
   desconocido: 'Desconocido',
 };
 const waError = (m) => { $('wa-error').textContent = m; $('wa-error').hidden = !m; };
@@ -1199,6 +1195,8 @@ const qrPanel = $('wa-qr'), qrImg = $('wa-qr-img'), qrEspera = $('wa-qr-espera')
 let vinculando = null;           // de qué número se está mostrando el QR
 let ultimos = [];                // la última lista de números, para repintar sin volver a pedirla
 const abiertos = new Set();      // números con la lista de grupos del teléfono abierta
+const avanzados = new Set();     // números con "Opciones avanzadas" abierto: sobrevive al repintado
+const clavesNuevas = new Map();  // instancia → clave de n8n recién generada (se muestra una sola vez)
 const totalTelefono = new Map(); // cuántos grupos tiene cada teléfono, una vez consultado
 
 function pararQr() {
@@ -1206,11 +1204,25 @@ function pararQr() {
   qrPanel.hidden = true; qrImg.hidden = true; qrImg.removeAttribute('src'); qrEspera.hidden = false;
 }
 
+// Cuando el servidor no explica el error (un proxy caído, una ruta que no existe), se dice qué pasó
+// en palabras, nunca un código solo.
+const SIN_EXPLICAR = {
+  403: 'No tienes permiso para hacer esto.',
+  404: 'El panel no encontró esa función (404). Recarga la página; si sigue, avisa a Zebra.',
+  413: 'Lo que enviaste es demasiado grande.',
+  429: 'Vas muy rápido. Espera unos segundos y vuelve a intentar.',
+};
 async function waFetch(url, opts) {
-  const r = await fetch(url, opts);
+  let r;
+  try { r = await fetch(url, opts); }
+  catch { throw new Error('No hay conexión con el panel. Revisa tu internet y vuelve a intentar.'); }
   if (r.status === 401) { location.href = '/login'; throw new Error('sesión vencida'); }
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error ?? `Error ${r.status}`);
+  if (!r.ok) {
+    throw new Error(d.error ?? SIN_EXPLICAR[r.status] ?? (r.status >= 500
+      ? `El servidor no pudo completar la operación (${r.status}). Intenta de nuevo en un momento.`
+      : `Algo falló (código ${r.status}). Intenta de nuevo.`));
+  }
   return d;
 }
 const enviarJson = (body) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -1218,15 +1230,16 @@ const ruta = (instancia, cola) => `/api/wa/numeros/${encodeURIComponent(instanci
 
 // Sin diálogo del navegador: el segundo clic confirma, y a los 6 s se olvida.
 function conConfirmacion(btn, aviso, fn) {
-  const original = btn.textContent;
+  const etq = btn.querySelector('[data-etq]') ?? btn; // en un botón de icono, el aviso va junto al icono
+  const original = etq.textContent;
   btn.addEventListener('click', () => {
     if (btn.dataset.confirmar !== '1') {
       btn.dataset.confirmar = '1';
-      btn.textContent = aviso;
-      setTimeout(() => { btn.dataset.confirmar = ''; btn.textContent = original; }, 6000);
+      etq.textContent = aviso;
+      setTimeout(() => { btn.dataset.confirmar = ''; etq.textContent = original; }, 6000);
       return;
     }
-    btn.dataset.confirmar = ''; btn.textContent = original;
+    btn.dataset.confirmar = ''; etq.textContent = original;
     fn();
   });
   return btn;
@@ -1281,8 +1294,44 @@ async function cargarNumeros() {
     const d = await waFetch('/api/wa/numeros');
     ultimos = d.numeros ?? [];
     pintarFallo('wa-fallo', d.fallo);
+    pintarVencidas();
     pintarNumeros();
   } catch (e) { waError(e.message); }
+}
+
+// WhatsApp cierra la sesión si el teléfono pasa 14 días sin usarse: el bot deja de contestar sin
+// avisar. Se dice en una franja arriba y con un punto en la pestaña, para verlo sin entrar aquí.
+const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'short' });
+// La misma franja avisa si los envíos de n8n de un número quedaron en pausa (kill switch).
+const horaCorta = (iso) => new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+async function reanudarN8n(instancia) {
+  waError('');
+  try { await waFetch(ruta(instancia, 'reanudar'), { method: 'POST' }); cargarNumeros(); }
+  catch (e) { waError(e.message); }
+}
+function lineaPausa(n) {
+  return h('p', {},
+    h('strong', {}, `Los envíos de n8n de ${n.etiqueta || n.instancia} están en pausa desde el ${horaCorta(n.n8n_pausa)}.`),
+    h('span', {}, `${n.n8n_pausa_motivo ?? 'WhatsApp rechazó envíos'}. Las respuestas del bot siguen. Revisa qué estaba enviando el flujo antes de reanudar. `),
+    h('button', { type: 'button', class: 'aj-link', on: { click: () => reanudarN8n(n.instancia) } }, 'Reanudar'));
+}
+function pintarVencidas() {
+  const vencidas = ultimos.filter((n) => n.estado === 'vencida');
+  const pausados = ultimos.filter((n) => n.n8n_pausa);
+  const tab = document.querySelector('.app-tab[data-view="wa"]');
+  if (tab) tab.toggleAttribute('data-aviso', vencidas.length + pausados.length > 0);
+  const el = $('wa-vencida');
+  el.textContent = '';
+  el.hidden = !vencidas.length && !pausados.length;
+  if (el.hidden) return;
+  el.append(icono('i-alert'), h('div', {}, ...pausados.map(lineaPausa), ...vencidas.map((n) => {
+    const grupos = n.grupos?.length ?? 0;
+    const volver = h('button', { type: 'button', class: 'aj-link', on: { click: () => vincular(n.instancia) } }, 'Volver a vincular');
+    return h('p', {},
+      h('strong', {}, `WhatsApp cerró la sesión de ${n.etiqueta || n.instancia} el ${fechaCorta(n.vencida)}.`),
+      h('span', {}, grupos ? `No contesta en ${grupos === 1 ? 'su grupo' : `sus ${grupos} grupos`} hasta que vuelvas a escanear el QR. ` : 'Vuelve a escanear el QR para que conteste. '),
+      volver);
+  })));
 }
 
 function pintarNumeros() {
@@ -1310,7 +1359,8 @@ function tarjetaNumero(n) {
   const meta = h('div', { class: 'wa-meta' },
     n.numero
       ? h('span', {}, h('span', { class: 'wa-meta-k' }, 'Mencionar a:'), h('span', { class: 'wa-mono-chip' }, n.numero))
-      : h('span', {}, n.estado === 'esperando' ? 'Esperando que escaneen el QR' : 'Ningún teléfono vinculado'),
+      : h('span', { class: 'wa-meta-libre' }, n.estado === 'esperando' ? 'Esperando que escaneen el QR'
+        : n.estado === 'vencida' ? `WhatsApp cerró la sesión el ${fechaCorta(n.vencida)}` : 'Ningún teléfono vinculado'),
     h('span', { class: 'wa-sep', 'aria-hidden': 'true' }, '•'),
     h('span', {}, 'Conexión: ', h('strong', {}, n.instancia)));
   const vivo = conectado && grupos.length
@@ -1328,7 +1378,7 @@ function tarjetaNumero(n) {
       conConfirmacion(h('button', { type: 'button', class: 'wa-btn' }, 'Desvincular'), 'Confirmar: dejará de responder', () => desvincular(n.instancia)));
   } else {
     acciones.append(h('button', { type: 'button', class: 'wa-btn is-dark', disabled: vinculando === n.instancia, on: { click: () => vincular(n.instancia) } },
-      icono('i-qr'), h('span', {}, vinculando === n.instancia ? 'Mostrando el QR' : 'Vincular teléfono')));
+      icono('i-qr'), h('span', {}, vinculando === n.instancia ? 'Mostrando el QR' : n.estado === 'vencida' ? 'Volver a vincular' : 'Vincular teléfono')));
   }
   acciones.append(conConfirmacion(h('button', { type: 'button', class: 'wa-btn is-danger' }, 'Borrar número'),
     'Confirmar: se borra con sus grupos', () => borrarNumero(n.instancia)));
@@ -1336,7 +1386,8 @@ function tarjetaNumero(n) {
   const cabecera = h('div', { class: 'wa-num-head' },
     h('div', { class: 'wa-num-id' }, avatar,
       h('div', { class: 'wa-num-txt' },
-        h('div', { class: 'wa-num-title' }, h('h3', {}, n.etiqueta || n.instancia), h('span', { class: 'wa-badge', 'data-estado': n.estado }, ESTADOS[n.estado] ?? n.estado)),
+        h('div', { class: 'wa-num-title' }, h('h3', {}, n.etiqueta || n.instancia), h('span', { class: 'wa-badge', 'data-estado': n.estado }, ESTADOS[n.estado] ?? n.estado),
+          conectado ? null : infoCatorce(n.instancia)),
         meta, vivo)),
     acciones);
 
@@ -1354,11 +1405,88 @@ function tarjetaNumero(n) {
       icono(conectado ? 'i-check-circle' : 'i-alert'),
       conectado ? 'Conexión directa con WhatsApp activa'
         : n.estado === 'esperando' ? 'Esperando el escaneo del QR'
-          : 'Sin conexión: vincula el teléfono para que conteste'),
+          : n.estado === 'vencida' ? 'Sesión vencida: vuelve a vincular el teléfono para que conteste'
+            : 'Sin conexión: vincula el teléfono para que conteste'),
     conectado && !abierto ? h('button', { type: 'button', class: 'wa-link', on: { click: () => alternarTelefono(n.instancia) } }, icono('i-plus'), 'Elegir grupos del teléfono') : null));
+  cuerpo.append(opcionesAvanzadas(n));
 
   return h('section', { class: 'wa-num', 'aria-label': n.etiqueta || n.instancia }, cabecera, cuerpo);
 }
+
+// Opciones avanzadas: lo que hay que pegar en n8n para enviar por este número con el nodo de
+// Evolution API. Colapsado por defecto; la clave se muestra una sola vez, al generarla.
+function opcionesAvanzadas(n) {
+  const det = h('details', { class: 'wa-avanzado', open: avanzados.has(n.instancia) });
+  det.addEventListener('toggle', () => { if (det.open) avanzados.add(n.instancia); else avanzados.delete(n.instancia); });
+
+  const copiable = (etiqueta, valor) => {
+    const btn = h('button', { type: 'button', class: 'wa-btn wa-copiar', 'aria-label': `Copiar ${etiqueta}` }, 'Copiar');
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(valor); btn.textContent = 'Copiado'; }
+      catch { btn.textContent = 'Selecciónalo y copia'; }
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
+    });
+    return h('div', { class: 'wa-av-fila' }, h('span', { class: 'wa-av-k' }, etiqueta), h('code', { class: 'wa-av-v' }, valor), btn);
+  };
+
+  const generar = async () => {
+    waError('');
+    try {
+      const { clave } = await waFetch(`${ruta(n.instancia, 'apikey')}`, { method: 'POST' });
+      clavesNuevas.set(n.instancia, clave);
+      avanzados.add(n.instancia);
+      cargarNumeros();
+    } catch (e) { waError(e.message); }
+  };
+  const nueva = clavesNuevas.get(n.instancia);
+  const tiene = Boolean(n.api_fin);
+  const estadoClave = h('span', { class: 'wa-av-v es-texto' }, tiene
+    ? `Termina en …${n.api_fin} · creada el ${fechaCorta(n.api_creada)}`
+    : 'Sin clave todavía');
+  const acciones = h('div', { class: 'wa-av-acc' });
+  if (!tiene) acciones.append(h('button', { type: 'button', class: 'wa-btn is-dark', on: { click: generar } }, 'Generar clave'));
+  else {
+    acciones.append(
+      conConfirmacion(h('button', { type: 'button', class: 'wa-btn' }, 'Regenerar'), 'Confirmar: la anterior deja de servir', generar),
+      conConfirmacion(h('button', { type: 'button', class: 'wa-btn is-danger' }, 'Revocar'), 'Confirmar: n8n dejará de enviar', async () => {
+        waError('');
+        try { await waFetch(ruta(n.instancia, 'apikey'), { method: 'DELETE' }); clavesNuevas.delete(n.instancia); cargarNumeros(); }
+        catch (e) { waError(e.message); }
+      }));
+  }
+
+  det.append(
+    h('summary', { class: 'wa-av-sum' },
+      h('span', {}, 'Opciones avanzadas'), h('span', { class: 'wa-av-sub' }, 'Enviar mensajes desde n8n'),
+      icono('i-chevron')),
+    h('div', { class: 'wa-av-body' },
+      h('p', { class: 'wa-av-ayuda' }, 'En n8n, crea una credencial ', h('strong', {}, 'Evolution API'), ' con el Server Url y la ApiKey. En cada nodo, escribe el Instance Name. Solo envía: texto, imagen, video, documento y reacción.',
+        ...infoTip(`wa-ritmo-${n.instancia}`, 'Cómo se cuida el número',
+          'Para cuidar el número, los envíos salen de uno en uno, espaciados de 3 a 8 s y con «escribiendo…». Máximo 10 por minuto, 150 por hora y 800 al día; si n8n se pasa, recibe un aviso y reintenta después.')),
+      n.n8n_pausa ? h('div', { class: 'wa-av-pausa', role: 'status' }, lineaPausa(n)) : null,
+      copiable('Server Url', `${location.origin}/evo`),
+      copiable('Instance Name', n.instancia),
+      h('div', { class: 'wa-av-fila' }, h('span', { class: 'wa-av-k' }, 'ApiKey'), estadoClave, acciones),
+      nueva ? h('div', { class: 'wa-av-nueva', role: 'status' },
+        h('p', {}, h('strong', {}, 'Clave nueva. '), 'Se muestra una sola vez: cópiala y pégala en la credencial de n8n.'),
+        h('div', { class: 'wa-av-fila' }, h('code', { class: 'wa-av-v es-clave' }, nueva),
+          copiable('la clave', nueva).lastChild,
+          h('button', { type: 'button', class: 'wa-btn', on: { click: () => { clavesNuevas.delete(n.instancia); pintarNumeros(); } } }, 'Listo'))) : null));
+  return det;
+}
+
+// Una (i) con su tooltip (al pasar el ratón o con el foco). El tooltip se ancla al contenedor
+// posicionado más cercano, que pone quien la usa.
+function infoTip(id, etiqueta, texto) {
+  return [
+    h('button', { type: 'button', class: 'wa-info-btn', 'aria-label': etiqueta, 'aria-describedby': id }, icono('i-info')),
+    h('span', { class: 'wa-info-tip', role: 'tooltip', id }, texto),
+  ];
+}
+
+// La (i) de la insignia: por qué un número puede quedarse sin vincular. Texto de la ayuda de WhatsApp.
+const infoCatorce = (instancia) => infoTip(`wa-info-${instancia}`, 'Por qué se desvincula',
+  'Tu teléfono no tendrá que permanecer en línea para usar WhatsApp en dispositivos vinculados, pero, si no usas el teléfono durante más de 14 días, se desconectarán los dispositivos vinculados.');
 
 // Dónde contesta este número. Solo ahí, y solo si lo mencionan o responden a un mensaje suyo.
 function bloqueGrupos(n, conectado, grupos) {
@@ -1381,10 +1509,10 @@ function bloqueGrupos(n, conectado, grupos) {
     });
     return h('li', { class: 'wa-row' },
       h('div', { class: 'wa-row-id' },
-        h('span', { class: 'wa-initials', 'aria-hidden': 'true' }, iniciales(g.cliente)),
+        h('span', { class: 'wa-initials', 'aria-hidden': 'true' }, iniciales(g.nombre || g.cliente)),
         h('div', { class: 'wa-row-txt' },
           h('div', { class: 'wa-row-name' },
-            h('p', { class: g.cliente ? '' : 'is-vacio' }, g.cliente || 'Sin cliente asignado'),
+            h('p', { class: g.nombre || g.cliente ? '' : 'is-vacio', title: g.nombre || g.cliente || '' }, g.nombre || g.cliente || 'Grupo sin nombre'),
             conectado ? h('span', { class: 'wa-tag' }, 'Escuchando') : h('span', { class: 'wa-tag is-warn' }, 'Sin conexión')),
           h('p', { class: 'wa-row-jid' }, g.jid))),
       h('div', { class: 'wa-row-act' }, quitar));
@@ -1400,7 +1528,7 @@ function alternarTelefono(instancia) {
 // Los grupos donde está ese teléfono, para elegirlos sin copiar identificadores a mano.
 async function cargarTelefono(instancia, cont) {
   const cabeza = h('div', { class: 'wa-sec-head' },
-    h('div', {}, h('h4', {}, 'Grupos del teléfono'), h('p', {}, 'Elige dónde contesta y de qué cliente es cada grupo.')));
+    h('div', {}, h('h4', {}, 'Grupos del teléfono'), h('p', {}, 'Elige en qué grupos contesta el bot.')));
   cont.append(cabeza, h('p', { class: 'wa-empty' }, 'Cargando los grupos del teléfono…'));
   try {
     const lista = ((await waFetch(ruta(instancia, 'groups'))).grupos ?? [])
@@ -1415,8 +1543,25 @@ async function cargarTelefono(instancia, cont) {
     }
     cont.lastChild.remove();
     if (!lista.length) return cont.append(h('p', { class: 'wa-empty' }, 'Este teléfono no está en ningún grupo todavía.'));
-    cabeza.append(h('span', { class: 'wa-count' }, h('strong', {}, String(lista.length)), lista.length === 1 ? ' grupo' : ' grupos'));
-    cont.append(h('ul', { class: 'wa-rows' }, lista.map((g) => filaTelefono(instancia, g))));
+    // Búsqueda por nombre (o por jid), sin acentos ni mayúsculas: filtra las filas que ya están pintadas.
+    const sinAcentos = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const filas = lista.map((g) => ({ el: filaTelefono(instancia, g), texto: sinAcentos(`${g.nombre ?? ''} ${g.jid}`) }));
+    const cuenta = h('span', { class: 'wa-count' });
+    const vacio = h('p', { class: 'wa-empty', hidden: true }, 'Ningún grupo coincide con la búsqueda.');
+    const buscar = h('input', { type: 'search', class: 'wa-buscar', placeholder: 'Buscar grupo', autocomplete: 'off', 'aria-label': 'Buscar en los grupos del teléfono' });
+    const filtrar = () => {
+      const q = sinAcentos(buscar.value.trim());
+      let n = 0;
+      for (const f of filas) { f.el.hidden = Boolean(q) && !f.texto.includes(q); if (!f.el.hidden) n++; }
+      cuenta.replaceChildren(...(q ? [h('strong', {}, `${n} de ${lista.length}`)] : [h('strong', {}, String(lista.length))]), lista.length === 1 ? ' grupo' : ' grupos');
+      vacio.hidden = n > 0;
+      ul.hidden = n === 0;
+    };
+    const ul = h('ul', { class: 'wa-rows' }, filas.map((f) => f.el));
+    buscar.addEventListener('input', filtrar);
+    cabeza.append(h('div', { class: 'wa-sec-tools' }, buscar, cuenta));
+    cont.append(ul, vacio);
+    filtrar();
   } catch (e) {
     cont.lastChild.textContent = `No pude traer los grupos: ${e.message}`;
   }
@@ -1428,19 +1573,17 @@ function filaTelefono(instancia, g) {
   if (g.activo) {
     accion = h('span', { class: 'wa-tag' }, 'Ya contesta aquí');
   } else {
-    const cliente = h('input', { type: 'text', maxLength: 80, placeholder: 'Cliente', autocomplete: 'off', 'aria-label': `Cliente del grupo ${nombre}` });
-    const add = h('button', { type: 'button', class: 'wa-atender' }, 'Atender aquí');
+    const add = h('button', { type: 'button', class: 'wa-atender', 'aria-label': `Atender en ${nombre}` }, 'Atender aquí');
     const atender = async () => {
       waError('');
       add.disabled = true; add.textContent = 'Guardando…';
       try {
-        await waFetch('/api/wa/grupos', enviarJson({ jid: g.jid, cliente: cliente.value, instancia }));
+        await waFetch('/api/wa/grupos', enviarJson({ jid: g.jid, nombre: g.nombre, instancia }));
         cargarNumeros(); // la lista del teléfono sigue abierta: se pueden elegir varios seguidos
       } catch (e) { waError(e.message); add.disabled = false; add.textContent = 'Atender aquí'; }
     };
     add.addEventListener('click', atender);
-    cliente.addEventListener('keydown', (e) => { if (e.key === 'Enter') atender(); });
-    accion = [cliente, add];
+    accion = add;
   }
   return h('li', { class: 'wa-row' },
     h('div', { class: 'wa-row-id' },
@@ -1468,7 +1611,9 @@ async function vincular(instancia) {
   waError('');
   vinculando = instancia;
   const n = ultimos.find((x) => x.instancia === instancia);
-  qrDetalle.textContent = `Es para ${n?.etiqueta || instancia}. El código se renueva solo cada pocos segundos.`;
+  qrDetalle.textContent = n?.estado === 'vencida'
+    ? `Es para ${n.etiqueta || instancia}. Usa el mismo teléfono: sus grupos vinculados se conservan. El código se renueva solo cada pocos segundos.`
+    : `Es para ${n?.etiqueta || instancia}. El código se renueva solo cada pocos segundos.`;
   pintarNumeros();
   const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
   qrPanel.scrollIntoView({ block: 'nearest', behavior: quieto ? 'auto' : 'smooth' });
@@ -1546,269 +1691,228 @@ $('wa-form').addEventListener('submit', async (e) => {
   finally { btn.disabled = false; txt.textContent = 'Añadir número'; }
 });
 
-// ── Ajustes: proveedor y modelo ────────────────────────────────────────────
+// ── Ajustes: inteligencia artificial ───────────────────────────────────────
+// Una tarjeta dice quién contesta y deja cambiar clave y modelo; debajo, las claves que hay. OpenAI
+// es la de siempre: sin claves, la tarjeta pide la suya. Añadir otra (de Claude o una segunda de
+// OpenAI) es un enlace discreto al final.
 const ajError = (m) => { $('aj-error').textContent = m; $('aj-error').hidden = !m; };
+const DE = (d, c) => d.proveedores[c.proveedor] ?? { nombre: c.proveedor };
 
 async function cargarAjustes() {
   ajError('');
   try {
     const d = await waFetch('/api/settings');
     pintarFallo('aj-fallo', d.fallo);
-    // Solo contesta alguien si su proveedor tiene una clave que funciona y un modelo elegido.
-    const activo = d.proveedores.find((p) => p.id === d.activo.proveedor);
-    const listo = activo?.clave.hay && activo.clave.legible && d.modelos?.[activo.id]?.modelos?.length && d.activo.modelo;
-    $('aj-activo').textContent = listo ? `${activo.nombre} · ${d.activo.modelo}` : 'Nadie contesta todavía';
-    $('aj-activo').classList.toggle('es-falta', !listo);
+    const usables = d.claves.filter((c) => c.legible);
+    const enUso = d.claves.find((c) => c.id === d.activo.clave);
+    // Solo contesta alguien si su clave funciona y hay un modelo elegido. Si es así, los selectores ya
+    // lo dicen; si no, una nota dice qué falta.
+    const listo = enUso && d.modelos?.[enUso.id]?.modelos?.length && d.activo.modelo;
     $('aj-donde').textContent = !d.hayBase
       ? 'Falta APP_DATABASE_URL: mientras tanto mandan las variables de entorno y aquí no se puede guardar.'
-      : !listo
-        ? 'Pega la clave de API de un proveedor y elige su modelo. Desde ese momento contesta en el chat y en WhatsApp.'
-        : 'Contesta en el chat y en WhatsApp. Los cambios valen desde la pregunta siguiente.';
+      : !usables.length
+        ? 'Nadie contesta todavía. Pega la clave de API de OpenAI y elige su modelo.'
+        : !listo
+          ? 'Nadie contesta todavía. Elige un modelo y guarda.'
+          : '';
+    $('aj-donde').hidden = !$('aj-donde').textContent;
     const cont = $('aj-proveedores');
     cont.textContent = '';
-    for (const p of d.proveedores) cont.append(tarjetaProveedor(p, d));
-    pintarBase(d);
-    cargarReportesAjustes();
+    cont.append(usables.length ? tarjetaElegir(d, usables) : tarjetaPrimera(d));
+    if (d.claves.length) cont.append(listaClaves(d));
+    if (d.hayBase) cont.append(otraClave(d));
   } catch (e) { ajError(e.message); }
 }
 
-// ── La base de este negocio: nombre, guía y permisos ────────────────────────
-let guiaGuardada = null; // lo último guardado, para saber si hay cambios pendientes
-const campoGuia = $('aj-guia');
+const logo = (d, proveedor, tam) => {
+  const img = h('img', { src: d.proveedores[proveedor]?.logo ?? '', alt: '', width: tam, height: tam });
+  img.dataset.logo = proveedor; // la hoja de estilos cambia el de OpenAI según el tema
+  return img;
+};
 
-function estadoGuia(texto = '', clase = '') { const e = $('aj-estado'); e.textContent = texto; e.className = `aj-estado ${clase}`; }
-function guiaError(m) { $('aj-guia-error').textContent = m; $('aj-guia-error').hidden = !m; }
-
-function contarGuia() {
-  const n = campoGuia.value.length, tope = Number(campoGuia.maxLength) || 20000;
-  $('aj-cuenta').textContent = `${n.toLocaleString('es')} / ${tope.toLocaleString('es')}`;
-  $('aj-cuenta').classList.toggle('es-tope', n >= tope);
-  $('aj-aviso').hidden = Boolean(campoGuia.value.trim());
-  const actual = { nombre: $('aj-nombre').value.trim(), giro: $('aj-giro').value.trim(), guia: campoGuia.value.trim() };
-  const pendiente = guiaGuardada && JSON.stringify(actual) !== JSON.stringify(guiaGuardada);
-  if (pendiente) estadoGuia('Cambios sin guardar', 'es-pendiente');
-  else if ($('aj-estado').classList.contains('es-pendiente')) estadoGuia('');
-}
-
-let ajustesVistos = null; // lo último que llegó de /api/settings, para repintar el resumen al guardar
-function pintarBase(d) {
-  ajustesVistos = d;
-  const c = d.contexto ?? {};
-  $('aj-nombre').maxLength = c.limites?.nombre ?? 60;
-  $('aj-giro').maxLength = c.limites?.giro ?? 120;
-  campoGuia.maxLength = c.limites?.guia ?? 20000;
-  // Si alguien está a medio editar, recargar los ajustes no le borra lo escrito.
-  if (!$('aj-estado').classList.contains('es-pendiente')) {
-    $('aj-nombre').value = c.nombre ?? '';
-    $('aj-giro').value = c.giro ?? '';
-    campoGuia.value = c.guia ?? '';
-    guiaGuardada = { nombre: c.nombre ?? '', giro: c.giro ?? '', guia: c.guia ?? '' };
-    estadoGuia(c.actualizado
-      ? `Guardada ${new Date(c.actualizado).toLocaleDateString('es', { day: 'numeric', month: 'short' })}${c.por === 'semilla' ? ' · guía original de Zebra' : c.por ? ` · ${c.por}` : ''}`
-      : '');
-  }
-  contarGuia();
-  pintarResumen(d);
-  const sinBase = !d.hayBase;
-  for (const id of ['aj-nombre', 'aj-giro', 'aj-guia', 'aj-guardar', 'aj-borrador']) $(id).disabled = sinBase;
-  if (sinBase) estadoGuia('Para guardar hace falta la base del dashboard (APP_DATABASE_URL).');
-  pintarPermisos(d.permisos ?? {});
-}
-
-// Lo que se lee con la tarjeta cerrada: quién es, de dónde viene la guía y cuánto ve el bot.
-function pintarResumen(d) {
-  const c = d.contexto ?? {}, ve = d.permisos?.ve ?? {};
-  const res = $('aj-resumen');
-  res.textContent = '';
-  const quien = c.nombre ? (c.giro ? `${c.nombre}, ${c.giro}` : c.nombre) : 'Sin nombre de negocio';
-  const guia = c.guia
-    ? `Guía de ${(c.guia.length).toLocaleString('es')} caracteres${c.por === 'semilla' ? ' (la original de Zebra)' : ''}`
-    : h('span', { class: 'es-falta' }, 'Sin guía: el bot explora la base en cada pregunta');
-  const vista = ve.error ? null : `ve ${plural(ve.vistas ?? 0, 'vista', 'vistas')} en ${plural(ve.esquemas ?? 0, 'esquema', 'esquemas')}`;
-  res.append(quien, ' · ', guia, vista ? ` · ${vista}` : '');
-}
-
-// Abierta por edición a medias o un borrador sin guardar: que no se pierda de vista.
-$('aj-base').addEventListener('toggle', () => {
-  $('aj-base').querySelector('.aj-ver-txt').textContent = $('aj-base').open ? 'Ocultar' : 'Ver detalle';
-});
-
-function pintarPermisos(p) {
-  const ve = p.ve ?? {};
-  $('aj-ve').textContent = ve.error
-    ? `No pude consultar qué ve el bot: ${ve.error}`
-    : `El bot ve ${plural(ve.vistas ?? 0, 'vista', 'vistas')} y ${plural(ve.tablas ?? 0, 'tabla', 'tablas')} en ${plural(ve.esquemas ?? 0, 'esquema', 'esquemas')}, con el rol ${p.rol ?? 'de lectura'}.`;
-  const acc = $('aj-permisos-acc');
-  acc.textContent = '';
-  if (p.hayAdmin) {
-    const btn = h('button', { type: 'button', class: 'btn' }, 'Actualizar permisos');
-    btn.addEventListener('click', async () => {
-      btn.disabled = true; btn.textContent = 'Aplicando…';
-      try {
-        const r = await waFetch('/api/settings/permisos', { method: 'POST' });
-        pintarPermisos({ ...p, ve: r.ve });
-        $('aj-permisos-acc').append(h('span', { class: 'aj-estado' }, 'Listo: el bot ya ve las vistas nuevas.'));
-      } catch (e) { guiaError(e.message); btn.disabled = false; btn.textContent = 'Actualizar permisos'; }
-    });
-    acc.append(btn, h('span', { class: 'aj-nota' }, 'Úsalo cuando se creen vistas nuevas en la base. También se aplica solo al arrancar.'));
-  } else {
-    acc.append(h('p', { class: 'aj-nota' }, 'Cuando se crean vistas nuevas hay que darle permiso al bot. Para hacerlo aquí con un botón, configura ',
-      h('code', {}, 'METRICAS_ADMIN_URL'), ' (una conexión de administrador). Mientras tanto, a mano: ',
-      h('code', {}, 'psql "<conexión de administrador>" -f grants.sql'), '.'));
-  }
-}
-
-for (const id of ['aj-nombre', 'aj-giro', 'aj-guia']) $(id).addEventListener('input', contarGuia);
-
-$('aj-contexto').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  guiaError('');
-  const btn = $('aj-guardar');
-  btn.disabled = true; estadoGuia('Guardando…');
-  try {
-    const datos = { nombre: $('aj-nombre').value, giro: $('aj-giro').value, guia: campoGuia.value };
-    const { contexto } = await waFetch('/api/settings/contexto', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-    guiaGuardada = { nombre: contexto.nombre, giro: contexto.giro, guia: contexto.guia };
-    estadoGuia('Guardada. Vale desde la pregunta siguiente.');
-    if (ajustesVistos) pintarResumen({ ...ajustesVistos, contexto: { ...ajustesVistos.contexto, ...contexto } });
-    contarGuia();
-    if (contexto.nombre) { VISTAS.chat.titulo = `Pregúntale a la base de datos de ${contexto.nombre}`; }
-  } catch (err) { guiaError(err.message); estadoGuia('Cambios sin guardar', 'es-pendiente'); }
-  finally { btn.disabled = false; }
-});
-
-// El borrador reemplaza lo escrito: si ya hay texto, el primer clic avisa y el segundo genera.
-$('aj-borrador').addEventListener('click', async () => {
-  const btn = $('aj-borrador');
-  if (campoGuia.value.trim() && btn.dataset.confirmar !== '1') {
-    btn.dataset.confirmar = '1'; btn.textContent = 'Confirmar: reemplaza el texto';
-    setTimeout(() => { if (btn.dataset.confirmar === '1') { btn.dataset.confirmar = ''; btn.textContent = 'Generar borrador con IA'; } }, 6000);
-    return;
-  }
-  btn.dataset.confirmar = '';
-  guiaError('');
-  btn.disabled = true; btn.textContent = 'Leyendo la base y redactando…';
-  estadoGuia('Puede tardar hasta un minuto.');
-  try {
-    const { borrador } = await waFetch('/api/settings/guia/borrador', { method: 'POST' });
-    campoGuia.value = borrador;
-    contarGuia();
-    estadoGuia('Borrador listo: revísalo y guarda.', 'es-pendiente');
-    $('aj-base').open = true;
-    campoGuia.focus(); campoGuia.setSelectionRange(0, 0); campoGuia.scrollTop = 0;
-  } catch (err) { guiaError(err.message); estadoGuia(''); contarGuia(); }
-  finally { btn.disabled = false; btn.textContent = 'Generar borrador con IA'; }
-});
-
-// Cada tarjeta muestra UN siguiente paso según su estado: sin clave no hay modelos que elegir, así
-// que primero la clave; con clave, el modelo. Quién contesta lo dice la cabecera de la pantalla.
-function tarjetaProveedor(p, d) {
-  const info = d.modelos?.[p.id] ?? {};
-  const k = p.clave;
-  const lista = k.hay && k.legible && info.modelos?.length ? info.modelos : null;
-  const enUso = p.id === d.activo.proveedor && Boolean(lista);
-  const card = h('div', { class: `aj-card${enUso ? ' is-activo' : ''}` });
-
-  const img = h('img', { src: p.logo, alt: '', width: 36, height: 36 });
-  img.dataset.logo = p.id; // la hoja de estilos cambia el de OpenAI según el tema
-  card.append(h('div', { class: 'aj-head' }, img,
-    h('div', { class: 'aj-head-txt' }, h('span', { class: 'aj-nombre' }, p.nombre), h('span', { class: 'aj-sub' }, p.nota)),
-    enUso ? h('span', { class: 'aj-badge' }, 'En uso') : null));
-
-  if (!lista) {
-    // Paso 1: la clave. Si hay una pero no sirve, se dice por qué.
-    let aviso = null;
-    if (!k.legible) aviso = 'La clave guardada no se puede leer (cambió el secreto del servidor). Pégala de nuevo.';
-    else if (k.hay) aviso = `${p.nombre} no aceptó la clave que termina en ${k.fin}: ${info.error ?? 'no devolvió modelos'}.`;
-    card.append(pasoClave(p, d.hayBase, aviso));
+// Sin ninguna clave que sirva: OpenAI, su campo y de dónde sacarla. Nada más.
+function tarjetaPrimera(d) {
+  const p = d.proveedores.openai;
+  const card = h('div', { class: 'aj-card' },
+    h('div', { class: 'aj-head' }, logo(d, 'openai', 36),
+      h('div', { class: 'aj-head-txt' }, h('span', { class: 'aj-nombre' }, p.nombre), h('span', { class: 'aj-sub' }, p.nota))));
+  if (d.claves.length) card.append(h('p', { class: 'aj-aviso-clave', role: 'alert' }, 'Las claves guardadas no se pueden leer (cambió el secreto del servidor). Pégalas de nuevo.'));
+  if (!d.hayBase) {
+    card.append(h('p', { class: 'aj-nota' }, 'Para guardar claves hace falta la base del dashboard (APP_DATABASE_URL).'));
     return card;
   }
-
-  // Paso 2: el modelo. La clave queda en una línea, con sus acciones a mano.
-  card.append(lineaClave(p, d.hayBase));
-  const sel = h('select', { id: `aj-modelo-${p.id}` });
-  sel.append(new Option('Elige un modelo…', ''));
-  for (const m of lista) {
-    const op = new Option(m, m);
-    if (enUso && m === d.activo.modelo) op.selected = true;
-    sel.append(op);
-  }
-  const usar = h('button', { type: 'button', class: 'btn aj-usar' }, enUso ? 'Cambiar modelo' : `Usar ${p.nombre}`);
-  const actualizar = () => { usar.disabled = !sel.value || (enUso && sel.value === d.activo.modelo); };
-  sel.addEventListener('change', actualizar);
-  actualizar();
-  usar.addEventListener('click', async () => {
-    ajError('');
-    usar.disabled = true; usar.textContent = 'Guardando…';
-    try {
-      await waFetch('/api/settings', enviarJson({ proveedor: p.id, modelo: sel.value }));
-      cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
-    } catch (e) {
-      ajError(e.message);
-      usar.textContent = enUso ? 'Cambiar modelo' : `Usar ${p.nombre}`; actualizar();
-    }
-  });
-  card.append(h('div', { class: 'aj-modelo' },
-    h('label', { class: 'aj-etq', htmlFor: `aj-modelo-${p.id}` }, 'Modelo'),
-    h('div', { class: 'aj-modelo-fila' }, sel, usar),
-    enUso ? h('p', { class: 'aj-nota' }, 'Contesta en el chat y en WhatsApp. El cambio vale desde la pregunta siguiente.') : null));
+  card.append(h('p', { class: 'aj-nota' }, 'Pega tu clave de API de OpenAI. Con ella aparecen sus modelos.'),
+    formClave(d, { nombre: 'Principal', proveedor: 'openai' }));
   return card;
 }
 
-// Sin clave: el campo, el botón y de dónde sacarla. Nada más.
-function pasoClave(p, hayBase, aviso) {
-  const caja = h('div', { class: 'aj-paso' });
-  if (aviso) caja.append(h('p', { class: 'aj-aviso-clave', role: 'alert' }, aviso));
-  else caja.append(h('p', { class: 'aj-nota' }, `Para usar ${p.nombre}, pega tu clave de API. Con ella aparecen sus modelos.`));
-  if (!hayBase) {
-    caja.append(h('p', { class: 'aj-nota' }, 'Para guardar claves hace falta la base del dashboard (APP_DATABASE_URL).'));
-    return caja;
-  }
-  caja.append(formClave(p),
-    h('p', { class: 'aj-clave-ayuda' }, 'Se consigue en ', h('a', { href: p.consola, target: '_blank', rel: 'noopener noreferrer' }, new URL(p.consola).host),
-      '. Se prueba antes de guardarla y se guarda cifrada.'));
-  return caja;
+// Quién contesta: la clave (si hay más de una), el modelo y Guardar. Qué clave es cada una lo dice
+// la lista de abajo; aquí solo se elige.
+function tarjetaElegir(d, usables) {
+  const actual = usables.find((c) => c.id === d.activo.clave) ?? usables[0];
+  const card = h('div', { class: 'aj-card is-activo' });
+
+  const selClave = h('select', { id: 'aj-sel-clave' }, ...usables.map((c) => h('option', { value: c.id, selected: c.id === actual.id }, `${c.nombre} · ${DE(d, c).nombre}`)));
+  const selModelo = h('select', { id: 'aj-sel-modelo' });
+  const aviso = h('p', { class: 'aj-aviso-clave', role: 'alert', hidden: true });
+  const guardarBtn = h('button', { type: 'button', class: 'btn aj-usar' }, 'Guardar');
+
+  const pintar = () => {
+    const c = usables.find((x) => x.id === selClave.value);
+    const info = d.modelos?.[c.id] ?? {};
+    aviso.hidden = Boolean(info.modelos?.length);
+    aviso.textContent = `${DE(d, c).nombre} no aceptó la clave «${c.nombre}»: ${info.error ?? 'no devolvió modelos'}.`;
+    // El modelo de antes se conserva si la clave es del mismo proveedor; si no, hay que elegir.
+    const previo = c.proveedor === d.activo.proveedor ? d.activo.modelo : null;
+    selModelo.textContent = '';
+    selModelo.append(new Option('Elige un modelo…', ''), ...(info.modelos ?? []).map((m) => new Option(m, m, false, m === previo)));
+    selModelo.disabled = !info.modelos?.length;
+    actualizar();
+  };
+  const actualizar = () => {
+    guardarBtn.disabled = !d.hayBase || !selModelo.value || (selClave.value === d.activo.clave && selModelo.value === d.activo.modelo);
+  };
+  selClave.addEventListener('change', pintar);
+  selModelo.addEventListener('change', actualizar);
+  guardarBtn.addEventListener('click', async () => {
+    ajError('');
+    guardarBtn.disabled = true; guardarBtn.textContent = 'Guardando…';
+    try {
+      await waFetch('/api/settings', enviarJson({ clave: selClave.value, modelo: selModelo.value }));
+      cargarAjustes(); // se vuelve a pintar con el nuevo "En uso"
+    } catch (e) { ajError(e.message); guardarBtn.textContent = 'Guardar'; actualizar(); }
+  });
+
+  card.append(aviso, h('div', { class: `aj-elegir${usables.length > 1 ? '' : ' es-una'}` },
+    usables.length > 1 ? h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Clave'), selClave) : null,
+    h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Modelo'), selModelo),
+    guardarBtn));
+  pintar();
+  return card;
 }
 
-// Con clave: una línea que dice de dónde viene, y Cambiar/Quitar sin ocupar más.
-function lineaClave(p, hayBase) {
-  const k = p.clave;
-  const fila = h('div', { class: 'aj-clave-linea' },
-    h('span', { class: 'aj-punto', 'aria-hidden': 'true' }),
-    h('span', { class: 'aj-clave-txt' }, 'Clave ', h('span', { class: 'fin' }, `…${k.fin}`),
-      h('span', { class: 'de' }, k.origen === 'panel' ? ' · guardada aquí' : ` · de la variable ${p.env}`)));
-  const caja = h('div', { class: 'aj-clave' }, fila);
-  if (!hayBase) return caja;
-  const form = formClave(p);
-  form.hidden = true;
-  const cambiar = h('button', { type: 'button', class: 'aj-link' }, 'Cambiar');
-  cambiar.addEventListener('click', () => { form.hidden = !form.hidden; if (!form.hidden) form.querySelector('input').focus(); });
-  fila.append(cambiar);
-  if (k.origen === 'panel') {
-    fila.append(conConfirmacion(h('button', { type: 'button', class: 'aj-link' }, 'Quitar'), 'Confirmar: dejará de contestar',
-      async () => {
-        try { await waFetch(`/api/settings/clave/${encodeURIComponent(p.id)}`, { method: 'DELETE' }); cargarAjustes(); }
-        catch (err) { ajError(err.message); }
-      }));
-  }
-  caja.append(form);
-  return caja;
+// Las claves que hay: de quién son, cómo terminan y cuál está en uso. Cada una se puede probar,
+// editar (nombre o la clave misma) y quitar.
+function listaClaves(d) {
+  return h('ul', { class: 'aj-claves', 'aria-label': 'Claves de API' }, ...d.claves.map((c) => filaClave(d, c)));
 }
 
-function formClave(p) {
+function filaClave(d, c) {
+  const sub = h('span', {}, `${DE(d, c).nombre} · …${c.fin}${c.origen === 'entorno' ? ' · variable de entorno' : ''}`);
+  const resultado = h('p', { class: 'aj-prueba', role: 'status', hidden: true });
+  const avisar = (texto, ok) => { resultado.textContent = texto; resultado.className = `aj-prueba ${ok ? 'es-ok' : 'es-mal'}`; resultado.hidden = false; };
+
+  const probar = h('button', { type: 'button', class: 'btn ad-ghost' }, 'Probar');
+  probar.addEventListener('click', async () => {
+    probar.disabled = true; probar.textContent = 'Probando…'; resultado.hidden = true;
+    try {
+      const { modelos } = await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}/probar`, { method: 'POST' });
+      avisar(`Funciona: ${DE(d, c).nombre} respondió con ${plural(modelos, 'modelo disponible', 'modelos disponibles')}.`, true);
+    } catch (err) { avisar(err.message, false); }
+    finally { probar.disabled = false; probar.textContent = 'Probar'; }
+  });
+
+  const delPanel = c.origen === 'panel' && d.hayBase;
+  const form = delPanel ? formEditar(d, c) : null;
+  const editar = delPanel ? h('button', { type: 'button', class: 'btn', 'aria-expanded': 'false' }, 'Editar') : null;
+  editar?.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    editar.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) form.querySelector('input').focus();
+  });
+  const quitar = delPanel && c.id !== d.activo.clave
+    ? conConfirmacion(h('button', { type: 'button', class: 'btn ad-icono es-peligro', title: 'Quitar clave', 'aria-label': `Quitar la clave ${c.nombre}` },
+      icono('i-trash'), h('span', { 'data-etq': '' })), '¿Quitar?', async () => {
+      ajError('');
+      try { await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'DELETE' }); cargarAjustes(); }
+      catch (err) { ajError(err.message); }
+    })
+    : null;
+  const estado = !c.legible ? h('span', { class: 'ad-estado es-error' }, 'Ilegible')
+    : c.id === d.activo.clave ? h('span', { class: 'ad-estado es-activo' }, 'En uso') : null;
+
+  return h('li', {},
+    h('div', { class: 'aj-clave-fila' },
+      logo(d, c.proveedor, 20),
+      h('div', { class: 'ad-quien' }, h('strong', {}, c.nombre), sub),
+      estado,
+      h('div', { class: 'ad-acc' }, c.legible ? probar : null, editar, quitar)),
+    resultado, form);
+}
+
+// Editar: el nombre, y la clave solo si se pega una nueva (se prueba antes de guardarla).
+function formEditar(d, c) {
   const error = h('p', { class: 'aj-clave-error', role: 'alert', hidden: true });
-  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: `Clave de ${p.nombre}`, 'aria-label': `Clave de API de ${p.nombre}` });
-  const guardarBtn = h('button', { type: 'submit', class: 'btn aj-usar' }, 'Guardar clave');
-  const form = h('form', { class: 'aj-clave-form' }, h('div', { class: 'aj-clave-campos' }, campo, guardarBtn), error);
+  const nombre = h('input', { type: 'text', maxLength: 40, autocomplete: 'off', value: c.nombre, 'aria-label': 'Nombre de la clave' });
+  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: 'Pega otra para reemplazarla', 'aria-label': 'Nueva clave de API' });
+  const guardarBtn = h('button', { type: 'submit', class: 'btn aj-usar' }, 'Guardar cambios');
+  const cancelar = h('button', { type: 'button', class: 'btn ad-ghost' }, 'Cancelar');
+  const form = h('form', { class: 'aj-clave-form aj-editar', hidden: true },
+    h('div', { class: 'aj-clave-campos' },
+      h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Nombre'), nombre),
+      h('label', { class: 'aj-campo-ia aj-campo-clave' }, h('span', { class: 'aj-etq' }, 'Clave'), campo)),
+    h('div', { class: 'aj-editar-acc' }, cancelar, guardarBtn), error);
+  cancelar.addEventListener('click', () => { form.hidden = true; nombre.value = c.nombre; campo.value = ''; error.hidden = true; });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     error.hidden = true;
+    guardarBtn.disabled = true; guardarBtn.textContent = campo.value.trim() ? 'Probando la clave…' : 'Guardando…';
+    try {
+      await waFetch(`/api/settings/clave/${encodeURIComponent(c.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombre.value, ...(campo.value.trim() ? { clave: campo.value } : {}) }) });
+      cargarAjustes();
+    } catch (err) {
+      error.textContent = err.message; error.hidden = false;
+      guardarBtn.disabled = false; guardarBtn.textContent = 'Guardar cambios';
+    }
+  });
+  return form;
+}
+
+// El enlace discreto: abre un formulario con nombre, de quién es y la clave.
+function otraClave(d) {
+  const caja = h('div', { class: 'aj-otra' });
+  const abrir = h('button', { type: 'button', class: 'aj-link aj-mas', 'aria-expanded': 'false' }, icono('i-plus'), 'Añadir otra clave');
+  const form = formClave(d, null);
+  form.hidden = true;
+  abrir.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    abrir.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) form.querySelector('input').focus();
+  });
+  caja.append(abrir, form);
+  return caja;
+}
+
+// fijo = { nombre, proveedor } para la primera clave; null para "otra clave", que pregunta ambos.
+function formClave(d, fijo) {
+  const error = h('p', { class: 'aj-clave-error', role: 'alert', hidden: true });
+  const nombre = h('input', { type: 'text', maxLength: 40, autocomplete: 'off', placeholder: 'p. ej. Respaldo', 'aria-label': 'Nombre de la clave' });
+  const prov = h('select', { 'aria-label': 'De quién es la clave' }, new Option('OpenAI', 'openai'), new Option('Claude (Anthropic)', 'anthropic'));
+  const campo = h('input', { type: 'password', autocomplete: 'off', spellcheck: false, placeholder: 'Pega la clave de API', 'aria-label': 'Clave de API' });
+  const guardarBtn = h('button', { type: 'submit', class: 'btn aj-usar' }, 'Guardar clave');
+  const consola = h('a', { target: '_blank', rel: 'noopener noreferrer' });
+  const ayuda = h('p', { class: 'aj-clave-ayuda' }, 'Se consigue en ', consola, '. Se prueba antes de guardarla y se guarda cifrada.');
+  const deQuien = () => fijo?.proveedor ?? prov.value;
+  const pintarAyuda = () => { const p = d.proveedores[deQuien()]; consola.href = p.consola; consola.textContent = new URL(p.consola).host; };
+  prov.addEventListener('change', pintarAyuda);
+  pintarAyuda();
+
+  const form = h('form', { class: `aj-clave-form${fijo ? '' : ' es-otra'}` },
+    fijo ? null : h('div', { class: 'aj-clave-campos' },
+      h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'Nombre'), nombre),
+      h('label', { class: 'aj-campo-ia' }, h('span', { class: 'aj-etq' }, 'De'), prov)),
+    h('div', { class: 'aj-clave-campos' }, campo, guardarBtn), error, ayuda);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    error.hidden = true;
+    if (!fijo && !nombre.value.trim()) { error.textContent = 'Ponle un nombre para reconocerla.'; error.hidden = false; return; }
     if (!campo.value.trim()) { error.textContent = 'Pega la clave primero.'; error.hidden = false; return; }
     guardarBtn.disabled = true; guardarBtn.textContent = 'Probando la clave…';
     try {
-      await waFetch('/api/settings/clave', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ proveedor: p.id, clave: campo.value }) });
-      campo.value = '';
-      cargarAjustes(); // con la clave nueva, la tarjeta pasa al paso del modelo
+      await waFetch('/api/settings/clave', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: fijo?.nombre ?? nombre.value, proveedor: deQuien(), clave: campo.value }) });
+      cargarAjustes();
     } catch (err) {
       error.textContent = err.message; error.hidden = false;
       guardarBtn.disabled = false; guardarBtn.textContent = 'Guardar clave';
@@ -1832,10 +1936,7 @@ async function cargarReporte() {
     if (!reportes.length) {
       $('rp-abrir').hidden = true;
       marco.textContent = '';
-      marco.append(h('div', { class: 'rp-vacio' }, h('strong', {}, 'Todavía no hay reportes'),
-        document.body.classList.contains('es-cliente')
-          ? 'Cuando el equipo de Zebra configure uno, aparecerá aquí.'
-          : 'Añade uno en Ajustes → Reportes: una página para incrustar o una app de esta VPS.'));
+      marco.append(h('div', { class: 'rp-vacio' }, h('strong', {}, 'Todavía no hay reportes'), 'Cuando el equipo de Zebra configure uno, aparecerá aquí.'));
       return;
     }
     if (!reportes.some((x) => x.id === reporteActual)) reporteActual = reportes[0].id;
@@ -1868,46 +1969,6 @@ function mostrarReporte(x) {
   $('rp-abrir').hidden = false;
 }
 
-// Ajustes → Reportes (solo administradores)
-const rpError = (m) => { $('rp-error').textContent = m; $('rp-error').hidden = !m; };
-async function cargarReportesAjustes() {
-  rpError('');
-  try {
-    const { reportes } = await waFetch('/api/reportes/admin');
-    const cont = $('rp-lista');
-    cont.textContent = '';
-    if (!reportes.length) { cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay reportes.')); return; }
-    cont.append(h('ul', { class: 'ad-lista' }, reportes.map((x) => {
-      const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Quitar'), 'Confirmar', async () => {
-        try { await waFetch(`/api/reportes/${encodeURIComponent(x.id)}`, { method: 'DELETE' }); cargarReportesAjustes(); }
-        catch (e) { rpError(e.message); }
-      });
-      return h('li', {},
-        h('div', { class: 'ad-quien' }, h('strong', {}, x.nombre), h('span', { class: 'rp-url' }, x.url)),
-        h('div', { class: 'ad-acc' }, h('span', { class: 'ad-estado' }, x.modo === 'interno' ? 'Servido' : 'Incrustado'), quitar));
-    })));
-  } catch (e) { rpError(e.message); }
-}
-
-$('rp-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  rpError('');
-  $('rp-aviso').hidden = true;
-  const btn = $('rp-crear');
-  btn.disabled = true; btn.textContent = 'Probando…';
-  try {
-    const { aviso } = await waFetch('/api/reportes', enviarJson({ nombre: $('rp-nombre').value, url: $('rp-url').value, modo: $('rp-modo').value }));
-    $('rp-form').reset();
-    if (aviso) { $('rp-aviso').textContent = `Guardado, pero ojo: ${aviso}`; $('rp-aviso').hidden = false; }
-    cargarReportesAjustes();
-  } catch (err) { rpError(err.message); }
-  finally { btn.disabled = false; btn.textContent = 'Añadir'; }
-});
-$('rp-url').addEventListener('input', () => {
-  // Una dirección sin punto en el nombre (postgres_reportes:3000) solo existe dentro de la VPS.
-  try { if (!new URL($('rp-url').value).hostname.includes('.')) $('rp-modo').value = 'interno'; } catch {}
-});
-
 // ── Admin: usuarios con contraseña ─────────────────────────────────────────
 const adError = (m) => { $('ad-error').textContent = m; $('ad-error').hidden = !m; };
 
@@ -1928,48 +1989,67 @@ async function cargarUsuarios() {
   adError('');
   try {
     const d = await waFetch('/api/usuarios');
-    $('ad-google').textContent = `El equipo entra con Google como administrador: ${d.dominios.map((x) => '@' + x).join(', ')}. Los demás, con un usuario de aquí.`;
     if (!d.hayBase) adError('Para crear usuarios hace falta la base del dashboard (APP_DATABASE_URL).');
     const cont = $('ad-lista');
     cont.textContent = '';
+    $('ad-cuenta').textContent = d.usuarios.length ? String(d.usuarios.length) : '';
     if (!d.usuarios.length) {
-      cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay usuarios con contraseña.'));
+      cont.append(h('p', { class: 'ad-vacio' }, 'Todavía no hay usuarios con contraseña. Añade el primero arriba: verás su contraseña temporal para compartírsela.'));
       return;
     }
-    cont.append(h('ul', { class: 'ad-lista' }, d.usuarios.map(filaUsuario)));
+    cont.append(h('ul', { class: 'ad-lista' }, d.usuarios.map((u) => filaUsuario(u, d.yo))));
   } catch (e) { adError(e.message); }
 }
 
-function filaUsuario(u) {
+// A uno mismo solo se le puede resetear la contraseña: el servidor no deja quitarse el rol ni el acceso.
+const ROL = { admin: 'Administrador', usuario: 'Usuario' };
+function filaUsuario(u, yo) {
   const ruta = `/api/usuarios/${encodeURIComponent(u.email)}`;
   const patch = (body) => waFetch(ruta, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const accion = (fn) => async () => { adError(''); try { await fn(); } catch (e) { adError(e.message); } };
+  const propio = u.email === yo;
+  const quien = u.nombre || u.email;
 
-  const reset = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Resetear contraseña'), 'Confirmar: cierra su sesión',
+  let rol;
+  if (propio) rol = h('span', { class: 'ad-rol-fijo' }, ROL[u.rol] ?? u.rol);
+  else {
+    rol = h('select', { class: 'ad-rol', 'aria-label': `Rol de ${quien}` },
+      ...Object.entries(ROL).map(([v, t]) => h('option', { value: v, selected: v === u.rol }, t)));
+    rol.addEventListener('change', accion(async () => {
+      rol.disabled = true;
+      try { await patch({ rol: rol.value }); } finally { cargarUsuarios(); }
+    }));
+  }
+
+  const reset = conConfirmacion(h('button', { type: 'button', class: 'btn ad-ghost' }, 'Resetear contraseña'), 'Confirmar: cierra su sesión',
     accion(async () => { const { temporal } = await patch({ resetear: true }); mostrarTemporal(u.email, temporal, 'reset'); cargarUsuarios(); }));
   const estado = h('button', { type: 'button', class: 'btn' }, u.activo ? 'Desactivar' : 'Activar');
   estado.addEventListener('click', accion(async () => { await patch({ activo: !u.activo }); cargarUsuarios(); }));
-  const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn' }, 'Borrar'), 'Confirmar: se borra',
+  const quitar = conConfirmacion(h('button', { type: 'button', class: 'btn ad-icono es-peligro', title: 'Borrar usuario', 'aria-label': `Borrar a ${quien}` },
+    icono('i-trash'), h('span', { 'data-etq': '' })), '¿Borrar?',
     accion(async () => { await waFetch(ruta, { method: 'DELETE' }); cargarUsuarios(); }));
 
-  const alta = new Date(u.creado).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
-  return h('li', {},
-    h('div', { class: 'ad-quien' }, h('strong', {}, u.nombre || u.email), h('span', {}, `${u.nombre ? u.email + ' · ' : ''}alta ${alta}${u.por ? ` por ${u.por}` : ''}`)),
-    h('div', { class: 'ad-acc' }, h('span', { class: `ad-estado${u.activo ? ' es-activo' : ''}` }, u.activo ? 'Activo' : 'Desactivado'), reset, estado, quitar));
+  return h('li', { class: u.activo ? '' : 'es-inactivo' },
+    h('div', { class: 'ad-quien', title: u.email },
+      h('strong', {}, quien, propio ? h('span', { class: 'ad-tu' }, 'tú') : ''),
+      u.nombre ? h('span', {}, u.email) : ''),
+    rol,
+    h('span', { class: `ad-estado${u.activo ? ' es-activo' : ''}` }, u.activo ? 'Activo' : 'Desactivado'),
+    h('div', { class: 'ad-acc' }, ...(propio ? [reset] : [reset, estado, quitar])));
 }
 
 $('ad-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   adError('');
   const btn = $('ad-crear'), email = $('ad-email').value.trim();
-  btn.disabled = true; btn.textContent = 'Creando…';
+  btn.disabled = true; btn.textContent = 'Añadiendo…';
   try {
-    const { temporal } = await waFetch('/api/usuarios', enviarJson({ email, nombre: $('ad-nombre').value }));
+    const { temporal } = await waFetch('/api/usuarios', enviarJson({ email, nombre: $('ad-nombre').value, rol: $('ad-rol').value }));
     mostrarTemporal(email.toLowerCase(), temporal, 'crear');
-    $('ad-email').value = ''; $('ad-nombre').value = '';
+    $('ad-email').value = ''; $('ad-nombre').value = ''; $('ad-rol').value = 'usuario';
     cargarUsuarios();
   } catch (err) { adError(err.message); }
-  finally { btn.disabled = false; btn.textContent = 'Crear usuario'; }
+  finally { btn.disabled = false; btn.textContent = 'Añadir usuario'; }
 });
 
 // ── Cambiar contraseña (usuarios del cliente) ──────────────────────────────

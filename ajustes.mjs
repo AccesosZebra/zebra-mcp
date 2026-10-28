@@ -1,94 +1,71 @@
-// La pantalla "Ajustes": qué proveedor y modelo están activos, cuáles hay disponibles, el cambio, y
-// las claves de API. Guardar surte efecto de inmediato, también en WhatsApp: el turno siguiente ya
-// usa lo elegido. Las claves entran por aquí pero nunca salen: solo de dónde vienen y cómo terminan.
+// El bloque "Inteligencia artificial" de Ajustes: qué clave y qué modelo contestan, las claves con
+// nombre que hay, y el cambio. Guardar surte efecto de inmediato, también en WhatsApp: el turno
+// siguiente ya usa lo elegido. Las claves entran por aquí pero nunca salen: solo de dónde vienen y
+// cómo terminan.
 import { hayBase } from './db.mjs';
-import { GUIA_GENERICA, LIMITES, aplicarPermisos, borrador, conteos, contextoActual, guardarContexto, hayAdmin, nombreLector } from './guia.mjs';
-import { PROVEEDORES, activo, estadoClave, falloActual, guardar, guardarClave, modelosDisponibles, quitarClave } from './proveedores.mjs';
+import { PROVEEDORES, activo, claves, editarClave, falloActual, guardar, guardarClave, modelosDisponibles, probarClave, quitarClave } from './proveedores.mjs';
 
-export function mountAjustes(app, requireSession) {
-  app.get('/api/settings', requireSession, async (_req, res) => {
-    const { proveedor, modelo } = activo();
+export function mountAjustes(app, soloAdmin) {
+  app.get('/api/settings', soloAdmin, async (_req, res) => {
     res.json({
-      activo: { proveedor, modelo },
+      activo: activo(),
       hayBase,
-      proveedores: Object.entries(PROVEEDORES).map(([id, p]) => ({
-        id,
-        nombre: p.nombre,
-        logo: p.logo,
-        nota: p.nota,
-        consola: p.consola,
-        env: p.env,
-        clave: estadoClave(id),
-      })),
+      proveedores: Object.fromEntries(Object.entries(PROVEEDORES).map(([id, p]) => [id, { nombre: p.nombre, logo: p.logo, nota: p.nota, consola: p.consola }])),
+      claves: claves(),
       modelos: await modelosDisponibles(),
       fallo: falloActual(),
-      contexto: { ...(contextoActual() ?? {}), generica: GUIA_GENERICA, limites: LIMITES },
-      permisos: { hayAdmin: hayAdmin(), rol: nombreLector(), ve: await conteos().catch((e) => ({ error: e.message })) },
     });
   });
 
-  // Quién es el negocio y cómo es su base. Vale desde la pregunta siguiente, sin reiniciar.
-  app.put('/api/settings/contexto', requireSession, async (req, res) => {
+  app.post('/api/settings', soloAdmin, async (req, res) => {
+    const { clave, modelo } = req.body ?? {};
     try {
-      const guardado = await guardarContexto(req.body ?? {}, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'contexto', nombre: guardado.nombre, guia: guardado.guia.length }));
-      res.json({ contexto: guardado });
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
-  });
-
-  // Recorre la base y el modelo redacta una guía. No guarda nada: se revisa en el panel.
-  app.post('/api/settings/guia/borrador', requireSession, async (req, res) => {
-    const t0 = Date.now();
-    try {
-      const texto = await borrador();
-      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'borrador de guía', ms: Date.now() - t0, largo: texto.length }));
-      res.json({ borrador: texto });
-    } catch (e) {
-      console.error('borrador de guía:', e.message);
-      res.status(502).json({ error: e.message });
-    }
-  });
-
-  app.post('/api/settings/permisos', requireSession, async (req, res) => {
-    try {
-      const r = await aplicarPermisos();
-      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'permisos', ...r }));
-      res.json({ ...r, ve: await conteos() });
-    } catch (e) {
-      res.status(400).json({ error: e.message });
-    }
-  });
-
-  app.post('/api/settings', requireSession, async (req, res) => {
-    const { proveedor, modelo } = req.body ?? {};
-    try {
-      const elegido = await guardar({ proveedor, modelo }, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, ...elegido }));
+      const elegido = await guardar({ clave, modelo }, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'elegir', clave: elegido.nombre, proveedor: elegido.proveedor, modelo: elegido.modelo }));
       res.json({ activo: elegido });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  // La clave se prueba contra el proveedor antes de guardarla. En el log va quién, nunca cuál.
-  app.put('/api/settings/clave', requireSession, async (req, res) => {
-    const { proveedor, clave } = req.body ?? {};
+  // La clave se prueba contra el proveedor antes de guardarla. En el log va quién y su nombre, nunca cuál.
+  app.put('/api/settings/clave', soloAdmin, async (req, res) => {
+    const { nombre, proveedor, clave } = req.body ?? {};
     try {
-      const estado = await guardarClave(proveedor, clave, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, clave: proveedor, accion: 'guardar', fin: estado.fin }));
-      res.json({ clave: estado });
+      const nueva = await guardarClave({ nombre, proveedor, clave }, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'añadir clave', nombre: nueva.nombre, proveedor, fin: nueva.fin }));
+      res.json({ clave: nueva });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  app.delete('/api/settings/clave/:proveedor', requireSession, async (req, res) => {
+  // Nombre, clave o ambos. Una clave nueva se prueba antes de guardarla.
+  app.patch('/api/settings/clave/:id', soloAdmin, async (req, res) => {
+    const { nombre, clave } = req.body ?? {};
     try {
-      const estado = await quitarClave(req.params.proveedor, req.user.email);
-      console.log(JSON.stringify({ ajustes: req.user.email, clave: req.params.proveedor, accion: 'quitar' }));
-      res.json({ clave: estado });
+      const editada = await editarClave(req.params.id, { nombre, clave }, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'editar clave', nombre: editada.nombre, clave: Boolean(clave), fin: editada.fin }));
+      res.json({ clave: editada });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // ¿Funciona? Solo pregunta; no cambia nada.
+  app.post('/api/settings/clave/:id/probar', soloAdmin, async (req, res) => {
+    try {
+      res.json(await probarClave(req.params.id));
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  app.delete('/api/settings/clave/:id', soloAdmin, async (req, res) => {
+    try {
+      await quitarClave(req.params.id, req.user.email);
+      console.log(JSON.stringify({ ajustes: req.user.email, accion: 'quitar clave', id: req.params.id }));
+      res.json({ ok: true });
     } catch (e) {
       res.status(400).json({ error: e.message });
     }

@@ -50,7 +50,7 @@ export async function guardarAjuste(clave, valor, por = null) {
 /** Los números configurados, del más viejo al más nuevo. */
 export async function numeros() {
   if (!hayBase) return [];
-  const { rows } = await db().query('select instancia, etiqueta, creado from wa_numeros order by creado');
+  const { rows } = await db().query('select instancia, etiqueta, creado, vencida, api_fin, api_creada, n8n_pausa, n8n_pausa_motivo from wa_numeros order by creado');
   return rows;
 }
 
@@ -72,6 +72,51 @@ export async function agregarNumero({ instancia, etiqueta = null, por = null }) 
     [instancia, etiqueta, por]);
 }
 
+// ── La clave de n8n de cada número ──────────────────────────────────────────
+/** Guarda (o reemplaza) la clave de un número: solo su hash y sus últimos 4. */
+export async function ponerClaveApi(instancia, hash, fin) {
+  exigirBase();
+  const { rowCount } = await db().query(
+    'update wa_numeros set api_hash = $2, api_fin = $3, api_creada = now() where instancia = $1', [instancia, hash, fin]);
+  return rowCount > 0;
+}
+
+export async function quitarClaveApi(instancia) {
+  exigirBase();
+  await db().query('update wa_numeros set api_hash = null, api_fin = null, api_creada = null where instancia = $1', [instancia]);
+}
+
+/** El número con esa instancia y su hash, para validar la clave que manda n8n. */
+export async function claveApiDe(instancia) {
+  if (!hayBase) return null;
+  const { rows } = await db().query('select instancia, etiqueta, api_hash, n8n_pausa, n8n_pausa_motivo from wa_numeros where instancia = $1', [instancia]);
+  return rows[0] ?? null;
+}
+
+/** El número dueño de una clave: n8n la prueba con /instance/fetchInstances, que no dice cuál. */
+export async function numeroPorClave(hash) {
+  if (!hayBase) return null;
+  const { rows } = await db().query('select instancia, etiqueta from wa_numeros where api_hash = $1', [hash]);
+  return rows[0] ?? null;
+}
+
+/** Kill switch de n8n: pausa los envíos de un número (o los reanuda). */
+export async function pausarN8n(instancia, motivo) {
+  exigirBase();
+  await db().query('update wa_numeros set n8n_pausa = now(), n8n_pausa_motivo = $2 where instancia = $1 and n8n_pausa is null', [instancia, motivo]);
+}
+
+export async function reanudarN8n(instancia) {
+  exigirBase();
+  await db().query('update wa_numeros set n8n_pausa = null, n8n_pausa_motivo = null where instancia = $1', [instancia]);
+}
+
+/** Anota (o borra, con null) cuándo WhatsApp cerró la sesión de un número por su cuenta. */
+export async function marcarVencida(instancia, cuando) {
+  exigirBase();
+  await db().query('update wa_numeros set vencida = $2 where instancia = $1', [instancia, cuando]);
+}
+
 /** Los grupos donde contesta un número: jid → cliente. El mismo Map que se usaba con el entorno. */
 export async function grupos(instancia) {
   if (!hayBase) return new Map();
@@ -79,12 +124,19 @@ export async function grupos(instancia) {
   return new Map(rows.map((r) => [r.jid, r.cliente]));
 }
 
-export async function ponerGrupo({ jid, cliente = null, instancia, por = null }) {
+/** Para el panel: los grupos vinculados con su nombre, del más viejo al más nuevo. */
+export async function gruposVinculados(instancia) {
+  if (!hayBase) return [];
+  const { rows } = await db().query('select jid, nombre, cliente from wa_grupos where instancia = $1 order by creado', [instancia]);
+  return rows;
+}
+
+export async function ponerGrupo({ jid, nombre = null, cliente = null, instancia, por = null }) {
   exigirBase();
   await db().query(
-    `insert into wa_grupos (jid, cliente, instancia, por) values ($1, $2, $3, $4)
-       on conflict (jid) do update set cliente = excluded.cliente, instancia = excluded.instancia, por = excluded.por`,
-    [jid, cliente, instancia, por]);
+    `insert into wa_grupos (jid, nombre, cliente, instancia, por) values ($1, $2, $3, $4, $5)
+       on conflict (jid) do update set nombre = excluded.nombre, cliente = excluded.cliente, instancia = excluded.instancia, por = excluded.por`,
+    [jid, nombre, cliente, instancia, por]);
 }
 
 export async function quitarGrupo(jid) {

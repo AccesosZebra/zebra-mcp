@@ -40,6 +40,17 @@ assert.equal(f.golpes.has('ana|ip'), false);
 assert.equal(u.hayUsuarios(), false);
 assert.equal(await u.autenticar('no es correo', 'x'), null);
 assert.equal(await u.autenticar('ana@ccc.mx', ''), null);
-assert.equal(await u.sesionVigente('ana@ccc.mx', 0), false, 'sin base, una sesión de cliente no vale');
+assert.equal(await u.sesionVigente('ana@ccc.mx', 0), null, 'sin base, una sesión de cliente no vale');
+
+// Roles: solo "admin" o "usuario", y se valida antes de tocar la base.
+assert.deepEqual(u.ROLES, ['admin', 'usuario']);
+await assert.rejects(u.crear({ email: 'ana@ccc.mx', rol: 'superadmin' }), /Elige un rol/);
+await assert.rejects(u.cambiarRol('ana@ccc.mx', 'zebra'), /Elige un rol/);
+await assert.rejects(u.crear({ email: 'ana@ccc.mx', rol: 'admin' }), /APP_DATABASE_URL/, 'un rol válido pasa y pide la base');
+
+// Nadie se quita a sí mismo el rol ni el acceso; a otro, sí.
+const { sobreSiMismo } = await import('./admin.mjs');
+assert.throws(() => sobreSiMismo({ user: { email: 'ana@ccc.mx' } }, ' Ana@CCC.mx '), /propio rol/);
+assert.doesNotThrow(() => sobreSiMismo({ user: { email: 'ana@ccc.mx' } }, 'luis@ccc.mx'));
 
 console.log('usuarios OK');

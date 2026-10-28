@@ -1,6 +1,9 @@
 // La pantalla "Integración WA" del panel: los números del bot, su QR y en qué grupos contesta cada
 // uno, y borrarlos. Las conexiones viven en este mismo proceso (whatsapp.mjs): aquí solo se exponen al panel.
-import { agregarNumero, borrarNumero, grupos, numeros, ponerGrupo, quitarGrupo } from './db.mjs';
+import { randomBytes } from 'node:crypto';
+
+import { agregarNumero, borrarNumero, grupos, gruposVinculados, numeros, ponerClaveApi, ponerGrupo, quitarClaveApi, quitarGrupo, reanudarN8n } from './db.mjs';
+import { hashClave } from './n8n.mjs';
 import { falloActual } from './proveedores.mjs';
 import { conectar, desvincular, estado, gruposDelTelefono } from './whatsapp.mjs';
 
@@ -12,6 +15,12 @@ const existe = async (n) => typeof n === 'string' && (await numeros()).some((x) 
 
 // Grupos nuevos: "120363…@g.us". Los creados antes de 2021: "<teléfono del creador>-<segundos>@g.us".
 export const jidValido = (j) => typeof j === 'string' && /^\d{5,}(-\d+)?@g\.us$/.test(j);
+
+/**
+ * Lo que ve el panel: si no hay conexión y WhatsApp había cerrado la sesión, "vencida" (hay que
+ * volver a escanear); si no, el estado de la conexión tal cual.
+ */
+export const estadoPanel = (vivo, vencida) => (vivo === 'desconectado' && vencida ? 'vencida' : vivo);
 
 export function mountWaAdmin(app, requireSession) {
   const log = (req, accion, extra = {}) => console.log(JSON.stringify({ wa_admin: req.user.email, accion, ...extra }));
@@ -32,7 +41,7 @@ export function mountWaAdmin(app, requireSession) {
     const salida = [];
     for (const n of await numeros()) {
       const { estado: e, numero } = estado(n.instancia);
-      salida.push({ ...n, estado: e, numero, grupos: [...await grupos(n.instancia)].map(([jid, cliente]) => ({ jid, cliente })) });
+      salida.push({ ...n, estado: estadoPanel(e, n.vencida), numero, grupos: await gruposVinculados(n.instancia) });
     }
     res.json({ numeros: salida, fallo: falloActual() });
   });
@@ -72,6 +81,28 @@ export function mountWaAdmin(app, requireSession) {
     res.json({ ok: true });
   }));
 
+  // La clave con la que n8n envía por este número. Se devuelve una sola vez; generar otra invalida
+  // la anterior. En el log va quién y cómo termina, nunca la clave.
+  app.post('/api/wa/numeros/:instancia/apikey', requireSession, conNumero(async (req, res, instancia) => {
+    const clave = `zmcp_${randomBytes(32).toString('base64url')}`;
+    await ponerClaveApi(instancia, hashClave(clave), clave.slice(-4));
+    log(req, 'generar clave n8n', { instancia, fin: clave.slice(-4) });
+    res.json({ clave, fin: clave.slice(-4) });
+  }));
+
+  app.delete('/api/wa/numeros/:instancia/apikey', requireSession, conNumero(async (req, res, instancia) => {
+    await quitarClaveApi(instancia);
+    log(req, 'revocar clave n8n', { instancia });
+    res.json({ ok: true });
+  }));
+
+  // Kill switch: los envíos de n8n se pausan solos si WhatsApp rechaza; se reanudan a mano.
+  app.post('/api/wa/numeros/:instancia/reanudar', requireSession, conNumero(async (req, res, instancia) => {
+    await reanudarN8n(instancia);
+    log(req, 'reanudar n8n', { instancia });
+    res.json({ ok: true });
+  }));
+
   // Borrar es definitivo: desvincula el teléfono y se lleva sus grupos y su sesión.
   app.delete('/api/wa/numeros/:instancia', requireSession, conNumero(async (req, res, instancia) => {
     await desvincular(instancia);
@@ -80,15 +111,16 @@ export function mountWaAdmin(app, requireSession) {
     res.json({ ok: true });
   }));
 
-  // Dónde contesta cada número.
+  // Dónde contesta cada número. Rama cancun: una sola empresa, así que el grupo no lleva cliente (en
+  // Zebra decía de qué cliente es el grupo); se guarda su nombre para reconocerlo en el panel.
   app.post('/api/wa/grupos', requireSession, async (req, res) => {
-    const { jid, cliente, instancia } = req.body ?? {};
+    const { jid, nombre, instancia } = req.body ?? {};
     if (!jidValido(jid)) return res.status(400).json({ error: 'Ese identificador de grupo no es válido.' });
     if (!(await existe(instancia))) return res.status(404).json({ error: 'Ese número no existe.' });
     try {
       await ponerGrupo({
         jid,
-        cliente: typeof cliente === 'string' && cliente.trim() ? cliente.trim().slice(0, 80) : null,
+        nombre: typeof nombre === 'string' && nombre.trim() ? nombre.trim().slice(0, 120) : null,
         instancia,
         por: req.user.email,
       });

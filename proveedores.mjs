@@ -26,10 +26,11 @@ export const PROVEEDORES = {
 };
 
 // ── Claves de API ───────────────────────────────────────────────────────────
-// Se pegan desde Ajustes y viven en la base del dashboard, cifradas: una copia de la base no
-// basta para usarlas. La llave sale de AUTH_SESSION_SECRET, así que rotarlo deja las guardadas
-// ilegibles; el panel lo dice y se vuelven a pegar. Si no hay clave en el panel, manda la
-// variable de entorno, como antes.
+// Se pegan desde Ajustes, cada una con un nombre para reconocerla ("Principal", "Respaldo"…), y
+// viven en la base del dashboard, cifradas: una copia de la base no basta para usarlas. La llave
+// sale de AUTH_SESSION_SECRET, así que rotarlo deja las guardadas ilegibles; el panel lo dice y se
+// vuelven a pegar. Las variables de entorno (OPENAI_API_KEY, ANTHROPIC_API_KEY) aparecen como una
+// clave más, de solo lectura.
 const llave = () => Buffer.from(hkdfSync('sha256', process.env.AUTH_SESSION_SECRET ?? '', 'zebra-mcp', 'claves-ia', 32));
 
 export function cifrar(texto) {
@@ -51,61 +52,125 @@ export function descifrar(b64) {
   }
 }
 
-let guardadas = {}; // lo que hay en la base, cifrado: id → { cifrada, fin, por, cuando }
-const enClaro = {}; // id → la clave descifrada, o null si no se pudo leer
+export const MAX_CLAVES = 10;
+const ENTORNO = (proveedor) => `entorno-${proveedor}`;
 
-function recordar(fila) {
-  guardadas = fila ?? {};
-  for (const id of Object.keys(PROVEEDORES)) {
-    enClaro[id] = guardadas[id] ? descifrar(guardadas[id].cifrada) : undefined;
-  }
+let guardadas = []; // lo que hay en la base, cifrado: [{ id, nombre, proveedor, cifrada, fin, por, cuando }]
+const enClaro = new Map(); // id → la clave descifrada, o null si no se pudo leer
+
+/** Lo guardado, como lista. Antes era { anthropic: {…}, openai: {…} }: se convierte al leerlo. */
+export function desdeGuardado(valor) {
+  if (Array.isArray(valor)) return valor;
+  if (!valor || typeof valor !== 'object') return [];
+  return Object.entries(valor).filter(([p]) => PROVEEDORES[p])
+    .map(([p, v]) => ({ ...v, id: p, nombre: PROVEEDORES[p].nombre, proveedor: p }));
 }
 
-/** La clave que se usa: la del panel; si no hay, la del entorno. */
-export const clave = (id) => enClaro[id] || process.env[PROVEEDORES[id]?.env] || null;
-
-/** Lo que el panel puede saber de una clave. Nunca la clave: solo de dónde viene y cómo termina. */
-export function estadoClave(id) {
-  if (guardadas[id]) {
-    const legible = Boolean(enClaro[id]);
-    return { hay: legible, origen: 'panel', fin: guardadas[id].fin, legible, por: guardadas[id].por ?? null };
-  }
-  const delEntorno = process.env[PROVEEDORES[id]?.env];
-  return delEntorno
-    ? { hay: true, origen: 'entorno', fin: delEntorno.slice(-4), legible: true, por: null }
-    : { hay: false, origen: null, fin: null, legible: true, por: null };
+export function recordar(lista) {
+  guardadas = desdeGuardado(lista);
+  enClaro.clear();
+  for (const g of guardadas) enClaro.set(g.id, descifrar(g.cifrada));
 }
 
-/** Prueba la clave contra el proveedor, y solo si responde la guarda. */
-export async function guardarClave(id, valor, por = null) {
-  if (!PROVEEDORES[id]) throw new Error('Ese proveedor no existe.');
+/** Todas las claves, del panel y del entorno. Nunca el texto: solo de dónde viene y cómo termina. */
+export function claves() {
+  const delPanel = guardadas.map((g) => ({
+    id: g.id, nombre: g.nombre, proveedor: g.proveedor, origen: 'panel', fin: g.fin, legible: Boolean(enClaro.get(g.id)), por: g.por ?? null,
+  }));
+  const delEntorno = Object.entries(PROVEEDORES).filter(([, p]) => process.env[p.env]).map(([id, p]) => ({
+    id: ENTORNO(id), nombre: `${p.nombre} (entorno)`, proveedor: id, origen: 'entorno', fin: process.env[p.env].slice(-4), legible: true, por: null,
+  }));
+  return [...delPanel, ...delEntorno];
+}
+
+/** El texto de una clave, o null. */
+export function clave(id) {
+  if (enClaro.get(id)) return enClaro.get(id);
+  const p = Object.keys(PROVEEDORES).find((x) => ENTORNO(x) === id);
+  return (p && process.env[PROVEEDORES[p].env]) || null;
+}
+
+function validarNombre(nombre, menos = null) {
+  const n = typeof nombre === 'string' ? nombre.trim() : '';
+  if (!n || n.length > 40) throw new Error('Ponle un nombre de hasta 40 caracteres, para reconocerla.');
+  if (claves().some((c) => c.id !== menos && c.nombre.toLowerCase() === n.toLowerCase())) throw new Error('Ya hay una clave con ese nombre.');
+  return n;
+}
+
+/** La clave limpia, probada contra su proveedor. Si no responde, dice por qué en cristiano. */
+async function probada(proveedor, valor) {
   const limpia = typeof valor === 'string' ? valor.trim() : '';
   if (limpia.length < 20 || limpia.length > 300 || /\s/.test(limpia)) {
     throw new Error('Eso no parece una clave de API: pégala completa, sin espacios.');
   }
   try {
-    await listarModelos(id, limpia);
+    await listarModelos(proveedor, limpia);
   } catch (e) {
-    throw new Error(`${PROVEEDORES[id].nombre} no aceptó la clave: ${e.message}`);
+    throw new Error(`${PROVEEDORES[proveedor].nombre} no aceptó la clave: ${e.message}.`);
   }
-  const nuevas = { ...guardadas, [id]: { cifrada: cifrar(limpia), fin: limpia.slice(-4), por, cuando: new Date().toISOString() } };
-  await guardarAjuste('claves-ia', nuevas, por);
-  recordar(nuevas);
-  return estadoClave(id);
+  return limpia;
 }
 
-/** Quita la del panel. Si hay variable de entorno, vuelve a mandar ella. */
+const delPanel = (id) => {
+  if (Object.keys(PROVEEDORES).some((x) => ENTORNO(x) === id)) throw new Error('Esa viene de una variable de entorno: se cambia en EasyPanel.');
+  const g = guardadas.find((x) => x.id === id);
+  if (!g) throw new Error('Esa clave no existe.');
+  return g;
+};
+
+async function guardarLista(lista, por) {
+  await guardarAjuste('claves-ia', lista, por);
+  recordar(lista);
+}
+
+/** Prueba la clave contra el proveedor, y solo si responde la guarda. */
+export async function guardarClave({ nombre, proveedor, clave: valor } = {}, por = null) {
+  if (!PROVEEDORES[proveedor]) throw new Error('Elige de quién es la clave: OpenAI o Claude.');
+  const n = validarNombre(nombre);
+  if (guardadas.length >= MAX_CLAVES) throw new Error(`Caben hasta ${MAX_CLAVES} claves: quita una antes.`);
+  const limpia = await probada(proveedor, valor);
+  const nueva = { id: randomBytes(6).toString('base64url'), nombre: n, proveedor, cifrada: cifrar(limpia), fin: limpia.slice(-4), por, cuando: new Date().toISOString() };
+  await guardarLista([...guardadas, nueva], por);
+  return claves().find((c) => c.id === nueva.id);
+}
+
+/** Cambia el nombre, la clave o ambos. Una clave nueva se prueba antes; el proveedor no cambia. */
+export async function editarClave(id, { nombre, clave: valor } = {}, por = null) {
+  const g = delPanel(id);
+  const cambios = {};
+  if (nombre !== undefined && String(nombre).trim() !== g.nombre) cambios.nombre = validarNombre(nombre, id);
+  if (typeof valor === 'string' && valor.trim()) {
+    const limpia = await probada(g.proveedor, valor);
+    Object.assign(cambios, { cifrada: cifrar(limpia), fin: limpia.slice(-4), por, cuando: new Date().toISOString() });
+  }
+  if (!Object.keys(cambios).length) throw new Error('No hay nada que cambiar.');
+  await guardarLista(guardadas.map((x) => (x.id === id ? { ...x, ...cambios } : x)), por);
+  return claves().find((c) => c.id === id);
+}
+
+/** ¿Funciona? Le pide la lista de modelos al proveedor con esa clave. No guarda nada. */
+export async function probarClave(id) {
+  const c = claves().find((x) => x.id === id);
+  if (!c) throw new Error('Esa clave no existe.');
+  if (!c.legible) throw new Error(`La clave "${c.nombre}" no se puede leer (cambió el secreto del servidor): edítala y pégala de nuevo.`);
+  try {
+    return { modelos: (await listarModelos(c.proveedor, clave(id))).length };
+  } catch (e) {
+    throw new Error(`${PROVEEDORES[c.proveedor].nombre} no aceptó la clave: ${e.message}.`);
+  }
+}
+
+/** Quita una del panel. La que está en uso no, mientras haya otra a la que pasarse. */
 export async function quitarClave(id, por = null) {
-  if (!PROVEEDORES[id]) throw new Error('Ese proveedor no existe.');
-  const { [id]: _fuera, ...resto } = guardadas;
-  await guardarAjuste('claves-ia', resto, por);
-  recordar(resto);
-  return estadoClave(id);
+  delPanel(id);
+  if (activo().clave === id && claves().filter((c) => c.legible).length > 1) throw new Error('Es la que está en uso: elige otra antes de quitarla.');
+  await guardarLista(guardadas.filter((g) => g.id !== id), por);
 }
 
-// La elección vive en la base del dashboard, así que la pantalla Ajustes la cambia al instante.
-// Se lee una vez al arrancar y se recuerda: cada turno pregunta quién contesta, y no vale ir a la
-// base cada vez. Antes del primer guardado (o sin base) mandan las variables de entorno.
+// ── Cuál contesta ───────────────────────────────────────────────────────────
+// La elección vive en la base del dashboard ({ clave, proveedor, modelo }), así que Ajustes la
+// cambia al instante. Se lee una vez al arrancar y se recuerda: cada turno pregunta quién contesta.
+// Antes del primer guardado (o sin base) mandan AI_PROVIDER y AI_MODEL, si están.
 let elegido = null;
 
 /** Trae de la base lo guardado. Se llama al arrancar; si la base falla, se sigue con el entorno. */
@@ -113,31 +178,37 @@ export async function cargar() {
   try {
     elegido = await leerAjuste('ia');
     recordar(await leerAjuste('claves-ia'));
-    for (const id of Object.keys(PROVEEDORES)) {
-      if (guardadas[id] && !enClaro[id]) console.error(`ajustes: la clave de ${id} no se puede leer (¿cambió AUTH_SESSION_SECRET?)`);
-    }
+    for (const c of claves()) if (!c.legible) console.error(`ajustes: la clave "${c.nombre}" no se puede leer (¿cambió AUTH_SESSION_SECRET?)`);
   } catch (e) { console.error('ajustes: no pude leer la base, sigo con el entorno:', e.message); }
   return activo();
 }
 
-/** Quién contesta ahora mismo: manda lo guardado; si no hay o no sirve, el entorno. */
-export function activo() {
-  const fuente = PROVEEDORES[elegido?.proveedor]
-    ? elegido
-    : { proveedor: process.env.AI_PROVIDER, modelo: process.env.AI_MODEL };
-  const proveedor = PROVEEDORES[fuente.proveedor] ? fuente.proveedor : 'anthropic';
-  // Un modelo del proveedor anterior no se hereda al caer en otro: cada uno tiene sus nombres.
-  const modelo = (proveedor === fuente.proveedor && fuente.modelo) || PROVEEDORES[proveedor].pordefecto;
-  return { proveedor, modelo };
+/**
+ * Qué clave y qué modelo contestan: la elegida; si ya no está, otra del mismo proveedor; si no, la
+ * primera de OpenAI (la de siempre en esta instancia), y si no hay, cualquiera. El modelo solo se
+ * conserva si la clave es del mismo proveedor que la elección: cada uno tiene sus nombres.
+ */
+export function elegirActiva(lista, eleccion) {
+  const usables = lista.filter((c) => c.legible);
+  const c = usables.find((x) => x.id === eleccion?.clave)
+    || usables.find((x) => x.proveedor === eleccion?.proveedor)
+    || usables.find((x) => x.proveedor === 'openai')
+    || usables[0];
+  if (!c) return { clave: null, nombre: null, proveedor: 'openai', modelo: null };
+  const modelo = (c.proveedor === eleccion?.proveedor && eleccion.modelo) || PROVEEDORES[c.proveedor].pordefecto;
+  return { clave: c.id, nombre: c.nombre, proveedor: c.proveedor, modelo };
 }
 
+export const activo = () => elegirActiva(claves(), elegido ?? { proveedor: process.env.AI_PROVIDER, modelo: process.env.AI_MODEL });
+const claveActiva = () => clave(activo().clave);
+
 /** Una elección utilizable, o una excepción con el motivo en cristiano. */
-export function validar({ proveedor, modelo }) {
-  const p = PROVEEDORES[proveedor];
-  if (!p) throw new Error('Ese proveedor no está disponible.');
-  if (!clave(proveedor)) throw new Error(`Falta la clave de ${p.nombre}: pégala en su tarjeta.`);
+export function validar({ clave: id, modelo }) {
+  const c = claves().find((x) => x.id === id);
+  if (!c) throw new Error('Esa clave no existe.');
+  if (!c.legible) throw new Error(`La clave "${c.nombre}" no se puede leer: vuelve a pegarla.`);
   if (typeof modelo !== 'string' || !modelo.trim() || modelo.length > 120) throw new Error('Elige un modelo.');
-  return { proveedor, modelo: modelo.trim() };
+  return { clave: c.id, proveedor: c.proveedor, modelo: modelo.trim() };
 }
 
 /** Cambia quién contesta, sin desplegar. La memoria solo cambia si la base aceptó el cambio. */
@@ -189,7 +260,7 @@ const urlMcp = () => `${process.env.AUTH_BASE_URL.replace(/\/+$/, '')}/mcp`;
 // Se rehace solo si la clave cambió desde el panel.
 let anthropicClient, anthropicClave;
 function anthropic() {
-  const k = clave('anthropic');
+  const k = claveActiva();
   if (!k) throw new Error('Falta la clave de Anthropic: pégala en Ajustes.');
   if (k !== anthropicClave) { anthropicClient = new Anthropic({ apiKey: k }); anthropicClave = k; }
   return anthropicClient;
@@ -219,7 +290,7 @@ export function streamAnthropic(messages, canal = 'web', cliente = null, modelo)
 // Responses API: el bucle de herramientas lo ejecuta OpenAI contra nuestro MCP, igual que Anthropic.
 // Sin streaming, por simplicidad: se emite el texto final de una vez.
 export async function pedirOpenAI(messages, canal = 'web', cliente = null, modelo) {
-  const k = clave('openai');
+  const k = claveActiva();
   if (!k) throw new Error('Falta la clave de OpenAI: pégala en Ajustes.');
   const res = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -259,41 +330,32 @@ const textoOpenAI = (datos) => (datos.output_text ?? (Array.isArray(datos.output
   .flatMap((o) => (o.content ?? []).filter((c) => c.type === 'output_text').map((c) => c.text))
   .join('') ?? '').trim();
 
-/**
- * Una sola llamada al proveedor activo, sin herramientas: para tareas de redacción del panel, como
- * el borrador de la guía de la base. Devuelve el texto.
- */
-export async function completar(instrucciones, texto) {
-  const { proveedor, modelo } = activo();
-  if (!modelo) throw new Error('Primero elige un modelo en Ajustes.');
-  if (proveedor === 'openai') {
-    const k = clave('openai');
-    if (!k) throw new Error('Falta la clave de OpenAI: pégala en Ajustes.');
-    const res = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${k}` },
-      body: JSON.stringify({ model: modelo, instructions: instrucciones, input: texto }),
-    });
-    const datos = await res.json().catch(() => ({}));
-    if (!res.ok) throw errorOpenAI(res, datos);
-    return textoOpenAI(datos);
-  }
-  const msg = await anthropic().messages.create({
-    model: modelo,
-    max_tokens: 4_000,
-    system: instrucciones,
-    messages: [{ role: 'user', content: texto }],
-  });
-  return msg.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-}
-
 const parseArgs = (a) => { try { return typeof a === 'string' ? JSON.parse(a) : (a ?? {}); } catch { return {}; } };
+
+// ── Errores de los proveedores, en cristiano ────────────────────────────────
+// Lo que el proveedor responde viene en inglés y a veces sin texto ("404"). Al panel le llega qué
+// significa y qué hacer; el detalle original va al log del servidor.
+export function explicarHttp(status) {
+  const frase = {
+    400: 'rechazó la petición: algún dato no es válido',
+    401: 'la clave no es válida o fue revocada',
+    403: 'la clave no tiene permiso para esto: revisa sus permisos o los del proyecto en la consola del proveedor',
+    404: 'no existe lo que se pidió: suele ser un modelo retirado o que esta clave no puede usar',
+    429: 'se pasó del límite de uso, o la cuenta no tiene saldo',
+  }[status] ?? (status >= 500 ? 'el servicio está fallando de su lado: intenta en unos minutos' : 'respondió con un error');
+  return `${frase} (${status})`;
+}
 
 // ── Modelos disponibles, preguntándole a cada proveedor ──────────────────────
 async function listar(url, cabeceras, mapear) {
-  const res = await fetch(url, { headers: cabeceras });
+  let res;
+  try { res = await fetch(url, { headers: cabeceras, signal: AbortSignal.timeout(15_000) }); }
+  catch (e) { throw new Error(`no se pudo conectar con el servicio (${e.cause?.code ?? e.name})`); }
   const d = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(d?.error?.message ?? `respondió ${res.status}`);
+  if (!res.ok) {
+    console.error(`modelos ${new URL(url).host}: ${res.status} ${d?.error?.message ?? ''}`);
+    throw Object.assign(new Error(explicarHttp(res.status)), { status: res.status });
+  }
   return mapear(d);
 }
 
@@ -308,16 +370,12 @@ function listarModelos(id, k) {
         (d) => (d.data ?? []).map((m) => m.id).filter((x) => /^(gpt|o\d)/.test(x)).sort());
 }
 
-/** Para la pantalla de Ajustes: qué modelos ofrece cada proveedor con la clave que hay puesta. */
+/** Para la pantalla de Ajustes: qué modelos ofrece cada clave legible, por id. */
 export async function modelosDisponibles() {
-  const salida = {};
-  for (const id of Object.keys(PROVEEDORES)) {
-    const k = clave(id);
-    if (!k) { salida[id] = { error: 'Sin clave todavía' }; continue; }
-    try { salida[id] = { modelos: await listarModelos(id, k) }; }
-    catch (e) { salida[id] = { error: e.message }; }
-  }
-  return salida;
+  const usables = claves().filter((c) => c.legible);
+  const listas = await Promise.all(usables.map((c) => listarModelos(c.proveedor, clave(c.id))
+    .then((modelos) => ({ modelos }), (e) => ({ error: e.message }))));
+  return Object.fromEntries(usables.map((c, i) => [c.id, listas[i]]));
 }
 
 // ── Por qué no contesta ─────────────────────────────────────────────────────
@@ -328,20 +386,29 @@ export async function modelosDisponibles() {
 
 /** { codigo, texto } si la causa es de la cuenta del proveedor; null si es otra cosa. */
 export function causaDeFallo(e, proveedor = activo().proveedor) {
-  const nombre = PROVEEDORES[proveedor]?.nombre ?? 'el proveedor de IA';
+  // Con varias claves, se dice cuál: "OpenAI (clave «Respaldo»)".
+  const cual = claves().length > 1 && activo().nombre ? ` (clave «${activo().nombre}»)` : '';
+  const nombre = `${PROVEEDORES[proveedor]?.nombre ?? 'el proveedor de IA'}${cual}`;
   const m = String(e?.message ?? '');
   const code = String(e?.code ?? e?.error?.error?.type ?? '');
   if (/^Falta la clave/i.test(m)) {
-    return { codigo: 'sin-clave', texto: `No puedo contestar: falta configurar la clave de API de ${nombre} en Ajustes del panel.` };
+    return { codigo: 'sin-clave', texto: `No tengo acceso a los datos: falta configurar la clave de API de ${nombre} en Ajustes del panel.` };
   }
   if (/credit balance|insufficient_quota|exceeded your current quota|billing/i.test(`${m} ${code}`)) {
-    return { codigo: 'sin-saldo', texto: `No puedo contestar: la cuenta de ${nombre} se quedó sin saldo (tokens). Hay que recargarla para que vuelva a responder.` };
+    return { codigo: 'sin-saldo', texto: `No tengo acceso a los datos: la cuenta de ${nombre} se quedó sin saldo (tokens). Hay que recargarla para que vuelva a responder.` };
   }
   if (e?.status === 401 || /invalid x-api-key|incorrect api key|invalid_api_key|authentication/i.test(`${m} ${code}`)) {
-    return { codigo: 'clave-invalida', texto: `No puedo contestar: la clave de API de ${nombre} no es válida o fue revocada. Hay que cambiarla en Ajustes del panel.` };
+    return { codigo: 'clave-invalida', texto: `No tengo acceso a los datos: la clave de API de ${nombre} no es válida o fue revocada. Hay que cambiarla en Ajustes del panel.` };
   }
   if (e?.status === 429 || /rate.?limit/i.test(`${m} ${code}`)) {
-    return { codigo: 'limite', texto: `No puedo contestar ahora: se alcanzó el límite de uso por minuto de ${nombre}. Pregúntame de nuevo en un minuto.` };
+    return { codigo: 'limite', texto: `No tengo acceso a los datos por un momento: se alcanzó el límite de uso por minuto de ${nombre}. Pregúntame de nuevo en un minuto.` };
+  }
+  // Un modelo retirado o que esa clave no puede usar: OpenAI y Anthropic responden 404 (a veces 400).
+  if (e?.status === 404 || /model_not_found|not_found_error|model\b.*(does not exist|not found)/i.test(`${m} ${code}`)) {
+    return { codigo: 'modelo', texto: `No tengo acceso a los datos: el modelo «${activo().modelo}» ya no está disponible en ${nombre}. Hay que elegir otro en Ajustes del panel.` };
+  }
+  if (e?.status === 403 || /permission/i.test(code)) {
+    return { codigo: 'permiso', texto: `No tengo acceso a los datos: la clave de ${nombre} no tiene permiso para usar el modelo «${activo().modelo}». Revisa sus permisos o elige otro modelo en Ajustes del panel.` };
   }
   return null;
 }

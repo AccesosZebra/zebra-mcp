@@ -1,7 +1,7 @@
 // Backend del chat web: recibe la conversación, se la pasa al proveedor activo (que consulta la
 // base a través del MCP) y devuelve la respuesta en NDJSON, como el Editor de Prompt Studio.
 import { contextoActual } from './guia.mjs';
-import { activo, causaDeFallo, pedirOpenAI, registrarExito, registrarFallo, streamAnthropic } from './proveedores.mjs';
+import { activo, causaDeFallo, explicarHttp, pedirOpenAI, registrarExito, registrarFallo, streamAnthropic } from './proveedores.mjs';
 
 const MAX_MENSAJES = 60;
 const MAX_BYTES = 90_000; // por debajo del límite de 100kb de express.json
@@ -32,8 +32,9 @@ const preview = (content) => (typeof content === 'string' ? content : (content ?
 function errorMessage(e) {
   const causa = causaDeFallo(e);
   if (causa) return causa.texto;
-  if (e?.status) return `No se pudo obtener la respuesta (${e.status}).`;
-  return e?.message || 'No se pudo obtener la respuesta.';
+  // Lo demás, sin códigos ni inglés: qué pasó y qué hacer. El detalle queda en el log del servidor.
+  if (e?.status) return `No se pudo obtener la respuesta: el servicio de IA ${explicarHttp(e.status)}.`;
+  return 'No se pudo conectar con el servicio de IA. Vuelve a preguntar en un momento.';
 }
 
 /** Un turno del chat web, con el proveedor que esté activo. */
@@ -73,7 +74,7 @@ function turno({ messages, canal = 'web', cliente = null, send, onFinal }) {
 
 export function mountChat(app, requireSession) {
   // La barra lateral muestra quién está dentro.
-  app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email, rol: req.user.rol, negocio: contextoActual()?.nombre || null }));
+  app.get('/api/me', requireSession, (req, res) => res.json({ email: req.user.email, rol: req.user.rol, admin: req.user.admin, negocio: contextoActual()?.nombre || null }));
 
   app.post('/api/chat', requireSession, async (req, res) => {
     const { messages } = req.body ?? {};

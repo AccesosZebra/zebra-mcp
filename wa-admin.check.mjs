@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 delete process.env.APP_DATABASE_URL;
 
-const { nombreValido, jidValido } = await import('./wa-admin.mjs');
+const { nombreValido, jidValido, estadoPanel } = await import('./wa-admin.mjs');
 const { estado } = await import('./whatsapp.mjs');
 
 // El nombre de la conexión lo escribe una persona y acaba dentro de una URL: se valida estricto.
@@ -25,5 +25,11 @@ assert.equal(jidValido(''), false);
 
 // Un número que nunca se conectó en este proceso se ve desconectado, no rompe el panel.
 assert.deepEqual(estado('zebra-bot'), { estado: 'desconectado', qr: null, numero: null });
+
+// Sesión vencida: solo si no hay conexión y WhatsApp la había cerrado.
+assert.equal(estadoPanel('desconectado', null), 'desconectado', 'nunca se vinculó');
+assert.equal(estadoPanel('desconectado', new Date()), 'vencida');
+assert.equal(estadoPanel('conectado', new Date()), 'conectado', 'si ya reconectó, la fecha vieja no importa');
+assert.equal(estadoPanel('esperando', new Date()), 'esperando', 'mientras muestra el QR');
 
 console.log('wa-admin OK');

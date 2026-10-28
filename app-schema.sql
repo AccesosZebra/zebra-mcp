@@ -20,6 +20,18 @@ create table if not exists wa_numeros (
   creado    timestamptz not null default now(),
   por       text
 );
+-- Cuándo WhatsApp cerró la sesión por su cuenta (14 días sin usar el teléfono, o lo desvincularon
+-- desde el teléfono). Null mientras está vinculado o si nunca lo estuvo.
+alter table wa_numeros add column if not exists vencida timestamptz;
+-- La clave con la que n8n envía mensajes por este número (nodo de Evolution). Solo su sha256 y
+-- sus últimos 4: la clave entera se muestra una vez al generarla y no se guarda.
+alter table wa_numeros add column if not exists api_hash text;
+alter table wa_numeros add column if not exists api_fin text;
+alter table wa_numeros add column if not exists api_creada timestamptz;
+-- Kill switch: si WhatsApp empieza a rechazar los envíos de n8n por este número, se pausan aquí
+-- hasta que alguien los reanude en el panel. Las respuestas del bot no se pausan.
+alter table wa_numeros add column if not exists n8n_pausa timestamptz;
+alter table wa_numeros add column if not exists n8n_pausa_motivo text;
 
 -- Los grupos donde contesta, uno por cliente. Antes vivían en WHATSAPP_GROUPS.
 create table if not exists wa_grupos (
@@ -33,6 +45,8 @@ alter table wa_grupos add column if not exists instancia text references wa_nume
 alter table wa_grupos add column if not exists por text;
 alter table wa_grupos alter column instancia set not null;
 create index if not exists wa_grupos_instancia on wa_grupos (instancia);
+-- El nombre del grupo al vincularlo, para mostrarlo en el panel (WhatsApp no lo da sin conexión).
+alter table wa_grupos add column if not exists nombre text;
 
 -- La sesión de cada número: las llaves del dispositivo vinculado. Sin esto, cada despliegue
 -- obligaría a escanear el QR otra vez. Quien lea esta tabla puede hacerse pasar por el bot.
@@ -44,7 +58,7 @@ create table if not exists wa_sesion (
 );
 
 -- Usuarios con contraseña: la gente del cliente, que no entra con Google. Los crea un
--- administrador en la pestaña Admin. Nunca se guarda la contraseña, solo su hash scrypt.
+-- administrador en Ajustes → Usuarios. Nunca se guarda la contraseña, solo su hash scrypt.
 create table if not exists usuarios (
   email  text primary key,                          -- siempre en minúsculas
   nombre text not null default '',
@@ -54,3 +68,7 @@ create table if not exists usuarios (
   creado timestamptz not null default now(),
   por    text                                       -- correo del administrador que lo creó
 );
+
+-- Qué puede hacer: "admin" entra a Ajustes (IA y usuarios); "usuario" solo usa el panel.
+-- El equipo de Zebra (Google) no vive aquí: es administrador siempre.
+alter table usuarios add column if not exists rol text not null default 'usuario' check (rol in ('admin', 'usuario'));

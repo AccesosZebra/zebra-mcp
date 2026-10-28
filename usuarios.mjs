@@ -1,6 +1,7 @@
 // Usuarios con contraseña: la gente del cliente, que no tiene cuenta de Google del equipo. Los crea
-// un administrador en la pestaña Admin. Port de src/auth/{password,users,rateLimit}.ts de Zebra
-// Reports, al estilo de este repo: scrypt de la stdlib, sin dependencias.
+// un administrador (Zebra, o un usuario del cliente con rol "admin") en Ajustes → Usuarios. Port de
+// src/auth/{password,users,rateLimit}.ts de Zebra Reports, al estilo de este repo: scrypt de la
+// stdlib, sin dependencias.
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 import { consulta, hayBase } from './db.mjs';
@@ -38,6 +39,9 @@ export function contrasenaTemporal(largo = 14) {
 }
 
 export const MINIMO = 10;
+export const ROLES = ['admin', 'usuario'];
+const validarRol = (rol) => { if (!ROLES.includes(rol)) throw new Error('Elige un rol: administrador o usuario.'); return rol; };
+
 export const correoValido = (c) => typeof c === 'string' && c.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.trim());
 const norm = (c) => String(c).trim().toLowerCase();
 
@@ -67,7 +71,7 @@ export const frenoLogin = new Freno();
 // ── La tabla ────────────────────────────────────────────────────────────────
 export const hayUsuarios = () => hayBase;
 
-const COLUMNAS = 'email, nombre, hash, activo, v, creado, por';
+const COLUMNAS = 'email, nombre, hash, activo, v, rol, creado, por';
 
 export async function buscar(email) {
   if (!hayBase) return null;
@@ -77,18 +81,19 @@ export async function buscar(email) {
 
 /** Para el panel: nunca el hash. */
 export async function listar() {
-  const { rows } = await consulta('select email, nombre, activo, creado, por from usuarios order by creado');
+  const { rows } = await consulta('select email, nombre, activo, rol, creado, por from usuarios order by creado');
   return rows;
 }
 
 /** Crea un usuario con contraseña temporal. Devuelve la temporal: se muestra una sola vez. */
-export async function crear({ email, nombre = '' }, por = null) {
+export async function crear({ email, nombre = '', rol = 'usuario' }, por = null) {
   if (!correoValido(email)) throw new Error('Ese correo no es válido.');
+  validarRol(rol);
   if (typeof nombre !== 'string' || nombre.length > 80) throw new Error('El nombre admite hasta 80 caracteres.');
   const temporal = contrasenaTemporal();
   const { rowCount } = await consulta(
-    `insert into usuarios (email, nombre, hash, por) values ($1, $2, $3, $4) on conflict (email) do nothing`,
-    [norm(email), nombre.trim(), hashear(temporal), por]);
+    `insert into usuarios (email, nombre, hash, rol, por) values ($1, $2, $3, $4, $5) on conflict (email) do nothing`,
+    [norm(email), nombre.trim(), hashear(temporal), rol, por]);
   if (!rowCount) throw new Error('Ya existe un usuario con ese correo.');
   return temporal;
 }
@@ -105,6 +110,13 @@ export async function resetear(email) {
 /** Desactivar también sube `v`: el usuario sale en menos de un minuto. */
 export async function activar(email, activo) {
   const { rowCount } = await consulta('update usuarios set activo = $2, v = v + 1 where email = $1', [norm(email), Boolean(activo)]);
+  if (!rowCount) throw new Error('Ese usuario no existe.');
+  cache.delete(norm(email));
+}
+
+/** El rol cambia sin cerrar su sesión: requireSession lo relee de aquí (caché de 60 s). */
+export async function cambiarRol(email, rol) {
+  const { rowCount } = await consulta('update usuarios set rol = $2 where email = $1', [norm(email), validarRol(rol)]);
   if (!rowCount) throw new Error('Ese usuario no existe.');
   cache.delete(norm(email));
 }
@@ -135,10 +147,12 @@ export async function autenticar(email, contrasena) {
 
 // ── Revocación ──────────────────────────────────────────────────────────────
 // La cookie lleva la `v` del usuario. Si en la base cambió (reseteo, cambio de contraseña) o está
-// desactivado, la sesión deja de valer. Caché de 60 s para no ir a la base en cada petición.
+// desactivado, la sesión deja de valer. De paso trae su rol, que tampoco va en la cookie. Caché de
+// 60 s para no ir a la base en cada petición.
 const CACHE_MS = 60_000;
 const cache = new Map();
 
+/** El usuario si su sesión sigue valiendo; null si no. */
 export async function sesionVigente(email, v) {
   const clave = norm(email);
   const hit = cache.get(clave);
@@ -148,5 +162,5 @@ export async function sesionVigente(email, v) {
     u = await buscar(clave).catch(() => null);
     cache.set(clave, { u, at: Date.now() });
   }
-  return Boolean(u && u.activo && u.v === (v ?? 0));
+  return u && u.activo && u.v === (v ?? 0) ? u : null;
 }
